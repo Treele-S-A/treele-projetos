@@ -30,7 +30,13 @@ class Settings(BaseSettings):
     storage_backend: str = "local"
     storage_local_dir: Path = DATA_DIR / "storage"
 
+    # Dois endereços de propósito. Dentro do Docker a API fala com o MinIO pela
+    # rede interna ("http://minio:9000"), mas a URL pré-assinada que ela devolve
+    # é aberta pelo NAVEGADOR, que não resolve "minio" — essa precisa do endereço
+    # público. Assinar com o endereço público é o correto: a assinatura SigV4
+    # cobre o cabeçalho Host, e o Host que o MinIO recebe é justamente o público.
     s3_endpoint: str | None = None
+    s3_endpoint_interno: str | None = None
     s3_region: str = "us-east-1"
     s3_bucket: str = "treele-projetos"
     s3_access_key: str | None = None
@@ -48,6 +54,11 @@ class Settings(BaseSettings):
     # e-mail o recusa, o que deixaria o admin sem conseguir entrar.
     admin_email: str = "admin@treele.com.br"
     admin_senha: str | None = None
+
+    @property
+    def s3_endpoint_servidor(self) -> str | None:
+        """Endereço que a própria API usa. Cai no público quando não há rede interna."""
+        return self.s3_endpoint_interno or self.s3_endpoint
 
     @property
     def lista_cors(self) -> list[str]:

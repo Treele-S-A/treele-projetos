@@ -26,6 +26,8 @@ services:
     environment:
       MINIO_ROOT_USER: ${S3_ACCESS_KEY:-treele}
       MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY:-treele-minio-senha}
+      # O navegador faz PUT e GET direto no MinIO, de outra origem que a do site.
+      MINIO_API_CORS_ALLOW_ORIGIN: ${CORS_ORIGINS:-http://localhost:8080}
     ports:
       # A porta 9000 precisa ser alcançável pelo NAVEGADOR, não só pela API:
       # é para ela que vão os links pré-assinados de upload e download.
@@ -33,11 +35,6 @@ services:
       - "9001:9001"
     volumes:
       - dados-minio:/data
-    healthcheck:
-      test: ["CMD", "mc", "ready", "local"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
     restart: unless-stopped
 
   api:
@@ -50,7 +47,12 @@ services:
     environment:
       DATABASE_URL: postgresql+psycopg://treele:${POSTGRES_PASSWORD:-treele}@db:5432/treele
       STORAGE_BACKEND: s3
+      # PÚBLICO: entra nas URLs pré-assinadas, quem abre é o navegador.
       S3_ENDPOINT: ${S3_ENDPOINT_PUBLICO:-http://localhost:9000}
+      # INTERNO: a própria API, pela rede do Docker. Sem isto ela tentaria
+      # falar com "localhost:9000" dentro do próprio contêiner e não acharia
+      # o MinIO nem para criar o bucket.
+      S3_ENDPOINT_INTERNO: http://minio:9000
       S3_BUCKET: ${S3_BUCKET:-treele-projetos}
       S3_ACCESS_KEY: ${S3_ACCESS_KEY:-treele}
       S3_SECRET_KEY: ${S3_SECRET_KEY:-treele-minio-senha}

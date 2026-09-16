@@ -140,18 +140,36 @@ class ArmazenamentoLocal:
 
 
 class ArmazenamentoS3:
+    """Dois clientes, de propósito.
+
+    ``cliente`` usa o endereço que a API alcança (dentro do Docker, a rede
+    interna). ``assinador`` usa o endereço público, porque quem abre a URL
+    pré-assinada é o navegador — e ele não resolve o nome de serviço do Docker.
+
+    Assinar com o endereço público é correto e não é gambiarra: a SigV4 cobre o
+    cabeçalho Host, e o Host que chega ao MinIO é exatamente o público. Quando os
+    dois endereços são iguais (S3 de verdade), o mesmo cliente serve para tudo.
+    """
+
     def __init__(self) -> None:
         import boto3  # importado aqui: só é dependência no modo s3
         from botocore.client import Config
 
         self.bucket = settings.s3_bucket
-        self.cliente = boto3.client(
-            "s3",
-            endpoint_url=settings.s3_endpoint,
-            region_name=settings.s3_region,
-            aws_access_key_id=settings.s3_access_key,
-            aws_secret_access_key=settings.s3_secret_key,
-            config=Config(signature_version="s3v4"),
+        config = Config(signature_version="s3v4")
+        credenciais = {
+            "region_name": settings.s3_region,
+            "aws_access_key_id": settings.s3_access_key,
+            "aws_secret_access_key": settings.s3_secret_key,
+            "config": config,
+        }
+
+        interno = settings.s3_endpoint_servidor
+        self.cliente = boto3.client("s3", endpoint_url=interno, **credenciais)
+        self.assinador = (
+            self.cliente
+            if settings.s3_endpoint in (None, interno)
+            else boto3.client("s3", endpoint_url=settings.s3_endpoint, **credenciais)
         )
 
     def garantir_bucket(self) -> None:
@@ -163,7 +181,7 @@ class ArmazenamentoS3:
             self.cliente.create_bucket(Bucket=self.bucket)
 
     def destino_upload(self, chave: str, content_type: str) -> DestinoUpload:
-        url = self.cliente.generate_presigned_url(
+        url = self.assinador.generate_presigned_url(
             "put_object",
             Params={"Bucket": self.bucket, "Key": chave, "ContentType": content_type},
             ExpiresIn=settings.url_expira_segundos,
@@ -177,7 +195,7 @@ class ArmazenamentoS3:
 
     def url_download(self, chave: str, nome_arquivo: str) -> str:
         disposicao = f"attachment; filename*=UTF-8''{quote(nome_arquivo)}"
-        return self.cliente.generate_presigned_url(
+        return self.assinador.generate_presigned_url(
             "get_object",
             Params={
                 "Bucket": self.bucket,

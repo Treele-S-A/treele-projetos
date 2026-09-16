@@ -53,6 +53,12 @@ histórico de obsolescência — o suficiente para avaliar o fluxo com a equipe.
 
 ## Rodar com Docker (Postgres + MinIO)
 
+> **Windows exige o WSL2 antes do Docker.** No Windows 11 Home o Docker Desktop
+> só funciona com o WSL2 como motor — não existe Hyper-V nessa edição. Se o
+> `docker info` reclamar de `dockerDesktopLinuxEngine`, é isso. Abra o PowerShell
+> **como Administrador**, rode `wsl --install` e reinicie o computador. Depois
+> abra o Docker Desktop uma vez e aceite os termos.
+
 ```bash
 cp .env.example .env
 ```
@@ -110,6 +116,18 @@ inteiro no upload, e quem está na obra com 4G não baixa nada.
 O armazenamento tem dois back-ends com a mesma interface — `local` (disco, para
 desenvolvimento) e `s3` (MinIO auto-hospedado, S3, Cloudflare R2 ou Backblaze B2).
 Trocar é uma variável de ambiente; nenhum outro arquivo muda.
+
+No modo `s3` existem **dois endereços**, e confundi-los é a falha mais comum ao
+subir em container:
+
+| Variável | Quem usa | Valor no docker-compose |
+|---|---|---|
+| `S3_ENDPOINT` | o **navegador**, ao abrir a URL assinada | `http://localhost:9000` |
+| `S3_ENDPOINT_INTERNO` | a **API**, pela rede do Docker | `http://minio:9000` |
+
+A URL é assinada com o endereço público porque a assinatura SigV4 cobre o
+cabeçalho `Host` — e o `Host` que chega ao MinIO é o público. Com um S3 de
+verdade os dois endereços são iguais e basta preencher `S3_ENDPOINT`.
 
 ### Papéis
 
