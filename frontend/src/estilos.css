@@ -1,0 +1,864 @@
+/* ==========================================================================
+   Sistema visual — "prancha"
+
+   A referência é o artefato do ofício: a folha de desenho sobre a prancheta,
+   e o carimbo no canto. Daí vêm três decisões:
+
+   1. Substrato cinza-azulado de filme de desenho (mylar), não papel creme.
+      Prancheta escura à esquerda emoldurando a folha clara à direita.
+   2. Par rótulo/valor do carimbo virou o sistema tipográfico: rótulo em mono
+      maiúsculo espaçado, valor em sans. Vale para toda a interface.
+   3. Status é carimbo de borracha, não etiqueta colorida. "OBSOLETO" tem que
+      ser impossível de ignorar — é a função de segurança do sistema inteiro.
+   ========================================================================== */
+
+:root {
+  /* substrato */
+  --vellum: #e8ebef;
+  --folha: #ffffff;
+  --prancheta: #171b21;
+  --prancheta-alto: #222834;
+
+  /* grafite */
+  --tinta: #12161b;
+  --tinta-2: #5b6570;
+  --tinta-3: #8a939d;
+  --tinta-invertida: #e7eaee;
+
+  /* traços, na hierarquia do desenho técnico */
+  --traco-fino: #d5dade;
+  --traco-medio: #b2bac2;
+  --traco-forte: #7d8791;
+
+  /* ação */
+  --azul: #15497f;
+  --azul-claro: #e8eff8;
+  --azul-escuro: #0e3560;
+
+  /* carimbos */
+  --liberado: #0f6b4f;
+  --liberado-fundo: #e3efe9;
+  --revisao: #92550f;
+  --revisao-fundo: #f7eee1;
+  --obsoleto: #a82820;
+  --obsoleto-fundo: #f7e5e3;
+  --cancelado: #666f7a;
+  --cancelado-fundo: #eaedf0;
+
+  --fonte-ui: "Archivo", system-ui, -apple-system, sans-serif;
+  --fonte-mono: "IBM Plex Mono", ui-monospace, "Cascadia Mono", monospace;
+
+  --raio: 3px;
+  --rail: 232px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#raiz {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--vellum);
+  color: var(--tinta);
+  font-family: var(--fonte-ui);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3 {
+  margin: 0;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+:focus-visible {
+  outline: 2px solid var(--azul);
+  outline-offset: 2px;
+}
+
+/* --------------------------------------------------------------------------
+   Rótulo do carimbo — a unidade tipográfica do sistema
+   -------------------------------------------------------------------------- */
+
+.rotulo {
+  display: block;
+  font-family: var(--fonte-mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--tinta-3);
+}
+
+.mono {
+  font-family: var(--fonte-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.codigo {
+  font-family: var(--fonte-mono);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+
+.silencioso {
+  color: var(--tinta-2);
+}
+
+/* --------------------------------------------------------------------------
+   Esqueleto: prancheta + folha
+   -------------------------------------------------------------------------- */
+
+.app {
+  display: grid;
+  grid-template-columns: var(--rail) 1fr;
+  min-height: 100%;
+}
+
+.prancheta {
+  background: var(--prancheta);
+  color: var(--tinta-invertida);
+  display: flex;
+  flex-direction: column;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+}
+
+.marca {
+  padding: 22px 20px 18px;
+  border-bottom: 1px solid #2c333d;
+}
+
+.marca-nome {
+  font-family: var(--fonte-mono);
+  font-weight: 600;
+  font-size: 15px;
+  letter-spacing: 0.22em;
+  color: #fff;
+}
+
+.marca-sub {
+  margin-top: 3px;
+  font-size: 11px;
+  color: #77828f;
+  letter-spacing: 0.04em;
+}
+
+.seletor-obra {
+  padding: 14px 20px;
+  border-bottom: 1px solid #2c333d;
+}
+
+.seletor-obra select {
+  width: 100%;
+  margin-top: 6px;
+  padding: 7px 8px;
+  background: var(--prancheta-alto);
+  border: 1px solid #39414e;
+  border-radius: var(--raio);
+  color: #fff;
+  font-family: var(--fonte-mono);
+  font-size: 12px;
+}
+
+.menu {
+  padding: 12px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  overflow-y: auto;
+}
+
+.menu a {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: var(--raio);
+  color: #9aa5b1;
+  font-size: 13px;
+  font-weight: 500;
+  border-left: 2px solid transparent;
+}
+
+.menu a:hover {
+  background: var(--prancheta-alto);
+  color: #fff;
+}
+
+.menu a.ativo {
+  background: var(--prancheta-alto);
+  color: #fff;
+  border-left-color: #4b9fd5;
+}
+
+.menu .divisor {
+  height: 1px;
+  background: #2c333d;
+  margin: 10px 10px;
+}
+
+.rodape-rail {
+  padding: 14px 20px;
+  border-top: 1px solid #2c333d;
+  font-size: 12px;
+}
+
+.rodape-rail .nome {
+  color: #fff;
+  font-weight: 500;
+}
+
+.rodape-rail button {
+  margin-top: 8px;
+  background: none;
+  border: none;
+  padding: 0;
+  color: #77828f;
+  font-size: 12px;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.rodape-rail button:hover {
+  color: #fff;
+}
+
+.area {
+  padding: 26px 30px 60px;
+  min-width: 0;
+}
+
+.cabecalho-area {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+}
+
+.cabecalho-area h1 {
+  font-size: 21px;
+  margin-top: 2px;
+}
+
+/* --------------------------------------------------------------------------
+   Folha
+   -------------------------------------------------------------------------- */
+
+.folha {
+  background: var(--folha);
+  border: 1px solid var(--traco-medio);
+  border-radius: var(--raio);
+}
+
+.folha + .folha {
+  margin-top: 16px;
+}
+
+.folha-titulo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 13px 16px;
+  border-bottom: 1px solid var(--traco-fino);
+}
+
+.folha-corpo {
+  padding: 16px;
+}
+
+/* --------------------------------------------------------------------------
+   Carimbo: a grade rótulo/valor do título de prancha
+   -------------------------------------------------------------------------- */
+
+.carimbo {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  border-top: 1px solid var(--traco-fino);
+}
+
+.carimbo-campo {
+  padding: 11px 16px;
+  border-right: 1px solid var(--traco-fino);
+  min-width: 0;
+}
+
+.carimbo-campo:last-child {
+  border-right: none;
+}
+
+.carimbo-campo .valor {
+  margin-top: 3px;
+  font-size: 14px;
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
+/* --------------------------------------------------------------------------
+   Estado: etiqueta na tabela, carimbo na revisão
+   -------------------------------------------------------------------------- */
+
+.estado {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px;
+  border: 1px solid currentColor;
+  border-radius: var(--raio);
+  font-family: var(--fonte-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.estado-liberado_para_obra {
+  color: var(--liberado);
+  background: var(--liberado-fundo);
+}
+.estado-em_revisao {
+  color: var(--revisao);
+  background: var(--revisao-fundo);
+}
+.estado-obsoleto {
+  color: var(--obsoleto);
+  background: var(--obsoleto-fundo);
+}
+.estado-cancelado {
+  color: var(--cancelado);
+  background: var(--cancelado-fundo);
+}
+
+/* O carimbo de borracha: borda dupla, inclinado. Usado uma vez por tela. */
+.selo {
+  display: inline-block;
+  padding: 7px 14px 6px;
+  border: 2px solid currentColor;
+  outline: 1px solid currentColor;
+  outline-offset: 2px;
+  border-radius: 2px;
+  font-family: var(--fonte-mono);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  transform: rotate(-2.5deg);
+  opacity: 0.92;
+  animation: bater 260ms cubic-bezier(0.2, 0.9, 0.3, 1.4) both;
+}
+
+@keyframes bater {
+  from {
+    transform: rotate(-2.5deg) scale(1.28);
+    opacity: 0;
+  }
+  to {
+    transform: rotate(-2.5deg) scale(1);
+    opacity: 0.92;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .selo {
+    animation: none;
+  }
+  * {
+    transition: none !important;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Tabela
+   -------------------------------------------------------------------------- */
+
+.tabela-rolagem {
+  overflow-x: auto;
+}
+
+table.tabela {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.tabela th {
+  padding: 9px 16px;
+  text-align: left;
+  font-family: var(--fonte-mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--tinta-3);
+  border-bottom: 1px solid var(--traco-medio);
+  white-space: nowrap;
+}
+
+.tabela td {
+  padding: 11px 16px;
+  border-bottom: 1px solid var(--traco-fino);
+  vertical-align: middle;
+}
+
+.tabela tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.tabela tbody tr:hover {
+  background: #f6f8fa;
+}
+
+.tabela a.link-doc {
+  font-family: var(--fonte-mono);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--azul);
+}
+
+.tabela a.link-doc:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.tipos {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.tipo {
+  font-family: var(--fonte-mono);
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  padding: 2px 5px;
+  border: 1px solid var(--traco-medio);
+  border-radius: 2px;
+  color: var(--tinta-2);
+  background: #f4f6f8;
+}
+
+/* --------------------------------------------------------------------------
+   Controles
+   -------------------------------------------------------------------------- */
+
+.botao {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 8px 14px;
+  border: 1px solid var(--azul);
+  border-radius: var(--raio);
+  background: var(--azul);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 120ms ease;
+}
+
+.botao:hover:not(:disabled) {
+  background: var(--azul-escuro);
+}
+
+.botao:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.botao.secundario {
+  background: var(--folha);
+  color: var(--tinta);
+  border-color: var(--traco-forte);
+}
+
+.botao.secundario:hover:not(:disabled) {
+  background: #f2f5f8;
+}
+
+.botao.perigo {
+  background: var(--folha);
+  color: var(--obsoleto);
+  border-color: var(--obsoleto);
+}
+
+.botao.perigo:hover:not(:disabled) {
+  background: var(--obsoleto-fundo);
+}
+
+.botao.pequeno {
+  padding: 5px 10px;
+  font-size: 12px;
+}
+
+.campo {
+  display: block;
+}
+
+.campo input,
+.campo select,
+.campo textarea,
+.entrada {
+  width: 100%;
+  margin-top: 5px;
+  padding: 8px 10px;
+  background: var(--folha);
+  border: 1px solid var(--traco-forte);
+  border-radius: var(--raio);
+  font-size: 13px;
+}
+
+.campo textarea {
+  resize: vertical;
+  min-height: 74px;
+  font-family: var(--fonte-ui);
+}
+
+.filtros {
+  display: grid;
+  grid-template-columns: minmax(180px, 1.6fr) repeat(auto-fit, minmax(130px, 1fr));
+  gap: 10px;
+  align-items: end;
+}
+
+/* --------------------------------------------------------------------------
+   Avisos
+   -------------------------------------------------------------------------- */
+
+.aviso {
+  display: flex;
+  gap: 10px;
+  padding: 11px 13px;
+  border: 1px solid;
+  border-left-width: 3px;
+  border-radius: var(--raio);
+  font-size: 13px;
+  margin-bottom: 14px;
+}
+
+.aviso ul {
+  margin: 5px 0 0;
+  padding-left: 18px;
+}
+
+.aviso-erro {
+  color: var(--obsoleto);
+  border-color: var(--obsoleto);
+  background: var(--obsoleto-fundo);
+}
+
+.aviso-atencao {
+  color: var(--revisao);
+  border-color: var(--revisao);
+  background: var(--revisao-fundo);
+}
+
+.aviso-ok {
+  color: var(--liberado);
+  border-color: var(--liberado);
+  background: var(--liberado-fundo);
+}
+
+.aviso-info {
+  color: var(--azul);
+  border-color: var(--azul);
+  background: var(--azul-claro);
+}
+
+.vazio {
+  padding: 46px 20px;
+  text-align: center;
+  color: var(--tinta-2);
+}
+
+.vazio strong {
+  display: block;
+  color: var(--tinta);
+  font-size: 15px;
+  margin-bottom: 5px;
+}
+
+/* --------------------------------------------------------------------------
+   Envio
+   -------------------------------------------------------------------------- */
+
+.area-solta {
+  border: 1.5px dashed var(--traco-forte);
+  border-radius: var(--raio);
+  padding: 34px 20px;
+  text-align: center;
+  background: #fafbfc;
+  cursor: pointer;
+  transition: border-color 120ms ease, background 120ms ease;
+}
+
+.area-solta:hover,
+.area-solta.sobre {
+  border-color: var(--azul);
+  background: var(--azul-claro);
+}
+
+.lista-envio {
+  margin-top: 14px;
+  border: 1px solid var(--traco-fino);
+  border-radius: var(--raio);
+}
+
+.linha-envio {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 14px;
+  padding: 11px 13px;
+  border-bottom: 1px solid var(--traco-fino);
+  align-items: start;
+}
+
+.linha-envio:last-child {
+  border-bottom: none;
+}
+
+.linha-envio.invalida {
+  background: var(--obsoleto-fundo);
+}
+
+.linha-envio .erros {
+  margin: 5px 0 0;
+  padding-left: 17px;
+  color: var(--obsoleto);
+  font-size: 12px;
+}
+
+.linha-envio .extraido {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 5px;
+  font-family: var(--fonte-mono);
+  font-size: 11px;
+  color: var(--tinta-2);
+}
+
+.barra {
+  height: 3px;
+  background: var(--traco-fino);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-top: 7px;
+}
+
+.barra i {
+  display: block;
+  height: 100%;
+  background: var(--azul);
+  transition: width 160ms ease;
+}
+
+/* --------------------------------------------------------------------------
+   Revisões
+   -------------------------------------------------------------------------- */
+
+.revisao {
+  border-bottom: 1px solid var(--traco-fino);
+  padding: 16px;
+}
+
+.revisao:last-child {
+  border-bottom: none;
+}
+
+.revisao.obsoleta {
+  background: #fbfbfb;
+}
+
+.revisao.obsoleta .numero-rev {
+  color: var(--tinta-3);
+}
+
+.revisao-topo {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.numero-rev {
+  font-family: var(--fonte-mono);
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+
+.arquivos {
+  margin-top: 12px;
+  border: 1px solid var(--traco-fino);
+  border-radius: var(--raio);
+}
+
+.arquivo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--traco-fino);
+  flex-wrap: wrap;
+}
+
+.arquivo:last-child {
+  border-bottom: none;
+}
+
+.arquivo .nome {
+  font-family: var(--fonte-mono);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+/* --------------------------------------------------------------------------
+   Entrar
+   -------------------------------------------------------------------------- */
+
+.tela-entrar {
+  min-height: 100%;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: var(--prancheta);
+}
+
+.cartao-entrar {
+  width: 100%;
+  max-width: 372px;
+  background: var(--folha);
+  border-radius: var(--raio);
+  border: 1px solid var(--traco-medio);
+  overflow: hidden;
+}
+
+.cartao-entrar .topo {
+  padding: 26px 26px 20px;
+  border-bottom: 1px solid var(--traco-fino);
+}
+
+.cartao-entrar .topo .marca-nome {
+  color: var(--tinta);
+  font-size: 17px;
+}
+
+.cartao-entrar form {
+  padding: 22px 26px 26px;
+  display: grid;
+  gap: 14px;
+}
+
+/* --------------------------------------------------------------------------
+   Paginação e utilitários
+   -------------------------------------------------------------------------- */
+
+.paginacao {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 11px 16px;
+  border-top: 1px solid var(--traco-fino);
+  font-size: 12px;
+  color: var(--tinta-2);
+}
+
+.linha {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.espaco {
+  flex: 1;
+}
+
+.carregando {
+  padding: 40px;
+  text-align: center;
+  color: var(--tinta-3);
+  font-family: var(--fonte-mono);
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+/* --------------------------------------------------------------------------
+   Responsivo — a obra abre isto no celular
+   -------------------------------------------------------------------------- */
+
+@media (max-width: 900px) {
+  .app {
+    grid-template-columns: 1fr;
+  }
+
+  .prancheta {
+    position: static;
+    height: auto;
+  }
+
+  .menu {
+    flex-direction: row;
+    flex-wrap: wrap;
+    overflow-x: auto;
+  }
+
+  .menu .divisor {
+    display: none;
+  }
+
+  .menu a {
+    border-left: none;
+    border-bottom: 2px solid transparent;
+  }
+
+  .menu a.ativo {
+    border-left: none;
+    border-bottom-color: #4b9fd5;
+  }
+
+  .area {
+    padding: 18px 16px 48px;
+  }
+
+  .filtros {
+    grid-template-columns: 1fr 1fr;
+  }
+}

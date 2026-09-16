@@ -1,0 +1,73 @@
+# Papéis e permissões
+
+Uma pessoa tem **um papel por obra**. O mesmo projetista pode ser coordenador na
+Obra A e projetista na Obra B. Além disso existe o perfil global de
+**administrador**, que cria obras, usuários e catálogos.
+
+## Matriz
+
+| | Coordenador | Projetista | Obra | Cliente |
+|---|:--:|:--:|:--:|:--:|
+| Ver documentos liberados | ✓ | ✓ | ✓ | ✓ |
+| Baixar documentos liberados | ✓ | ✓ | ✓ | ✓ |
+| Ver e baixar revisões obsoletas | ✓ | ✓ | ✓ | |
+| Ver revisões ainda em revisão | ✓ | ✓ | | |
+| Enviar arquivos | ✓ | ✓ | | |
+| Editar título e descrição | ✓ | ✓ | | |
+| **Liberar para obra** | ✓ | | | |
+| Cancelar revisão | ✓ | | | |
+| Gerenciar equipe da obra | ✓ | | | |
+| Alterar nomenclatura da obra | ✓ | | | |
+| Ver registro de atividades | ✓ | | | |
+
+O administrador tem todas as permissões em todas as obras.
+
+## As escolhas por trás disso
+
+**Projetista envia mas não libera.** É a separação que faz o controle existir.
+Quem desenha sobe o arquivo — ele entra como *em revisão* e fica visível para a
+equipe de projeto, mas invisível para a obra. Só o coordenador decide que aquilo
+virou o projeto oficial. Sem essa separação, o sistema é uma pasta compartilhada
+com aparência de sistema.
+
+**Obra vê obsoletos; cliente não.** Quem está em campo às vezes *precisa* da
+revisão antiga — para conferir o que foi executado na semana passada, para
+entender o que mudou. O download vem com aviso explícito de que aquela revisão
+está obsoleta, e fica registrado quem baixou. O cliente só enxerga o que está
+liberado: para ele, revisão antiga é ruído e fonte de confusão.
+
+**Revisão liberada não aceita mais arquivos.** Depois de liberada, a revisão é
+imutável. Para corrigir qualquer coisa, publica-se uma revisão nova. Isso é o que
+torna o histórico confiável — se desse para editar o que já foi liberado, a
+trilha de auditoria não provaria nada.
+
+**Não dá para liberar uma revisão antiga depois de uma mais nova.** Publicar a
+R00 depois da R01 já estar liberada deixaria a obra com projeto velho marcado
+como válido. O sistema recusa e explica.
+
+## Registro de atividades
+
+Todo evento relevante fica gravado, com usuário, IP e horário: login, envio,
+conclusão de envio, download, liberação, cancelamento, mudança de equipe,
+alteração de nomenclatura e exportação da lista mestra.
+
+O registro de **download** é o que responde à pergunta que aparece em toda
+discussão contratual: *quem tinha qual revisão em mãos, e desde quando.* Ele
+guarda também o status da revisão no momento do download — então fica
+documentado se alguém baixou algo já obsoleto.
+
+A aplicação nunca edita nem apaga eventos.
+
+## Primeiro acesso
+
+O primeiro administrador é criado na primeira inicialização do sistema. A senha
+aparece **uma única vez** no console, a menos que você defina `ADMIN_SENHA` no
+`.env`. Troque-a depois do primeiro acesso.
+
+Usuários novos são criados pelo administrador em **Usuários**, com uma senha
+inicial que deve ser passada por um canal seguro — a pessoa troca depois em
+`POST /auth/senha`.
+
+> Quando vocês quiserem, dá para trocar o login por SSO com a conta Microsoft da
+> empresa (Entra ID), já que a TREELE usa Microsoft 365. Ninguém precisa de senha
+> nova e o acesso de quem sai da empresa é cortado junto com a conta corporativa.

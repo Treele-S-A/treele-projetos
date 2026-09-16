@@ -1,0 +1,17 @@
+# Segredos e dados locais
+.env
+backend/data/
+backend/.venv/
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Node
+node_modules/
+frontend/dist/
+
+# Sistema
+.DS_Store
+Thumbs.db

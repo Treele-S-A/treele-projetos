@@ -1,0 +1,302 @@
+"""Contratos de entrada e saída da API (Pydantic v2)."""
+
+from datetime import datetime
+from typing import Generic, TypeVar
+
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
+
+from .enums import PapelObra, StatusArquivo, StatusRevisao, TipoArquivo
+
+T = TypeVar("T")
+
+
+class Modelo(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+
+class Pagina(BaseModel, Generic[T]):
+    itens: list[T]
+    total: int
+    pagina: int
+    por_pagina: int
+
+
+# --------------------------------------------------------------------------
+# Autenticação e usuários
+# --------------------------------------------------------------------------
+
+
+class LoginEntrada(BaseModel):
+    email: EmailStr
+    senha: str
+
+
+class TokenSaida(BaseModel):
+    token: str
+    tipo: str = "bearer"
+    expira_em_minutos: int
+
+
+class UsuarioOut(Modelo):
+    id: int
+    nome: str
+    email: EmailStr
+    admin: bool
+    ativo: bool
+
+
+class UsuarioCriar(BaseModel):
+    nome: str = Field(min_length=2, max_length=160)
+    email: EmailStr
+    senha: str = Field(min_length=8, max_length=128)
+    admin: bool = False
+
+
+class SenhaAlterar(BaseModel):
+    senha_atual: str
+    senha_nova: str = Field(min_length=8, max_length=128)
+
+
+# --------------------------------------------------------------------------
+# Catálogos
+# --------------------------------------------------------------------------
+
+
+class DisciplinaOut(Modelo):
+    id: int
+    codigo: str
+    nome: str
+    ordem: int
+    ativa: bool
+
+
+class DisciplinaCriar(BaseModel):
+    codigo: str = Field(min_length=1, max_length=16, pattern=r"^[A-Za-z0-9]+$")
+    nome: str = Field(min_length=2, max_length=120)
+    ordem: int = 0
+
+
+class FaseOut(Modelo):
+    id: int
+    codigo: str
+    nome: str
+    ordem: int
+    ativa: bool
+
+
+class FaseCriar(BaseModel):
+    codigo: str = Field(min_length=1, max_length=16, pattern=r"^[A-Za-z0-9]+$")
+    nome: str = Field(min_length=2, max_length=120)
+    ordem: int = 0
+
+
+# --------------------------------------------------------------------------
+# Obras
+# --------------------------------------------------------------------------
+
+
+class ObraCriar(BaseModel):
+    codigo: str = Field(min_length=1, max_length=32, pattern=r"^[A-Za-z0-9]+$")
+    nome: str = Field(min_length=2, max_length=200)
+    cliente: str | None = None
+    regra_companheiro: dict[str, list[str]] | None = None
+
+
+class ObraAtualizar(BaseModel):
+    nome: str | None = None
+    cliente: str | None = None
+    ativa: bool | None = None
+    regra_companheiro: dict[str, list[str]] | None = None
+
+
+class ObraOut(Modelo):
+    id: int
+    codigo: str
+    nome: str
+    cliente: str | None
+    ativa: bool
+    regra_companheiro: dict
+
+
+class ObraComPapel(ObraOut):
+    papel: PapelObra | None = None
+    permissoes: list[str] = []
+
+
+class MembroCriar(BaseModel):
+    usuario_id: int
+    papel: PapelObra
+
+
+class MembroOut(Modelo):
+    id: int
+    usuario_id: int
+    papel: PapelObra
+    usuario: UsuarioOut
+
+
+# --------------------------------------------------------------------------
+# Nomenclatura
+# --------------------------------------------------------------------------
+
+
+class PadraoCriar(BaseModel):
+    nome: str = Field(min_length=2, max_length=120)
+    template: str = Field(min_length=3, max_length=400)
+    tokens: dict[str, dict]
+    extensoes: list[str] = ["dwg", "rvt", "pdf", "ifc"]
+    exemplo: str | None = None
+
+
+class PadraoOut(Modelo):
+    id: int
+    obra_id: int | None
+    nome: str
+    template: str
+    tokens: dict
+    extensoes: list
+    exemplo: str | None
+    ativo: bool
+
+
+class ValidarNomeEntrada(BaseModel):
+    nomes: list[str] = Field(min_length=1, max_length=200)
+
+
+class NomeAnalisado(BaseModel):
+    nome_arquivo: str
+    valido: bool
+    erros: list[str]
+    codigo_documento: str | None = None
+    disciplina: str | None = None
+    fase: str | None = None
+    revisao: str | None = None
+    titulo: str | None = None
+    tipo: TipoArquivo | None = None
+    documento_existe: bool = False
+    revisao_existe: bool = False
+
+
+class ValidarNomeSaida(BaseModel):
+    padrao: PadraoOut
+    resultados: list[NomeAnalisado]
+
+
+# --------------------------------------------------------------------------
+# Documentos e revisões
+# --------------------------------------------------------------------------
+
+
+class ArquivoOut(Modelo):
+    id: int
+    nome_original: str
+    tipo: TipoArquivo
+    status: StatusArquivo
+    tamanho: int
+    sha256: str | None
+    content_type: str
+    enviado_em: datetime
+    enviado_por: UsuarioOut | None = None
+
+
+class RevisaoOut(Modelo):
+    id: int
+    numero: str
+    ordem: int
+    status: StatusRevisao
+    descricao: str | None
+    descricao_ia: str | None
+    criada_em: datetime
+    publicada_em: datetime | None
+    obsoleta_em: datetime | None
+    criada_por: UsuarioOut | None = None
+    publicada_por: UsuarioOut | None = None
+    arquivos: list[ArquivoOut] = []
+
+
+class RevisaoResumo(Modelo):
+    id: int
+    numero: str
+    status: StatusRevisao
+    publicada_em: datetime | None
+    criada_em: datetime
+
+
+class DocumentoOut(Modelo):
+    id: int
+    codigo: str
+    titulo: str | None
+    obra_id: int
+    disciplina: DisciplinaOut
+    fase: FaseOut
+    criado_em: datetime
+    total_revisoes: int = 0
+    revisao_atual: RevisaoResumo | None = None
+
+
+class DocumentoDetalhe(DocumentoOut):
+    revisoes: list[RevisaoOut] = []
+
+
+class DocumentoAtualizar(BaseModel):
+    titulo: str | None = None
+
+
+class RevisaoAtualizar(BaseModel):
+    descricao: str | None = None
+
+
+class PublicarEntrada(BaseModel):
+    descricao: str | None = None
+
+
+# --------------------------------------------------------------------------
+# Upload
+# --------------------------------------------------------------------------
+
+
+class UploadIniciarEntrada(BaseModel):
+    nome_arquivo: str
+    tamanho: int = Field(ge=0)
+    content_type: str = "application/octet-stream"
+    descricao: str | None = None
+    substituir: bool = False
+
+
+class UploadIniciarSaida(BaseModel):
+    arquivo_id: int
+    revisao_id: int
+    documento_id: int
+    url: str
+    metodo: str
+    headers: dict[str, str]
+    direto: bool
+    revisao_nova: bool
+    documento_novo: bool
+
+
+class UploadConfirmarSaida(BaseModel):
+    arquivo: ArquivoOut
+    revisao: RevisaoOut
+
+
+class DownloadSaida(BaseModel):
+    url: str
+    nome_arquivo: str
+    aviso: str | None = None
+
+
+# --------------------------------------------------------------------------
+# Auditoria
+# --------------------------------------------------------------------------
+
+
+class EventoOut(Modelo):
+    id: int
+    acao: str
+    entidade: str
+    entidade_id: int | None
+    detalhes: dict
+    ip: str | None
+    criado_em: datetime
+    usuario: UsuarioOut | None = None
