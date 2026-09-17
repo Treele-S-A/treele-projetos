@@ -10,7 +10,7 @@ Nomenclatura obrigatória com extração de campos, catálogo por
 obra/disciplina/fase/formato, status com obsolescência automática, regra de
 arquivo companheiro, papéis por obra, trilha de auditoria, lista mestra em CSV.
 
-32 testes automatizados cobrindo as regras de negócio.
+35 testes automatizados cobrindo as regras de negócio.
 
 ---
 

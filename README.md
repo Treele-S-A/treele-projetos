@@ -148,7 +148,7 @@ Detalhes em [docs/permissoes.md](docs/permissoes.md).
 cd backend && .venv\Scripts\python -m pytest tests -q
 ```
 
-32 testes cobrindo o parser de nomenclatura, a regra de arquivo companheiro, a
+35 testes cobrindo o parser de nomenclatura, a regra de arquivo companheiro, a
 obsolescência automática, o controle de permissões e a trilha de auditoria.
 
 ## Estrutura
