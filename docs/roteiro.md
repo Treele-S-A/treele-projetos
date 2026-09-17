@@ -122,13 +122,22 @@ justamente como o BCF já funciona.
 | DWG e RVT | Exigir PDF plotado e IFC exportado junto, sem licença paga | set/2026 |
 | Banco | Postgres em produção, SQLite só em desenvolvimento | set/2026 |
 | Armazenamento | Object storage com URL assinada; arquivo nunca passa pela API | set/2026 |
+| Nomenclatura | `{obra}-{disciplina}-{fase}-{prancha}-R{revisao}` | 17/09/2026 |
+| Número da prancha | Formato livre — varia por obra | 17/09/2026 |
+| Revisão | Sempre `R` + 2 dígitos | 17/09/2026 |
+| Título | Fora do nome do arquivo; preenchido na tela do documento | 17/09/2026 |
+| Disciplinas | 25 códigos (9 confirmados pela TREELE) | 17/09/2026 |
 
 ## Em aberto
 
 - Onde hospedar: VPS com Docker (mais barato, ~R$100–300/mês) ou Azure
   (integra com o Microsoft 365 da empresa, 3–5× mais caro).
 - Login por SSO com Entra ID em vez de senha própria.
+- Confirmar os 16 códigos de disciplina que vieram da proposta inicial (os 9
+  novos já estão confirmados) — ver [nomenclatura.md](nomenclatura.md).
 - Estratégia de migração do acervo atual — ver o fim de
   [nomenclatura.md](nomenclatura.md).
+- Preencher o título já na tela de envio, para documentos novos. Hoje o título
+  só é editável depois, na tela do documento.
 - Notificação por e-mail quando sai revisão nova em disciplina que a pessoa
   acompanha.

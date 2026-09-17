@@ -1,8 +1,7 @@
 # Nomenclatura
 
-> **Este é o documento da Fase 0 que precisa da decisão de vocês.** O sistema já
-> funciona com o padrão abaixo; o que falta é confirmar se ele é o padrão da
-> TREELE ou ajustá-lo antes de cadastrar a primeira obra de verdade.
+> **Decidido com a TREELE em 17/09/2026.** O sistema já está configurado com o
+> padrão abaixo. Este documento passa a ser a referência da equipe.
 
 ## Por que isso é o item mais importante do sistema
 
@@ -14,30 +13,51 @@ ninguém erra o preenchimento.
 É por isso que arquivo fora do padrão é **recusado**, não aceito com aviso. Um
 arquivo que o sistema não sabe classificar é exatamente o arquivo que some.
 
-## O padrão atual
+## O padrão da TREELE
 
 ```
-{obra}-{disciplina}-{fase}-{sequencial}-R{revisao}
+OBRA-DISCIPLINA-FASE-PRANCHA-REVISÃO
+```
+
+No template do sistema:
+
+```
+{obra}-{disciplina}-{fase}-{prancha}-R{revisao}
 ```
 
 Exemplo: `TRL001-ARQ-PE-001-R00.pdf`
 
-| Campo | Tipo | Regra | Exemplo |
+| Campo | Tipo | Regra | Exemplos |
 |---|---|---|---|
 | `obra` | obra | Precisa ser o código da obra de destino | `TRL001` |
-| `disciplina` | disciplina | Precisa existir no cadastro de disciplinas | `ARQ` |
-| `fase` | fase | Precisa existir no cadastro de fases | `PE` |
-| `sequencial` | numero | 3 dígitos | `001` |
-| `revisao` | revisao | 2 dígitos | `00` |
+| `disciplina` | disciplina | Precisa existir no cadastro | `ARQ`, `EST`, `FUN` |
+| `fase` | fase | Precisa existir no cadastro | `PE`, `PB`, `AP` |
+| `prancha` | código livre | **Formato livre.** Letras, números, ponto, hífen e underscore | `001`, `PAV1`, `01.A`, `T-04` |
+| `revisao` | revisão | Sempre `R` + 2 dígitos | `R00`, `R01`, `R12` |
 
 Formatos aceitos: `.dwg`, `.rvt`, `.pdf`, `.ifc`.
 
-Maiúsculas e minúsculas não importam no envio — o sistema normaliza para
-maiúsculas.
+Maiúsculas e minúsculas não importam no envio — o sistema normaliza tudo para
+maiúsculas. `trl001-arq-pe-001-r00.pdf` e `TRL001-ARQ-PE-001-R00.PDF` são o
+mesmo arquivo.
+
+### Sobre o número da prancha ser livre
+
+Vocês numeram prancha de formas diferentes conforme a obra, então esse campo não
+impõe formato. Aceita `001`, `1`, `PAV1`, `01.A`, `T-04`, `CORTE.AA`.
+
+Ele **aceita hífen**, apesar de o hífen ser o separador do padrão. Funciona
+porque obra, disciplina e fase nunca têm hífen, e a revisão fica ancorada no fim
+do nome: em `TRL001-EST-PE-T-04-R07.dwg` o sistema identifica corretamente a
+prancha `T-04` e a revisão `07`.
+
+A única coisa recusada é **barra** (`/` ou `\`), porque viraria subpasta no
+armazenamento.
 
 ### Como o código do documento é formado
 
-O **código do documento** é a junção dos campos de identidade, sem a revisão:
+O **código do documento** é a junção de obra, disciplina, fase e prancha — tudo
+menos a revisão:
 
 ```
 TRL001-ARQ-PE-001-R00.pdf  →  documento TRL001-ARQ-PE-001, revisão 00
@@ -47,45 +67,47 @@ TRL001-ARQ-PE-001-R01.pdf  →  documento TRL001-ARQ-PE-001, revisão 01
 As duas linhas acima são o **mesmo documento** em revisões diferentes. É isso que
 monta o histórico automaticamente.
 
-Campos do tipo `texto` (um título descritivo) ficam de fora da identidade de
-propósito: o título pode ser corrigido entre revisões sem que o arquivo vire
-outro documento.
+## Título: preenchido na interface, não no nome do arquivo
 
-## Ajustando o padrão
+Por decisão de vocês, o título descritivo ("Planta de Forma — Pav. Tipo") fica
+**fora** do nome do arquivo. O nome carrega só identificação.
 
-Em **Configurações da obra → Padrão de nomenclatura**. Cada obra pode ter o seu;
-sem padrão próprio, vale o global.
+O título é preenchido na tela do documento, em **Adicionar título**, por quem tem
+permissão de enviar (coordenador ou projetista). Ele é do documento, não da
+revisão: preenche uma vez e vale para todas as revisões.
 
-Tipos de campo disponíveis:
+Documento sem título aparece no acervo com o campo vazio — funciona normalmente,
+só fica menos fácil de achar na busca.
 
-| Tipo | Aceita | Validação |
+## Catálogos
+
+### Disciplinas (25)
+
+| | | |
 |---|---|---|
-| `obra` | letras e números | tem que bater com a obra de destino |
-| `disciplina` | letras e números | tem que estar cadastrada |
-| `fase` | letras e números | tem que estar cadastrada |
-| `numero` | dígitos | quantidade fixa de dígitos, se configurada |
-| `revisao` | dígitos ou letras | numérico (`00`, `01`) ou alfabético (`A`, `B`) |
-| `texto` | letras, números, ponto e espaço | vira o título do documento |
+| `ARQ` Arquitetura | `EST` Estrutura | `FUN` Fundação |
+| `CON` Contenção | `ESC` Escoramento | `MUR` Muros |
+| `PAT` Patamarização | `COB` Cobertura | `ESQ` Esquadria |
+| `IMP` Impermeabilização | `HID` Hidrossanitário | `DRE` Drenagem |
+| `ELE` Elétrica | `PCI` Prev. e Combate a Incêndio | `CLI` Climatização |
+| `TEL` Telecomunicações | `GAS` Gás | `AUT` Automação |
+| `TOP` Topografia | `TER` Terraplenagem | `PAV` Pavimentação |
+| `URB` Implantação e Urbanismo | `PAI` Paisagismo | `INT` Interiores |
+| `COO` Coordenação e Compatibilização | | |
 
-O template **obriga** um campo de revisão, um de disciplina e um de fase — sem
-eles o sistema não consegue classificar o arquivo sozinho, que é o ponto todo.
+As nove confirmadas por vocês em 17/09/2026 — COB, CON, DRE, ESC, ESQ, FUN,
+IMP, MUR e PAT — já estão cadastradas.
 
-Campos do tipo `texto` não aceitam hífen nem underscore, para que os separadores
-do template continuem delimitando os campos.
+> **Falta confirmar:** as outras 16 vieram da minha proposta inicial. Se alguma
+> tiver código diferente do que vocês usam (por exemplo, se vocês chamam
+> climatização de `AVA` em vez de `CLI`), me diga que eu ajusto. Disciplina
+> desativada não aceita envios novos, mas o acervo já existente continua válido.
 
-### Exemplo de padrão alternativo
+### Fases (8)
 
-```
-{obra}_{disciplina}_{fase}_{seq}_REV{revisao}_{titulo}
-```
-
-com `seq` = número de 2 dígitos, `revisao` = alfabética, `titulo` = texto, aceita:
-
-```
-TRL001_EST_PE_07_REVB_Forma Pav Tipo.dwg
-```
-
-e produz: documento `TRL001-EST-PE-07`, revisão `B`, título "Forma Pav Tipo".
+`LV` Levantamento · `EV` Estudo de Viabilidade · `EP` Estudo Preliminar ·
+`AP` Anteprojeto · `PL` Projeto Legal · `PB` Projeto Básico ·
+`PE` Projeto Executivo · `AB` As Built
 
 ## Regra de arquivo companheiro
 
@@ -103,35 +125,29 @@ Não é burocracia. São duas garantias:
    isso, DWG e RVT são caixas-pretas e a descrição automática não existe para
    eles. Ver [roteiro.md](roteiro.md).
 
-## Catálogos iniciais
+## Ajustando o padrão depois
 
-Estes são um ponto de partida — **ajuste antes de cadastrar a primeira obra
-real**, porque mudar um código depois invalida o nome de tudo que já subiu com
-ele.
+Em **Configurações da obra → Padrão de nomenclatura**. Cada obra pode ter o seu;
+sem padrão próprio, vale o global.
 
-**Disciplinas:** ARQ Arquitetura · EST Estrutura · HID Hidrossanitário ·
-ELE Elétrica · PCI Prevenção e Combate a Incêndio · CLI Climatização ·
-TEL Telecomunicações e Cabeamento · GAS Gás · AUT Automação · TOP Topografia ·
-TER Terraplenagem · PAV Pavimentação · URB Implantação e Urbanismo ·
-PAI Paisagismo · INT Interiores · COO Coordenação e Compatibilização
+Tipos de campo disponíveis:
 
-**Fases:** LV Levantamento · EV Estudo de Viabilidade · EP Estudo Preliminar ·
-AP Anteprojeto · PL Projeto Legal · PB Projeto Básico · PE Projeto Executivo ·
-AB As Built
+| Tipo | Aceita | Validação | Entra na identidade |
+|---|---|---|---|
+| `obra` | letras e números | tem que bater com a obra de destino | sim |
+| `disciplina` | letras e números | tem que estar cadastrada | sim |
+| `fase` | letras e números | tem que estar cadastrada | sim |
+| `codigo` | letras, números, `.`, `-`, `_` | formato livre | sim |
+| `numero` | dígitos | quantidade fixa, se configurada | sim |
+| `revisao` | dígitos ou letras | numérico (`00`) ou alfabético (`A`) | não |
+| `texto` | letras, números, ponto, espaço | vira o título do documento | não |
 
-Disciplina desativada não aceita envios novos, mas o acervo já existente continua
-válido e acessível.
+O template **obriga** um campo de revisão, um de disciplina e um de fase — sem
+eles o sistema não consegue classificar o arquivo sozinho, que é o ponto todo.
 
-## O que decidir
-
-1. O template acima é o padrão da TREELE, ou vocês já têm outro em uso?
-2. Revisão numérica (`R00`, `R01`) ou alfabética (`RA`, `RB`)? Há escritórios que
-   usam letras para fases de estudo e números depois da aprovação — se for o caso
-   de vocês, dá para ter templates diferentes por obra.
-3. O sequencial de 3 dígitos é suficiente por disciplina/fase?
-4. Os códigos de disciplina e fase acima batem com os de vocês?
-5. Querem o título dentro do nome do arquivo (campo `texto`) ou preenchido
-   depois pela interface?
+Um campo `codigo` engole hífens de forma gulosa. Deixe-o próximo ao fim do
+template (antes da revisão), como no padrão da TREELE, para não haver ambiguidade
+com os campos seguintes.
 
 ## Migração do acervo atual
 
@@ -142,6 +158,10 @@ padrão. Dois caminhos, e vale combinar antes de começar:
   primeiro dia. Recomendado para o que ainda está vivo em obra.
 - **Cadastrar o histórico com um padrão mais frouxo.** Criar uma obra "acervo
   legado" com template permissivo e deixar o padrão rígido só para o que é novo.
+
+Como o número da prancha agora é livre, a migração ficou consideravelmente mais
+fácil: boa parte do acervo antigo deve passar sem renomear, desde que obra,
+disciplina, fase e revisão estejam no lugar.
 
 Quando chegarmos nessa etapa, dá para escrever um script que lê a estrutura de
 pastas atual, propõe o nome novo de cada arquivo e mostra a lista para conferência

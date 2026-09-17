@@ -62,10 +62,32 @@ def test_obra_divergente_e_recusada():
     assert any("TRL999" in e for e in r.erros)
 
 
-def test_sequencial_com_digitos_errados_aponta_o_campo():
-    r = _analisar("TRL001-ARQ-PE-1-R00.pdf")
+def test_numero_da_prancha_e_livre():
+    """A TREELE numera prancha de formas diferentes por obra (17/09/2026)."""
+    for prancha in ["001", "1", "PAV1", "01.A", "T-04", "AP_12", "CORTE.AA"]:
+        r = _analisar(f"TRL001-ARQ-PE-{prancha}-R00.pdf")
+        assert r.valido, (prancha, r.erros)
+        assert r.codigo_documento == f"TRL001-ARQ-PE-{prancha.upper()}"
+
+
+def test_prancha_com_hifen_nao_confunde_a_revisao():
+    """O campo livre aceita hífen, mas a revisão fica ancorada no fim."""
+    r = _analisar("TRL001-EST-PE-T-04-R07.dwg")
+    assert r.valido, r.erros
+    assert r.codigo_documento == "TRL001-EST-PE-T-04"
+    assert r.revisao_numero == "07"
+
+
+def test_prancha_com_barra_e_recusada():
+    """Barra viraria subpasta no storage — o campo livre para aí."""
+    r = _analisar("TRL001-ARQ-PE-01/02-R00.pdf")
     assert not r.valido
-    assert any("sequencial" in e for e in r.erros), r.erros
+
+
+def test_revisao_fora_de_dois_digitos_aponta_o_campo():
+    r = _analisar("TRL001-ARQ-PE-001-R1.pdf")
+    assert not r.valido
+    assert any("revis" in e for e in r.erros), r.erros
 
 
 def test_estrutura_totalmente_fora_do_padrao():

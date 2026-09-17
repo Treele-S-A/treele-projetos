@@ -21,7 +21,15 @@ const O_QUE_O_PAPEL_FAZ: Record<PapelObra, string> = {
   cliente: "Baixa somente o que está liberado para obra.",
 };
 
-const TIPOS_TOKEN = ["obra", "disciplina", "fase", "numero", "revisao", "texto"];
+const TIPOS_TOKEN: Array<[string, string]> = [
+  ["obra", "Obra — confere com a obra de destino"],
+  ["disciplina", "Disciplina — precisa estar cadastrada"],
+  ["fase", "Fase — precisa estar cadastrada"],
+  ["codigo", "Código livre — número da prancha"],
+  ["numero", "Número — só dígitos"],
+  ["revisao", "Revisão"],
+  ["texto", "Texto — vira o título do documento"],
+];
 const EXTENSOES = ["dwg", "rvt", "pdf", "ifc"];
 
 export default function Configuracoes() {
@@ -302,9 +310,9 @@ function Nomenclatura({ obraId }: { obraId: number }) {
                           value={tipo}
                           onChange={(e) => ajustar(nome, "tipo", e.target.value)}
                         >
-                          {TIPOS_TOKEN.map((t) => (
-                            <option key={t} value={t}>
-                              {t}
+                          {TIPOS_TOKEN.map(([valor, descricao]) => (
+                            <option key={valor} value={valor}>
+                              {descricao}
                             </option>
                           ))}
                         </select>

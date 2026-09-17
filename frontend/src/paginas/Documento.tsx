@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { Link, useParams } from "react-router-dom";
 import {
   api,
@@ -21,10 +21,16 @@ export default function Documento() {
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState<ErroApi | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
+  const [editandoTitulo, setEditandoTitulo] = useState(false);
+  const [rascunhoTitulo, setRascunhoTitulo] = useState("");
+  const [salvandoTitulo, setSalvandoTitulo] = useState(false);
 
   const obra = obras.find((o) => o.id === doc?.obra_id);
   const podePublicar = obra?.permissoes.includes("publicar") ?? false;
   const podeCancelar = obra?.permissoes.includes("cancelar") ?? false;
+  // O título não vem no nome do arquivo (decisão da TREELE, 17/09/2026), então
+  // é aqui que ele é preenchido — por quem tem permissão de enviar.
+  const podeEditarTitulo = obra?.permissoes.includes("enviar") ?? false;
 
   const carregar = useCallback(async () => {
     setCarregando(true);
@@ -41,6 +47,21 @@ export default function Documento() {
   useEffect(() => {
     carregar();
   }, [carregar]);
+
+  async function salvarTitulo(e: FormEvent) {
+    e.preventDefault();
+    setSalvandoTitulo(true);
+    setErro(null);
+    try {
+      await api.patch(`/documentos/${documentoId}`, { titulo: rascunhoTitulo.trim() });
+      await carregar();
+      setEditandoTitulo(false);
+    } catch (ex) {
+      setErro(ex instanceof ErroApi ? ex : new ErroApi(0, "Não foi possível salvar."));
+    } finally {
+      setSalvandoTitulo(false);
+    }
+  }
 
   async function baixar(arquivo: Arquivo) {
     setErro(null);
@@ -84,7 +105,48 @@ export default function Documento() {
           <h1 className="mono" style={{ letterSpacing: "-0.02em" }}>
             {doc.codigo}
           </h1>
-          {doc.titulo && <div className="silencioso">{doc.titulo}</div>}
+          {editandoTitulo ? (
+            <form onSubmit={salvarTitulo} className="linha" style={{ marginTop: 6 }}>
+              <input
+                className="entrada"
+                style={{ marginTop: 0, width: 340, maxWidth: "100%" }}
+                value={rascunhoTitulo}
+                onChange={(e) => setRascunhoTitulo(e.target.value)}
+                placeholder="Ex.: Planta de Forma — Pav. Tipo"
+                maxLength={300}
+                autoFocus
+              />
+              <button className="botao pequeno" disabled={salvandoTitulo}>
+                {salvandoTitulo ? "Salvando…" : "Salvar"}
+              </button>
+              <button
+                type="button"
+                className="botao secundario pequeno"
+                onClick={() => setEditandoTitulo(false)}
+              >
+                Cancelar
+              </button>
+            </form>
+          ) : (
+            <div className="linha" style={{ marginTop: 4 }}>
+              {doc.titulo ? (
+                <span className="silencioso">{doc.titulo}</span>
+              ) : (
+                podeEditarTitulo && <span className="rotulo">Sem título</span>
+              )}
+              {podeEditarTitulo && (
+                <button
+                  className="botao secundario pequeno"
+                  onClick={() => {
+                    setRascunhoTitulo(doc.titulo ?? "");
+                    setEditandoTitulo(true);
+                  }}
+                >
+                  {doc.titulo ? "Editar título" : "Adicionar título"}
+                </button>
+              )}
+            </div>
+          )}
         </div>
         {atual && <Selo status={atual.status} />}
       </div>

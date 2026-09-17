@@ -130,7 +130,7 @@ class PadraoNomenclatura(Base):
     """Padrão de nome de arquivo aceito no upload.
 
     `obra_id` nulo = padrão global, usado por obras que não definiram o seu.
-    O template é legível ("{obra}-{disciplina}-{fase}-{sequencial}-R{revisao}")
+    O template é legível ("{obra}-{disciplina}-{fase}-{prancha}-R{revisao}")
     e é compilado em regex por services/nomenclatura.py.
     """
 

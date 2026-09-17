@@ -3,7 +3,7 @@
 O padrão é escrito num template legível, não em regex crua, para que um
 coordenador consiga ajustá-lo sem programador:
 
-    {obra}-{disciplina}-{fase}-{sequencial}-R{revisao}
+    {obra}-{disciplina}-{fase}-{prancha}-R{revisao}
 
 Cada token tem um tipo, e o tipo define tanto o formato aceito quanto a
 validação semântica: um token `disciplina` só passa se o código existir no
@@ -22,9 +22,18 @@ from dataclasses import dataclass, field
 # Tokens que compõem a identidade do documento. A revisão fica de fora (é o que
 # muda) e o texto descritivo também (o título pode ser corrigido entre revisões
 # sem que vire outro documento).
-TIPOS_IDENTIDADE = ("obra", "disciplina", "fase", "numero")
+TIPOS_IDENTIDADE = ("obra", "disciplina", "fase", "numero", "codigo")
 
-TIPOS_VALIDOS = ("obra", "disciplina", "fase", "numero", "revisao", "texto", "livre")
+TIPOS_VALIDOS = (
+    "obra",
+    "disciplina",
+    "fase",
+    "numero",
+    "codigo",
+    "revisao",
+    "texto",
+    "livre",
+)
 
 _RE_TOKEN = re.compile(r"\{(\w+)\}")
 
@@ -76,6 +85,12 @@ def _regex_de_token(spec: dict) -> str:
             return r"[A-Za-z]{1,2}"
         digitos = spec.get("digitos")
         return rf"\d{{{int(digitos)}}}" if digitos else r"\d+"
+    if tipo == "codigo":
+        # Formato livre — o número da prancha varia por escritório e por obra
+        # ("001", "PAV1", "01.A", "T-04"). Aceita hífen: como obra, disciplina
+        # e fase não têm hífen e a revisão fica ancorada no fim do nome, o
+        # retrocesso da regex ainda separa os campos sem ambiguidade.
+        return r"[A-Za-z0-9À-ÿ._-]+"
     if tipo == "texto":
         # Sem hífen nem underscore: assim os separadores do template continuam
         # delimitando o campo em vez de serem engolidos por ele.
@@ -207,6 +222,8 @@ def _descrever_esperado(nome: str, spec: dict) -> str:
     if tipo == "numero":
         d = spec.get("digitos")
         return f"{d} dígitos" if d else "apenas dígitos"
+    if tipo == "codigo":
+        return "letras, números, ponto, hífen ou underscore (sem barras)"
     if tipo == "revisao":
         if spec.get("formato", "numerico") == "alfabetico":
             return "uma ou duas letras (A, B, … AA)"
@@ -290,7 +307,7 @@ def analisar(
         tipo = spec.get("tipo", "texto")
         valor = campos.get(nome_tok, "")
 
-        if tipo in ("obra", "disciplina", "fase", "numero"):
+        if tipo in TIPOS_IDENTIDADE:
             valor = valor.upper()
             campos[nome_tok] = valor
             identidade.append(valor)
@@ -338,12 +355,12 @@ def texto_sem_acento(valor: str) -> str:
 # Padrão global usado por obras que não definiram o seu.
 PADRAO_INICIAL = {
     "nome": "Padrão TREELE",
-    "template": "{obra}-{disciplina}-{fase}-{sequencial}-R{revisao}",
+    "template": "{obra}-{disciplina}-{fase}-{prancha}-R{revisao}",
     "tokens": {
         "obra": {"tipo": "obra", "rotulo": "obra"},
         "disciplina": {"tipo": "disciplina", "rotulo": "disciplina"},
         "fase": {"tipo": "fase", "rotulo": "fase"},
-        "sequencial": {"tipo": "numero", "digitos": 3, "rotulo": "sequencial"},
+        "prancha": {"tipo": "codigo", "rotulo": "número da prancha"},
         "revisao": {
             "tipo": "revisao",
             "formato": "numerico",
