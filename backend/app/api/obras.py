@@ -311,7 +311,7 @@ def validar_nomes(
         )
 
         documento = None
-        revisao_existe = False
+        revisao = None
         if r.valido and r.codigo_documento:
             documento = ctx.db.scalar(
                 select(Documento).where(
@@ -320,14 +320,11 @@ def validar_nomes(
                 )
             )
             if documento is not None and r.revisao_numero:
-                revisao_existe = (
-                    ctx.db.scalar(
-                        select(Revisao.id).where(
-                            Revisao.documento_id == documento.id,
-                            Revisao.numero == r.revisao_numero,
-                        )
+                revisao = ctx.db.scalar(
+                    select(Revisao).where(
+                        Revisao.documento_id == documento.id,
+                        Revisao.numero == r.revisao_numero,
                     )
-                    is not None
                 )
 
         resultados.append(
@@ -342,7 +339,8 @@ def validar_nomes(
                 titulo=r.titulo,
                 tipo=TipoArquivo.da_extensao(nome) if r.extensao else None,
                 documento_existe=documento is not None,
-                revisao_existe=revisao_existe,
+                revisao_existe=revisao is not None,
+                revisao_status=revisao.status if revisao is not None else None,
             )
         )
 

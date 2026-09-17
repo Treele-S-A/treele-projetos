@@ -254,8 +254,9 @@ export default function Enviar() {
               {concluidos > 0 && !enviando && (
                 <div style={{ marginTop: 14 }}>
                   <Aviso tom="ok" titulo={`${concluidos} arquivo(s) no acervo`}>
-                    As revisões entraram como <strong>em revisão</strong>. Abra o documento para
-                    liberar para obra.
+                    Revisão nova entra como <strong>em revisão</strong> — abra o documento para
+                    liberar para obra. Arquivo acrescentado a uma revisão já liberada continua
+                    liberado.
                   </Aviso>
                 </div>
               )}
@@ -290,7 +291,15 @@ function Linha({ item }: { item: Item }) {
             <span>REV {a.revisao}</span>
             <span>{a.disciplina}</span>
             <span>{a.fase}</span>
-            {a.revisao_existe && <span style={{ color: "var(--revisao)" }}>revisão já existe</span>}
+            {a.revisao_status === "liberado_para_obra" ? (
+              <span style={{ color: "var(--liberado)" }}>
+                será acrescentado à revisão já liberada
+              </span>
+            ) : (
+              a.revisao_existe && (
+                <span style={{ color: "var(--revisao)" }}>revisão já existe</span>
+              )
+            )}
             {!a.documento_existe && <span style={{ color: "var(--liberado)" }}>documento novo</span>}
           </div>
         )}

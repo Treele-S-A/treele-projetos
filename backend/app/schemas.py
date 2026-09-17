@@ -175,6 +175,9 @@ class NomeAnalisado(BaseModel):
     tipo: TipoArquivo | None = None
     documento_existe: bool = False
     revisao_existe: bool = False
+    # Status da revisão de destino, quando ela já existe. A tela de envio usa
+    # isto para avisar que o arquivo será acrescentado a algo já liberado.
+    revisao_status: StatusRevisao | None = None
 
 
 class ValidarNomeSaida(BaseModel):

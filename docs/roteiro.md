@@ -10,7 +10,7 @@ Nomenclatura obrigatória com extração de campos, catálogo por
 obra/disciplina/fase/formato, status com obsolescência automática, regra de
 arquivo companheiro, papéis por obra, trilha de auditoria, lista mestra em CSV.
 
-35 testes automatizados cobrindo as regras de negócio.
+38 testes automatizados cobrindo as regras de negócio.
 
 ---
 
@@ -127,6 +127,8 @@ justamente como o BCF já funciona.
 | Revisão | Sempre `R` + 2 dígitos | 17/09/2026 |
 | Título | Fora do nome do arquivo; preenchido na tela do documento | 17/09/2026 |
 | Disciplinas | 25 códigos (9 confirmados pela TREELE) | 17/09/2026 |
+| Fases | 7 códigos: EP, AP, PL, PA, PB, PE, AB | 17/09/2026 |
+| Revisão liberada | Aceita arquivo novo; substituição segue proibida | 17/09/2026 |
 
 ## Em aberto
 

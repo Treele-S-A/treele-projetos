@@ -153,11 +153,55 @@ def test_nova_revisao_torna_a_anterior_obsoleta(cliente, admin, obra):
     assert por_numero["01"]["status"] == "liberado_para_obra"
 
 
-def test_revisao_liberada_nao_aceita_mais_arquivos(cliente, admin, obra):
+def test_revisao_obsoleta_nao_aceita_mais_arquivos(cliente, admin, obra):
     r = enviar_arquivo(cliente, admin, obra["id"], "TRL001-EST-PE-001-R00.ifc", IFC)
     assert r.status_code == 409
     assert "revisão nova" in r.json()["detail"]
-    assert "Obsoleto" in r.json()["detail"]
+    assert "obsoleto" in r.json()["detail"].lower()
+
+
+def test_revisao_liberada_aceita_arquivo_novo(cliente, admin, obra):
+    """Liberar o PDF e mandar o DWG depois — pedido da TREELE em 17/09/2026.
+
+    Acrescentar um formato não altera o que a obra já baixou, então não quebra
+    a confiabilidade do histórico.
+    """
+    r = enviar_arquivo(cliente, admin, obra["id"], "TRL001-ARQ-PL-030-R00.pdf", PDF)
+    revisao_id = r.json()["revisao"]["id"]
+    assert (
+        cliente.post(f"/revisoes/{revisao_id}/publicar", json={}, headers=admin).status_code
+        == 200
+    )
+
+    depois = enviar_arquivo(cliente, admin, obra["id"], "TRL001-ARQ-PL-030-R00.dwg", DWG)
+    assert depois.status_code == 200, depois.text
+
+    revisao = depois.json()["revisao"]
+    assert revisao["status"] == "liberado_para_obra"
+    assert {a["tipo"] for a in revisao["arquivos"]} == {"pdf", "dwg"}
+
+
+def test_revisao_liberada_nao_aceita_substituicao(cliente, admin, obra):
+    """O que foi liberado não muda: quem já baixou ficaria com outra versão."""
+    r = enviar_arquivo(
+        cliente, admin, obra["id"], "TRL001-ARQ-PL-030-R00.pdf", PDF, substituir=True
+    )
+    assert r.status_code == 409
+    assert "liberada para obra" in r.json()["detail"]
+    assert "revisão nova" in r.json()["detail"].lower()
+
+
+def test_acrescimo_apos_liberacao_fica_registrado(cliente, admin, obra):
+    r = cliente.get(
+        f"/obras/{obra['id']}/eventos",
+        params={"acao": "upload_iniciado"},
+        headers=admin,
+    )
+    marcados = [
+        e for e in r.json()["itens"] if e["detalhes"].get("apos_liberacao") is True
+    ]
+    assert marcados, "o acréscimo pós-liberação precisa ser auditável"
+    assert marcados[0]["detalhes"]["arquivo"].endswith(".dwg")
 
 
 def test_nao_libera_revisao_antiga_depois_da_nova(cliente, admin, obra):

@@ -214,6 +214,7 @@ export interface NomeAnalisado {
   tipo: TipoArquivo | null;
   documento_existe: boolean;
   revisao_existe: boolean;
+  revisao_status: StatusRevisao | null;
 }
 
 export interface Verificacao {

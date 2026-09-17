@@ -31,6 +31,9 @@ function descrever(e: Evento): string {
     partes.push(`tornou obsoleta ${d.obsoletadas.map((r) => `R${r}`).join(", ")}`);
   }
   if (d.status_revisao === "obsoleto") partes.push("⚠ revisão obsoleta");
+  if ((e.detalhes as Record<string, unknown>).apos_liberacao === true) {
+    partes.push("acrescentado após a liberação");
+  }
   return partes.join(" · ");
 }
 

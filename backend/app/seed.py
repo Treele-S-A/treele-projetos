@@ -51,16 +51,25 @@ DISCIPLINAS = [
     ("COO", "Coordenação e Compatibilização"),
 ]
 
+# Em ordem cronológica de projeto, não na ordem em que foram ditadas: é essa a
+# ordem útil num filtro de tela.
 FASES = [
-    ("LV", "Levantamento"),
-    ("EV", "Estudo de Viabilidade"),
     ("EP", "Estudo Preliminar"),
-    ("AP", "Anteprojeto"),
+    ("AP", "Ante-projeto"),
     ("PL", "Projeto Legal"),
+    ("PA", "Projeto Aprovado"),
     ("PB", "Projeto Básico"),
     ("PE", "Projeto Executivo"),
-    ("AB", "As Built"),
+    ("AB", "As-Built"),
 ]
+
+# Códigos que este projeto já distribuiu e que a TREELE não usa (17/09/2026).
+# São desativados, nunca apagados: documento antigo que aponte para eles
+# continua válido e acessível; o que para é a entrada de arquivo novo.
+#
+# A lista é explícita de propósito. Desativar "tudo que não está em FASES"
+# derrubaria também qualquer fase que um administrador tenha criado pela tela.
+FASES_APOSENTADAS = {"LV", "EV"}
 
 
 def _completar_catalogo(db: Session, modelo, itens: list[tuple[str, str]]) -> int:
@@ -82,19 +91,38 @@ def _completar_catalogo(db: Session, modelo, itens: list[tuple[str, str]]) -> in
             # `ordem` é só apresentação (a ordem do filtro na tela), então pode
             # ser realinhada com a lista canônica sem risco. Sem isto, códigos
             # acrescentados depois recebem posições que colidem com as antigas
-            # e o filtro fica embaralhado.
+            # e o filtro fica embaralhado. O nome acompanha pela mesma razão.
             atual.ordem = ordem
+            atual.nome = nome
     return novos
+
+
+def _aposentar(db: Session, modelo, codigos: set[str]) -> list[str]:
+    """Desativa códigos que saíram do padrão. Nunca apaga."""
+    if not codigos:
+        return []
+    desativados = []
+    for item in db.scalars(select(modelo).where(modelo.codigo.in_(codigos))):
+        # Manda para o fim da lista: sem isto o código aposentado guarda a
+        # posição antiga e aparece intercalado nas telas que mostram inativos.
+        item.ordem = 900
+        if item.ativa:
+            item.ativa = False
+            desativados.append(item.codigo)
+    return desativados
 
 
 def semear(db: Session) -> None:
     novas_disciplinas = _completar_catalogo(db, Disciplina, DISCIPLINAS)
     novas_fases = _completar_catalogo(db, Fase, FASES)
+    aposentadas = _aposentar(db, Fase, FASES_APOSENTADAS)
     if novas_disciplinas or novas_fases:
         print(
             f"catálogos: +{novas_disciplinas} disciplina(s), +{novas_fases} fase(s)",
             flush=True,
         )
+    if aposentadas:
+        print(f"fases desativadas: {', '.join(sorted(aposentadas))}", flush=True)
 
     global_ = db.scalar(
         select(PadraoNomenclatura).where(PadraoNomenclatura.obra_id.is_(None))

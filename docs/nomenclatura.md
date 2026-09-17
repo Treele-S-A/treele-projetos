@@ -103,11 +103,17 @@ IMP, MUR e PAT — já estão cadastradas.
 > climatização de `AVA` em vez de `CLI`), me diga que eu ajusto. Disciplina
 > desativada não aceita envios novos, mas o acervo já existente continua válido.
 
-### Fases (8)
+### Fases (7)
 
-`LV` Levantamento · `EV` Estudo de Viabilidade · `EP` Estudo Preliminar ·
-`AP` Anteprojeto · `PL` Projeto Legal · `PB` Projeto Básico ·
-`PE` Projeto Executivo · `AB` As Built
+Em ordem cronológica de projeto, que é a ordem em que aparecem nos filtros:
+
+`EP` Estudo Preliminar · `AP` Ante-projeto · `PL` Projeto Legal ·
+`PA` Projeto Aprovado · `PB` Projeto Básico · `PE` Projeto Executivo ·
+`AB` As-Built
+
+`LV` (Levantamento) e `EV` (Estudo de Viabilidade) vieram da proposta inicial e
+foram **desativados** em 17/09/2026 — não aceitam arquivo novo, mas nunca foram
+apagados: documento antigo que aponte para eles continua válido e acessível.
 
 ## Regra de arquivo companheiro
 

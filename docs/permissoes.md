@@ -36,10 +36,16 @@ entender o que mudou. O download vem com aviso explícito de que aquela revisão
 está obsoleta, e fica registrado quem baixou. O cliente só enxerga o que está
 liberado: para ele, revisão antiga é ruído e fonte de confusão.
 
-**Revisão liberada não aceita mais arquivos.** Depois de liberada, a revisão é
-imutável. Para corrigir qualquer coisa, publica-se uma revisão nova. Isso é o que
-torna o histórico confiável — se desse para editar o que já foi liberado, a
-trilha de auditoria não provaria nada.
+**Revisão liberada aceita arquivo novo, mas nunca substituição.** É comum
+liberar o PDF para a obra não ficar esperando e mandar o DWG depois — isso é
+permitido, e o acréscimo fica marcado no registro de atividades.
+
+O que continua proibido é **trocar** um arquivo já liberado. Quem baixou ficaria
+com uma versão diferente da que está no sistema, sem saber. Para corrigir
+conteúdo, publica-se uma revisão nova. É essa distinção — acrescentar pode,
+alterar não — que mantém o histórico confiável.
+
+Revisão obsoleta ou cancelada não aceita nada.
 
 **Não dá para liberar uma revisão antiga depois de uma mais nova.** Publicar a
 R00 depois da R01 já estar liberada deixaria a obra com projeto velho marcado

@@ -129,11 +129,21 @@ def iniciar(
         )
         db.add(revisao)
         db.flush()
+    elif revisao.status == StatusRevisao.liberado_para_obra:
+        # Revisão liberada aceita arquivo NOVO, mas não substituição.
+        #
+        # É comum liberar o PDF para a obra não ficar esperando e mandar o DWG
+        # depois. Acrescentar um formato não muda o que já foi liberado, então
+        # não quebra o histórico. Já trocar um arquivo que a obra pode ter
+        # baixado mudaria o conteúdo por baixo dos pés de quem já o tem — isso
+        # continua sendo revisão nova, sempre. A checagem do arquivo existente
+        # fica no bloco de arquivo, mais abaixo.
+        pass
     elif revisao.status != StatusRevisao.em_revisao:
         raise HTTPException(
             status.HTTP_409_CONFLICT,
-            f"A revisão R{revisao.numero} de {documento.codigo} está fechada "
-            f"({revisao.status.rotulo}) e não aceita mais arquivos. "
+            f"A revisão R{revisao.numero} de {documento.codigo} está "
+            f"{revisao.status.rotulo.lower()} e não aceita mais arquivos. "
             "Envie uma revisão nova.",
         )
     elif dados.descricao and not revisao.descricao:
@@ -147,6 +157,16 @@ def iniciar(
             Arquivo.nome_original == dados.nome_arquivo,
         )
     )
+    liberada = revisao.status == StatusRevisao.liberado_para_obra
+
+    if existente is not None and liberada:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            f"'{dados.nome_arquivo}' já faz parte da revisão R{revisao.numero}, "
+            "que está liberada para obra. Arquivo liberado não é substituído — "
+            "quem já baixou ficaria com uma versão diferente da que está aqui. "
+            "Publique uma revisão nova.",
+        )
     if existente is not None and not dados.substituir:
         raise HTTPException(
             status.HTTP_409_CONFLICT,
@@ -192,6 +212,7 @@ def iniciar(
             "documento": documento.codigo,
             "revisao": revisao.numero,
             "arquivo": dados.nome_arquivo,
+            "apos_liberacao": liberada,
         },
         request=request,
     )
