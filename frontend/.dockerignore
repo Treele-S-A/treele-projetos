@@ -1,0 +1,8 @@
+# node_modules do host é Windows; o npm ci dentro da imagem instala o de Linux.
+# Sem esta linha, o COPY sobrescreve os binários nativos (esbuild, rollup) e o
+# build quebra dentro do contêiner.
+node_modules
+dist
+.env
+.env.*
+npm-debug.log*

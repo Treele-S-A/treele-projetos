@@ -1,0 +1,9 @@
+# O ambiente virtual é do Windows e não serve no Linux. Fora do contexto de
+# build ele também evita mandar centenas de MB para o daemon a cada build.
+.venv
+data
+.env
+__pycache__
+*.py[cod]
+.pytest_cache
+tests
