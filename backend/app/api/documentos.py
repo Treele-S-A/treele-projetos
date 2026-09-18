@@ -16,12 +16,17 @@ from sqlalchemy.orm import Session, aliased
 
 from ..db import get_db
 from ..deps import ContextoObra, contexto_obra, montar_contexto, usuario_atual
-from ..enums import StatusRevisao, TipoArquivo
+from ..enums import StatusArquivo, StatusRevisao, TipoArquivo
 from ..models import Arquivo, Disciplina, Documento, Fase, Revisao, Usuario
 from ..schemas import (
+    ArquivoNaArvore,
+    ArvoreSaida,
     DocumentoAtualizar,
     DocumentoDetalhe,
     DocumentoOut,
+    NoDisciplina,
+    NoFase,
+    NoTipo,
     Pagina,
     RevisaoOut,
     RevisaoResumo,
@@ -212,6 +217,146 @@ def exportar(
         media_type="text/csv; charset=utf-8",
         headers={"Content-Disposition": f'attachment; filename="{nome}"'},
     )
+
+
+# --------------------------------------------------------------------------
+# Árvore do acervo
+# --------------------------------------------------------------------------
+
+# Ordem de exibição dos formatos: primeiro o que se edita, depois o que se lê.
+ORDEM_TIPOS = {
+    TipoArquivo.dwg: 0,
+    TipoArquivo.rvt: 1,
+    TipoArquivo.ifc: 2,
+    TipoArquivo.pdf: 3,
+    TipoArquivo.outro: 4,
+}
+
+
+@router.get("/obras/{obra_id}/arvore", response_model=ArvoreSaida)
+def arvore(
+    todas_revisoes: bool = False,
+    ctx: ContextoObra = Depends(contexto_obra),
+):
+    """O acervo como árvore de pastas: Disciplina → Fase → Formato → Arquivos.
+
+    A tabela plana serve para procurar; a árvore serve para navegar e para ver
+    de relance o que cada disciplina já entregou. Por padrão mostra só a revisão
+    vigente de cada documento — é isso que "o acervo" significa no dia a dia.
+    `todas_revisoes=true` traz o histórico inteiro.
+
+    Monta tudo numa consulta e agrupa em memória: o número de arquivos por obra
+    é da ordem de milhares, não de milhões, e a árvore só é útil inteira.
+    """
+    atual = aliased(Revisao)
+    consulta = (
+        select(Arquivo, atual, Documento, Disciplina, Fase)
+        .join(atual, atual.id == Arquivo.revisao_id)
+        .join(Documento, Documento.id == atual.documento_id)
+        .join(Disciplina, Disciplina.id == Documento.disciplina_id)
+        .join(Fase, Fase.id == Documento.fase_id)
+        .where(
+            Documento.obra_id == ctx.obra.id,
+            Arquivo.status == StatusArquivo.disponivel,
+        )
+    )
+
+    if todas_revisoes:
+        consulta = consulta.where(atual.status != StatusRevisao.cancelado)
+    else:
+        sub = _subconsulta_atual()
+        consulta = consulta.join(
+            sub,
+            and_(sub.c.doc_id == Documento.id, atual.ordem == sub.c.max_ordem),
+        )
+
+    # Mesma regra da tabela: quem não enxerga obsoleto só vê o que foi liberado.
+    if not ctx.pode("ver_obsoletos"):
+        consulta = consulta.where(atual.status == StatusRevisao.liberado_para_obra)
+
+    linhas = ctx.db.execute(consulta).all()
+
+    # (disciplina, fase, tipo) → nó, preservando a ordem dos catálogos.
+    disciplinas: dict[str, NoDisciplina] = {}
+    ordem_disc: dict[str, int] = {}
+    fases_por_disc: dict[str, dict[str, NoFase]] = {}
+    ordem_fase: dict[str, int] = {}
+    tipos_por_fase: dict[tuple[str, str], dict[str, NoTipo]] = {}
+
+    def somar(no, tamanho: int, data):
+        no.tamanho += tamanho
+        no.total += 1
+        if no.atualizado_em is None or (data and data > no.atualizado_em):
+            no.atualizado_em = data
+
+    saida = ArvoreSaida(obra_codigo=ctx.obra.codigo, obra_nome=ctx.obra.nome)
+
+    for arquivo, revisao, documento, disciplina, fase in linhas:
+        d = disciplinas.get(disciplina.codigo)
+        if d is None:
+            d = NoDisciplina(
+                chave=f"d:{disciplina.codigo}",
+                codigo=disciplina.codigo,
+                nome=disciplina.nome,
+            )
+            disciplinas[disciplina.codigo] = d
+            ordem_disc[disciplina.codigo] = disciplina.ordem
+            fases_por_disc[disciplina.codigo] = {}
+
+        f = fases_por_disc[disciplina.codigo].get(fase.codigo)
+        if f is None:
+            f = NoFase(
+                chave=f"d:{disciplina.codigo}|f:{fase.codigo}",
+                codigo=fase.codigo,
+                nome=fase.nome,
+            )
+            fases_por_disc[disciplina.codigo][fase.codigo] = f
+            ordem_fase[fase.codigo] = fase.ordem
+            tipos_por_fase[(disciplina.codigo, fase.codigo)] = {}
+
+        chave_tipo = arquivo.tipo.value
+        tp = tipos_por_fase[(disciplina.codigo, fase.codigo)].get(chave_tipo)
+        if tp is None:
+            tp = NoTipo(
+                chave=f"d:{disciplina.codigo}|f:{fase.codigo}|t:{chave_tipo}",
+                codigo=chave_tipo.upper(),
+                nome=chave_tipo.upper(),
+                tipo=arquivo.tipo,
+            )
+            tipos_por_fase[(disciplina.codigo, fase.codigo)][chave_tipo] = tp
+
+        tp.arquivos.append(
+            ArquivoNaArvore(
+                id=arquivo.id,
+                nome=arquivo.nome_original,
+                tamanho=arquivo.tamanho,
+                enviado_em=arquivo.enviado_em,
+                documento_id=documento.id,
+                documento_codigo=documento.codigo,
+                documento_titulo=documento.titulo,
+                revisao=revisao.numero,
+                status=revisao.status,
+            )
+        )
+        for no in (tp, f, d, saida):
+            somar(no, arquivo.tamanho, arquivo.enviado_em)
+
+    for (dcod, fcod), tipos in tipos_por_fase.items():
+        fases_por_disc[dcod][fcod].tipos = sorted(
+            tipos.values(), key=lambda x: ORDEM_TIPOS.get(x.tipo, 9)
+        )
+        for tp in fases_por_disc[dcod][fcod].tipos:
+            tp.arquivos.sort(key=lambda a: a.nome)
+
+    for dcod, fases in fases_por_disc.items():
+        disciplinas[dcod].fases = sorted(
+            fases.values(), key=lambda x: (ordem_fase.get(x.codigo, 99), x.codigo)
+        )
+
+    saida.disciplinas = sorted(
+        disciplinas.values(), key=lambda x: (ordem_disc.get(x.codigo, 99), x.codigo)
+    )
+    return saida
 
 
 @router.get("/documentos/{documento_id}", response_model=DocumentoDetalhe)

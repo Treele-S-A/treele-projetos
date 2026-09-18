@@ -245,6 +245,56 @@ class DocumentoAtualizar(BaseModel):
     titulo: str | None = None
 
 
+# --------------------------------------------------------------------------
+# Árvore do acervo (Obra → Disciplina → Fase → Tipo → Arquivos)
+# --------------------------------------------------------------------------
+
+
+class ArquivoNaArvore(BaseModel):
+    id: int
+    nome: str
+    tamanho: int
+    enviado_em: datetime
+    documento_id: int
+    documento_codigo: str
+    documento_titulo: str | None
+    revisao: str
+    status: StatusRevisao
+
+
+class NoArvore(BaseModel):
+    """Um nível da árvore. `tamanho` e `total` são a soma do que está abaixo."""
+
+    chave: str
+    codigo: str
+    nome: str
+    tamanho: int = 0
+    total: int = 0
+    atualizado_em: datetime | None = None
+
+
+class NoTipo(NoArvore):
+    tipo: TipoArquivo
+    arquivos: list[ArquivoNaArvore] = []
+
+
+class NoFase(NoArvore):
+    tipos: list[NoTipo] = []
+
+
+class NoDisciplina(NoArvore):
+    fases: list[NoFase] = []
+
+
+class ArvoreSaida(BaseModel):
+    obra_codigo: str
+    obra_nome: str
+    tamanho: int = 0
+    total: int = 0
+    atualizado_em: datetime | None = None
+    disciplinas: list[NoDisciplina] = []
+
+
 class RevisaoAtualizar(BaseModel):
     descricao: str | None = None
 

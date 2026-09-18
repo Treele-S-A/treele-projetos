@@ -862,3 +862,152 @@ table.tabela {
     grid-template-columns: 1fr 1fr;
   }
 }
+
+/* --------------------------------------------------------------------------
+   Árvore do acervo — Disciplina → Fase → Formato → Arquivos
+
+   A tabela plana serve para procurar. A árvore serve para navegar e enxergar
+   de relance o que cada disciplina entregou. O recuo é o único indicador de
+   profundidade: sem linhas-guia, que a esta densidade viram ruído.
+   -------------------------------------------------------------------------- */
+
+.arvore-linha {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 18px;
+  align-items: center;
+  padding: 7px 16px 7px 0;
+  border-bottom: 1px solid var(--traco-fino);
+  font-size: 13px;
+}
+
+.arvore-linha:last-child {
+  border-bottom: none;
+}
+
+.arvore-linha:hover {
+  background: #f6f8fa;
+}
+
+.arvore-alvo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  width: 100%;
+}
+
+.arvore-seta {
+  flex: none;
+  width: 14px;
+  color: var(--tinta-3);
+  font-size: 10px;
+  transition: transform 120ms ease;
+}
+
+.arvore-seta.aberta {
+  transform: rotate(90deg);
+}
+
+/* Marcador do nível: a letra diz o que é, a cor reforça. */
+.marca-no {
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  width: 19px;
+  height: 19px;
+  border-radius: 50%;
+  font-family: var(--fonte-mono);
+  font-size: 10px;
+  font-weight: 600;
+  color: #fff;
+}
+
+.marca-disciplina {
+  background: var(--azul);
+}
+
+.marca-fase {
+  background: #8a6d3b;
+}
+
+.arvore-nome {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 500;
+}
+
+.arvore-linha.nivel-disciplina .arvore-nome {
+  color: var(--azul);
+}
+
+.arvore-nome .codigo-no {
+  font-family: var(--fonte-mono);
+  color: var(--tinta-3);
+  font-weight: 500;
+  margin-right: 6px;
+}
+
+.arvore-meta {
+  font-family: var(--fonte-mono);
+  font-size: 11px;
+  color: var(--tinta-2);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.arvore-linha.arquivo .arvore-nome {
+  font-family: var(--fonte-mono);
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.arvore-vazio {
+  padding: 8px 16px 8px 0;
+  font-size: 12px;
+  color: var(--tinta-3);
+}
+
+.seletor-visao {
+  display: inline-flex;
+  border: 1px solid var(--traco-forte);
+  border-radius: var(--raio);
+  overflow: hidden;
+}
+
+.seletor-visao button {
+  padding: 7px 13px;
+  background: var(--folha);
+  border: none;
+  border-right: 1px solid var(--traco-forte);
+  font-size: 13px;
+  cursor: pointer;
+  color: var(--tinta-2);
+}
+
+.seletor-visao button:last-child {
+  border-right: none;
+}
+
+.seletor-visao button.ativo {
+  background: var(--azul);
+  color: #fff;
+}
+
+@media (max-width: 700px) {
+  .arvore-linha {
+    grid-template-columns: 1fr auto;
+    gap: 10px;
+  }
+  .arvore-linha .arvore-meta.data {
+    display: none;
+  }
+}

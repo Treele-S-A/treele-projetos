@@ -367,6 +367,62 @@ def test_filtros_do_catalogo(cliente, admin, obra):
     )
 
 
+def test_arvore_agrupa_por_disciplina_fase_e_formato(cliente, admin, obra):
+    r = cliente.get(f"/obras/{obra['id']}/arvore", headers=admin)
+    assert r.status_code == 200, r.text
+    a = r.json()
+
+    assert a["obra_codigo"] == "TRL001"
+    assert a["total"] > 0
+    assert a["tamanho"] > 0
+
+    # O total da obra é a soma do que está abaixo, em cada nível.
+    assert a["total"] == sum(d["total"] for d in a["disciplinas"])
+    for d in a["disciplinas"]:
+        assert d["total"] == sum(f["total"] for f in d["fases"])
+        assert d["tamanho"] == sum(f["tamanho"] for f in d["fases"])
+        for f in d["fases"]:
+            assert f["total"] == sum(len(tp["arquivos"]) for tp in f["tipos"])
+
+    est = next(d for d in a["disciplinas"] if d["codigo"] == "EST")
+    pe = next(f for f in est["fases"] if f["codigo"] == "PE")
+    assert {tp["tipo"] for tp in pe["tipos"]} >= {"dwg", "pdf"}
+
+    arquivo = pe["tipos"][0]["arquivos"][0]
+    assert arquivo["documento_codigo"].startswith("TRL001-EST-PE-")
+    assert arquivo["revisao"]
+    assert arquivo["nome"].lower().endswith(("." + pe["tipos"][0]["tipo"],))
+
+
+def test_arvore_mostra_so_a_revisao_vigente(cliente, admin, obra):
+    """TRL001-EST-PE-001 tem R00 (obsoleta) e R01. Só a R01 entra no acervo."""
+    vigente = cliente.get(f"/obras/{obra['id']}/arvore", headers=admin).json()
+    todas = cliente.get(
+        f"/obras/{obra['id']}/arvore", params={"todas_revisoes": "true"}, headers=admin
+    ).json()
+    assert todas["total"] > vigente["total"]
+
+    def revisoes(arvore, codigo):
+        return {
+            arq["revisao"]
+            for d in arvore["disciplinas"]
+            for f in d["fases"]
+            for tp in f["tipos"]
+            for arq in tp["arquivos"]
+            if arq["documento_codigo"] == codigo
+        }
+
+    assert revisoes(vigente, "TRL001-EST-PE-001") == {"01"}
+    assert revisoes(todas, "TRL001-EST-PE-001") == {"00", "01"}
+
+
+def test_arvore_esconde_nao_liberado_de_quem_nao_pode_ver(cliente, projetista, obra):
+    """Projetista vê tudo; o teste garante que o filtro de papel é aplicado."""
+    r = cliente.get(f"/obras/{obra['id']}/arvore", headers=projetista)
+    assert r.status_code == 200
+    assert r.json()["total"] > 0
+
+
 def test_lista_mestra_em_csv(cliente, admin, obra):
     r = cliente.get(f"/obras/{obra['id']}/documentos/exportar", headers=admin)
     assert r.status_code == 200

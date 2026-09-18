@@ -98,6 +98,19 @@ digita metadado, então ninguém erra o cadastro. Ver
 instante. É o inverso da pasta de rede, onde a revisão velha continua ali
 parecendo válida até alguém imprimir e executar errado.
 
+### Duas formas de ver o acervo
+
+**Lista** é uma tabela por documento, com filtros e busca — serve para procurar
+algo específico e para exportar a lista mestra.
+
+**Pastas** é a mesma coisa como árvore, `Disciplina → Fase → Formato → Arquivos`,
+com tamanho e data acumulados em cada nível — serve para navegar e ver de relance
+o que cada disciplina já entregou. Mostra a revisão vigente de cada documento;
+quem enxerga obsoletos pode marcar "incluir revisões anteriores".
+
+As pastas não existem no armazenamento: são derivadas dos metadados que o nome
+do arquivo já carrega. Não há pasta para arrumar nem arquivo no lugar errado.
+
 ### Arquitetura
 
 ```
@@ -148,7 +161,7 @@ Detalhes em [docs/permissoes.md](docs/permissoes.md).
 cd backend && .venv\Scripts\python -m pytest tests -q
 ```
 
-38 testes cobrindo o parser de nomenclatura, a regra de arquivo companheiro, a
+41 testes cobrindo o parser de nomenclatura, a regra de arquivo companheiro, a
 obsolescência automática, o controle de permissões e a trilha de auditoria.
 
 ## Estrutura

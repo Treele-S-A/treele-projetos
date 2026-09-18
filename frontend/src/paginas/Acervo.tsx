@@ -10,10 +10,14 @@ import {
   type StatusRevisao,
   type TipoArquivo,
 } from "../api";
+import Arvore from "../Arvore";
 import { Aviso, Carregando, Estado, Vazio } from "../componentes";
 import { useSessao } from "../sessao";
 
 const POR_PAGINA = 50;
+const CHAVE_VISAO = "treele.acervo.visao";
+
+type Visao = "lista" | "arvore";
 
 export default function Acervo() {
   const { obraId } = useParams();
@@ -27,6 +31,9 @@ export default function Acervo() {
   const [status, setStatus] = useState<StatusRevisao | "">("");
   const [tipo, setTipo] = useState<TipoArquivo | "">("");
   const [pagina, setPagina] = useState(1);
+  const [visao, setVisao] = useState<Visao>(
+    () => (localStorage.getItem(CHAVE_VISAO) as Visao) || "lista",
+  );
 
   const [dados, setDados] = useState<Pagina<Documento> | null>(null);
   const [carregando, setCarregando] = useState(true);
@@ -42,7 +49,7 @@ export default function Acervo() {
   }, [busca]);
 
   const consultar = useCallback(async () => {
-    if (!obraId) return;
+    if (!obraId || visao !== "lista") return;
     setCarregando(true);
     setErro(null);
     const p = new URLSearchParams({ pagina: String(pagina), por_pagina: String(POR_PAGINA) });
@@ -59,7 +66,7 @@ export default function Acervo() {
     } finally {
       setCarregando(false);
     }
-  }, [obraId, pagina, buscaAplicada, disciplina, fase, status, tipo]);
+  }, [obraId, visao, pagina, buscaAplicada, disciplina, fase, status, tipo]);
 
   useEffect(() => {
     consultar();
@@ -97,6 +104,26 @@ export default function Acervo() {
           <h1>{obra?.nome ?? "Acervo"}</h1>
         </div>
         <div className="linha">
+          <div className="seletor-visao" role="group" aria-label="Forma de ver o acervo">
+            <button
+              className={visao === "lista" ? "ativo" : ""}
+              onClick={() => {
+                setVisao("lista");
+                localStorage.setItem(CHAVE_VISAO, "lista");
+              }}
+            >
+              Lista
+            </button>
+            <button
+              className={visao === "arvore" ? "ativo" : ""}
+              onClick={() => {
+                setVisao("arvore");
+                localStorage.setItem(CHAVE_VISAO, "arvore");
+              }}
+            >
+              Pastas
+            </button>
+          </div>
           <button className="botao secundario" onClick={exportar}>
             Exportar lista mestra
           </button>
@@ -110,6 +137,14 @@ export default function Acervo() {
 
       {erro && <Aviso tom="erro">{erro}</Aviso>}
 
+      {visao === "arvore" ? (
+        <div className="folha">
+          <Arvore
+            obraId={Number(obraId)}
+            podeVerHistorico={obra?.permissoes.includes("ver_obsoletos") ?? false}
+          />
+        </div>
+      ) : (
       <div className="folha">
         <div className="folha-corpo">
           <div className="filtros">
@@ -266,6 +301,7 @@ export default function Acervo() {
           </>
         )}
       </div>
+      )}
     </>
   );
 }
