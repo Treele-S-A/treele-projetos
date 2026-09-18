@@ -45,6 +45,7 @@ app = FastAPI(
         "catálogo por obra/disciplina/fase/tipo, status e trilha de auditoria."
     ),
     lifespan=ciclo_de_vida,
+    root_path=settings.root_path,
 )
 
 app.add_middleware(

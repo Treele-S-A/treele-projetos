@@ -206,22 +206,48 @@ docs/
 
 ---
 
+## Colocar no ar
+
+O roteiro completo está em **[docs/hospedagem.md](docs/hospedagem.md)**: contratar
+o servidor, apontar o domínio, instalar, configurar o backup e testar a
+restauração. Leva cerca de uma hora, e a maior parte é espera.
+
+Resumido, num Ubuntu 24.04 novo:
+
+```bash
+cd /opt/treele && sudo bash deploy/instalar-servidor.sh
+```
+
+O script instala o Docker, fecha o firewall, gera todos os segredos, sobe o
+sistema com HTTPS automático (Caddy + Let's Encrypt) e agenda o backup diário.
+
+Custo estimado para a escala da TREELE: **~R$ 60/mês** num VPS em São Paulo.
+
 ## Antes de subir para produção
 
 Esta lista não é opcional. Cada item é um jeito conhecido de perder dados ou
 vazar acesso.
 
-- [ ] **`SECRET_KEY` própria e secreta.** Ela assina as sessões *e* os links de
-      download. Com a chave padrão, qualquer pessoa forja um link para qualquer
-      arquivo. Trocá-la depois invalida sessões e links ativos — o que é seguro,
-      só avise a equipe.
-- [ ] **Postgres, não SQLite.** O SQLite é só para desenvolvimento.
-- [ ] **HTTPS com certificado válido** (Caddy ou nginx com Let's Encrypt).
-      `BASE_URL` precisa ser o endereço público em `https://`, senão os links
-      assinados apontam para o lugar errado.
-- [ ] **Backup do banco e do storage.** São duas coisas distintas e as duas
-      precisam de rotina: um dump do Postgres não traz os arquivos.
-      Teste a restauração pelo menos uma vez.
-- [ ] **`ADMIN_SENHA` trocada** depois do primeiro acesso.
-- [ ] **`CORS_ORIGINS`** restrito ao endereço real do sistema.
-- [ ] **Limite de tamanho** (`TAMANHO_MAX_MB`) coerente com os modelos de vocês.
+O instalador (`deploy/instalar-servidor.sh`) já resolve quase tudo:
+
+- [x] **`SECRET_KEY` própria e secreta** — gerada aleatoriamente na instalação.
+      Ela assina as sessões *e* os links de download; guarde uma cópia do
+      `.env.producao` em lugar seguro.
+- [x] **Postgres, não SQLite** — já no compose de produção.
+- [x] **Migrações de esquema** — Alembic, automático na subida.
+- [x] **HTTPS com certificado válido** — Caddy pede ao Let's Encrypt e renova
+      sozinho.
+- [x] **Banco e armazenamento fechados** — sem porta publicada; o firewall
+      deixa passar só 22, 80 e 443.
+- [x] **Backup do banco e do storage** — são duas coisas distintas e as duas
+      entram: diário às 02:15, com rotação de 14 dias.
+- [x] **`CORS_ORIGINS`** restrito ao domínio real.
+
+Sobram três, que dependem de você:
+
+- [ ] **Trocar a senha do administrador** depois do primeiro acesso.
+- [ ] **Configurar o envio do backup para fora do servidor** (rclone para o
+      OneDrive — passo 6 do roteiro). Backup que só existe na máquina que pode
+      pegar fogo não é backup.
+- [ ] **Testar a restauração pelo menos uma vez.** Backup nunca restaurado é um
+      arquivo grande com nome tranquilizador.

@@ -46,6 +46,10 @@ class Settings(BaseSettings):
     tamanho_max_mb: int = 2048
 
     base_url: str = "http://localhost:8000"
+    # Prefixo sob o qual a API é servida quando há proxy na frente. Em produção
+    # o Caddy atende /api/* e remove o prefixo antes de repassar; sem informar
+    # isto aqui, a documentação da API geraria links sem o /api.
+    root_path: str = ""
     cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
 
     # Primeiro acesso. Sem ADMIN_SENHA definida, uma senha aleatória é gerada

@@ -1,0 +1,52 @@
+# Caddy cuida do HTTPS sozinho: pede o certificado ao Let's Encrypt na primeira
+# subida e renova antes de vencer. Não há certificado para lembrar de trocar.
+#
+# Dois nomes são necessários, e a razão é real:
+#
+#   projetos.exemplo.com.br    a aplicação
+#   arquivos.projetos...       o armazenamento
+#
+# O navegador envia e baixa DIRETO do armazenamento, por URL assinada — o
+# arquivo nunca passa pela API. Para assinar, o endereço precisa ser o público,
+# porque a assinatura cobre o cabeçalho Host. Daí o segundo nome.
+
+{
+	email {$ACME_EMAIL}
+}
+
+{$DOMINIO} {
+	encode gzip
+
+	# A API atende sob /api. Um domínio a menos para configurar no DNS.
+	# handle_path remove o prefixo antes de repassar, então a aplicação
+	# continua vendo /auth/login e não /api/auth/login.
+	handle_path /api/* {
+		reverse_proxy api:8000
+	}
+
+	handle {
+		reverse_proxy web:80
+	}
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		-Server
+	}
+}
+
+{$DOMINIO_ARQUIVOS} {
+	encode gzip
+
+	# O Caddy repassa o Host original por padrão, que é o que faz a assinatura
+	# da URL bater do outro lado. Não acrescente header_up Host aqui.
+	reverse_proxy minio:9000 {
+		# Modelo de 200 MB leva tempo para subir numa conexão de obra.
+		transport http {
+			read_timeout 30m
+			write_timeout 30m
+		}
+	}
+}

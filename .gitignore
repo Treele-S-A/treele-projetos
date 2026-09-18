@@ -1,5 +1,6 @@
 # Segredos e dados locais
 .env
+.env.producao
 backend/data/
 backend/.venv/
 

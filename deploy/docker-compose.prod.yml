@@ -1,0 +1,103 @@
+# Produção. Rodar a partir da raiz do projeto:
+#
+#   docker compose -f deploy/docker-compose.prod.yml --env-file .env.producao up -d --build
+#
+# Diferenças em relação ao compose de desenvolvimento:
+#
+# - Caddy na frente, cuidando de HTTPS sozinho.
+# - Nada mais publica porta. Banco e armazenamento só existem na rede interna;
+#   o que o mundo alcança são 80 e 443, e só através do Caddy.
+# - O console do MinIO não é exposto. Para abrir, túnel SSH (ver docs/hospedagem.md).
+
+name: treele
+
+services:
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      DOMINIO: ${DOMINIO:?defina DOMINIO no .env.producao}
+      DOMINIO_ARQUIVOS: ${DOMINIO_ARQUIVOS:?defina DOMINIO_ARQUIVOS}
+      ACME_EMAIL: ${ACME_EMAIL:?defina ACME_EMAIL}
+    volumes:
+      - ../deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-dados:/data
+      - caddy-config:/config
+    depends_on:
+      - api
+      - web
+      - minio
+
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: treele
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?defina POSTGRES_PASSWORD}
+      POSTGRES_DB: treele
+    volumes:
+      - dados-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U treele"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  minio:
+    image: quay.io/minio/minio:latest
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${S3_ACCESS_KEY:?defina S3_ACCESS_KEY}
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY:?defina S3_SECRET_KEY}
+      # O navegador envia e baixa direto daqui, a partir do domínio da aplicação.
+      MINIO_API_CORS_ALLOW_ORIGIN: https://${DOMINIO}
+    volumes:
+      - dados-minio:/data
+
+  api:
+    build: ../backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      minio:
+        condition: service_started
+    environment:
+      DATABASE_URL: postgresql+psycopg://treele:${POSTGRES_PASSWORD}@db:5432/treele
+      STORAGE_BACKEND: s3
+      # PÚBLICO: entra nas URLs assinadas, quem abre é o navegador.
+      S3_ENDPOINT: https://${DOMINIO_ARQUIVOS}
+      # INTERNO: a própria API, pela rede do Docker.
+      S3_ENDPOINT_INTERNO: http://minio:9000
+      S3_BUCKET: ${S3_BUCKET:-treele-projetos}
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY}
+      S3_SECRET_KEY: ${S3_SECRET_KEY}
+      SECRET_KEY: ${SECRET_KEY:?defina SECRET_KEY}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:?defina ADMIN_EMAIL}
+      ADMIN_SENHA: ${ADMIN_SENHA:-}
+      BASE_URL: https://${DOMINIO}/api
+      ROOT_PATH: /api
+      CORS_ORIGINS: https://${DOMINIO}
+      AMBIENTE: producao
+      TAMANHO_MAX_MB: ${TAMANHO_MAX_MB:-2048}
+
+  web:
+    build:
+      context: ../frontend
+      args:
+        # Embutido no bundle em tempo de build: precisa ser o endereço público.
+        VITE_API: https://${DOMINIO}/api
+    restart: unless-stopped
+    depends_on:
+      - api
+
+volumes:
+  dados-postgres:
+  dados-minio:
+  caddy-dados:
+  caddy-config:
