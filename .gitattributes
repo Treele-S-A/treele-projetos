@@ -1,0 +1,15 @@
+# Terminação de linha LF, sempre.
+#
+# Sem isto o Git no Windows grava CRLF nos scripts, e ao clonar no servidor
+# Linux o bash falha com "bad interpreter: /bin/bash^M" — erro que não diz
+# nada sobre a causa. Vale para todo arquivo de texto, porque Dockerfile,
+# Caddyfile e YAML sofrem do mesmo problema dentro dos contêineres.
+* text=auto eol=lf
+
+# Binários nunca são convertidos.
+*.png binary
+*.jpg binary
+*.pdf binary
+*.dwg binary
+*.rvt binary
+*.ifc binary
