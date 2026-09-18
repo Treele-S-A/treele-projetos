@@ -10,7 +10,7 @@ Obra A e projetista na Obra B. Além disso existe o perfil global de
 |---|:--:|:--:|:--:|:--:|
 | Ver documentos liberados | ✓ | ✓ | ✓ | ✓ |
 | Baixar documentos liberados | ✓ | ✓ | ✓ | ✓ |
-| Ver e baixar revisões obsoletas | ✓ | ✓ | ✓ | |
+| Ver e baixar revisões obsoletas | ✓ | ✓ | | |
 | Ver revisões ainda em revisão | ✓ | ✓ | | |
 | Enviar arquivos | ✓ | ✓ | | |
 | Editar título e descrição | ✓ | ✓ | | |
@@ -30,11 +30,13 @@ equipe de projeto, mas invisível para a obra. Só o coordenador decide que aqui
 virou o projeto oficial. Sem essa separação, o sistema é uma pasta compartilhada
 com aparência de sistema.
 
-**Obra vê obsoletos; cliente não.** Quem está em campo às vezes *precisa* da
-revisão antiga — para conferir o que foi executado na semana passada, para
-entender o que mudou. O download vem com aviso explícito de que aquela revisão
-está obsoleta, e fica registrado quem baixou. O cliente só enxerga o que está
-liberado: para ele, revisão antiga é ruído e fonte de confusão.
+**Obra e cliente só veem o que está liberado.** (Decisão da TREELE em
+18/09/2026 — antes disso a obra enxergava obsoletos.) Quem está em campo abre o
+sistema para saber com o que executar, e a resposta tem que ser uma só. Revisão
+antiga visível em campo é como projeto velho pendurado na parede do canteiro.
+
+Hoje obra e cliente têm o mesmo acesso. A diferença entra na Fase 1.5: **a obra
+poderá solicitar revisão, o cliente não.**
 
 **Revisão liberada aceita arquivo novo, mas nunca substituição.** É comum
 liberar o PDF para a obra não ficar esperando e mandar o DWG depois — isso é
@@ -50,6 +52,17 @@ Revisão obsoleta ou cancelada não aceita nada.
 **Não dá para liberar uma revisão antiga depois de uma mais nova.** Publicar a
 R00 depois da R01 já estar liberada deixaria a obra com projeto velho marcado
 como válido. O sistema recusa e explica.
+
+## Engenheiro responsável
+
+Cada obra tem um **engenheiro responsável**, definido em Configurações da obra.
+Não é o mesmo que coordenador: coordenador é permissão e pode haver vários;
+responsável é quem responde pela obra, e é um só.
+
+O responsável precisa fazer parte da equipe da obra — alguém de fora não
+enxergaria a obra e receberia notificação sobre o que não pode abrir.
+
+Quando as notificações entrarem (Fase 1.5), é para ele que elas vão primeiro.
 
 ## Registro de atividades
 

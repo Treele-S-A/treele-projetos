@@ -5,6 +5,7 @@ import {
   ErroApi,
   ROTULO_PAPEL,
   type Membro,
+  type Obra,
   type Padrao,
   type PapelObra,
   type Usuario,
@@ -50,6 +51,7 @@ export default function Configuracoes() {
         </div>
       </div>
 
+      <Responsavel obra={obra} aoSalvar={recarregarObras} />
       <Equipe obraId={obra.id} />
       <Nomenclatura obraId={obra.id} />
       <Companheiros
@@ -58,6 +60,104 @@ export default function Configuracoes() {
         aoSalvar={recarregarObras}
       />
     </>
+  );
+}
+
+/* ---------------------------------------------------------------- responsável */
+
+function Responsavel({
+  obra,
+  aoSalvar,
+}: {
+  obra: Obra;
+  aoSalvar: () => Promise<void>;
+}) {
+  const [membros, setMembros] = useState<Membro[]>([]);
+  const [escolhido, setEscolhido] = useState(String(obra.responsavel?.id ?? ""));
+  const [erro, setErro] = useState<ErroApi | null>(null);
+  const [ok, setOk] = useState(false);
+  const [salvando, setSalvando] = useState(false);
+
+  useEffect(() => {
+    api
+      .get<Membro[]>(`/obras/${obra.id}/membros`)
+      .then(setMembros)
+      .catch(() => setMembros([]));
+  }, [obra.id]);
+
+  async function salvar() {
+    setErro(null);
+    setOk(false);
+    setSalvando(true);
+    try {
+      // 0 limpa o responsável; a API distingue isso de "não mexer".
+      await api.patch(`/obras/${obra.id}`, {
+        responsavel_id: escolhido ? Number(escolhido) : 0,
+      });
+      await aoSalvar();
+      setOk(true);
+    } catch (ex) {
+      setErro(ex instanceof ErroApi ? ex : null);
+    } finally {
+      setSalvando(false);
+    }
+  }
+
+  // Quem responde pela obra vem da equipe de projetos, não do campo.
+  const candidatos = membros.filter(
+    (m) => m.papel === "coordenador" || m.papel === "projetista",
+  );
+
+  return (
+    <div className="folha">
+      <div className="folha-titulo">
+        <strong>Engenheiro responsável</strong>
+        <span className="silencioso" style={{ fontSize: 12 }}>
+          Quem responde pela obra
+        </span>
+      </div>
+      <div className="folha-corpo">
+        {erro && <Aviso tom="erro" titulo={erro.message} itens={erro.erros} />}
+        {ok && <Aviso tom="ok">Responsável salvo.</Aviso>}
+
+        <p className="silencioso" style={{ marginTop: 0 }}>
+          É diferente de coordenador, que é permissão: pode haver vários
+          coordenadores, mas responsável é um só. Quando as notificações
+          entrarem, é para ele que elas vão primeiro.
+        </p>
+
+        <div className="filtros">
+          <label className="campo">
+            <span className="rotulo">Responsável</span>
+            <select value={escolhido} onChange={(e) => setEscolhido(e.target.value)}>
+              <option value="">Ninguém definido</option>
+              {candidatos.map((m) => (
+                <option key={m.id} value={m.usuario_id}>
+                  {m.usuario.nome} · {ROTULO_PAPEL[m.papel]}
+                </option>
+              ))}
+            </select>
+          </label>
+          <div>
+            <button
+              className="botao"
+              style={{ marginTop: 21 }}
+              onClick={salvar}
+              disabled={salvando}
+            >
+              {salvando ? "Salvando…" : "Salvar responsável"}
+            </button>
+          </div>
+        </div>
+
+        {candidatos.length === 0 && (
+          <p className="silencioso" style={{ fontSize: 12, marginBottom: 0 }}>
+            Inclua alguém como coordenador ou projetista na equipe abaixo para
+            poder marcá-lo como responsável.
+          </p>
+        )}
+      </div>
+    </div>
   );
 }
 

@@ -121,6 +121,7 @@ export interface Obra {
   cliente: string | null;
   ativa: boolean;
   regra_companheiro: Record<string, string[]>;
+  responsavel: Usuario | null;
   papel: PapelObra | null;
   permissoes: string[];
 }

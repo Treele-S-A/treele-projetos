@@ -12,3 +12,6 @@ boto3>=1.35
 
 # Necessário só com Postgres (docker-compose). Em SQLite não é usado.
 psycopg[binary]>=3.2
+
+# Migracoes de esquema. Ver app/migracoes.py.
+alembic>=1.13

@@ -138,6 +138,25 @@ def atualizar(
         ctx.obra.ativa = dados.ativa
     if dados.regra_companheiro is not None:
         ctx.obra.regra_companheiro = dados.regra_companheiro
+    if dados.responsavel_id is not None:
+        if dados.responsavel_id == 0:
+            ctx.obra.responsavel_id = None
+        else:
+            membro = ctx.db.scalar(
+                select(ObraMembro).where(
+                    ObraMembro.obra_id == ctx.obra.id,
+                    ObraMembro.usuario_id == dados.responsavel_id,
+                )
+            )
+            # Responsável precisa ser da equipe: alguém de fora não enxerga a
+            # obra, então receberia notificação sobre o que não pode abrir.
+            if membro is None:
+                raise HTTPException(
+                    status.HTTP_400_BAD_REQUEST,
+                    "O responsável precisa fazer parte da equipe desta obra. "
+                    "Inclua a pessoa na equipe antes de defini-la como responsável.",
+                )
+            ctx.obra.responsavel_id = dados.responsavel_id
 
     auditoria.registrar(
         ctx.db, acao="obra_atualizada", entidade="obra", entidade_id=ctx.obra.id,

@@ -311,6 +311,102 @@ def test_projetista_envia_mas_nao_libera(cliente, projetista, obra):
     assert publicar.status_code == 403
 
 
+@pytest.fixture(scope="module")
+def pessoal_da_obra(cliente, admin, obra):
+    r = cliente.post(
+        "/usuarios",
+        json={
+            "nome": "Encarregado",
+            "email": "encarregado@teste.com.br",
+            "senha": "senha-encarregado-1",
+        },
+        headers=admin,
+    )
+    assert r.status_code == 201, r.text
+    cliente.post(
+        f"/obras/{obra['id']}/membros",
+        json={"usuario_id": r.json()["id"], "papel": "obra"},
+        headers=admin,
+    )
+    return autenticar(cliente, "encarregado@teste.com.br", "senha-encarregado-1")
+
+
+def test_obra_so_enxerga_o_que_esta_liberado(cliente, pessoal_da_obra, admin, obra):
+    """Decisão da TREELE em 18/09/2026: obra não vê obsoleto nem em revisão."""
+    pagina = cliente.get(
+        f"/obras/{obra['id']}/documentos?por_pagina=200", headers=pessoal_da_obra
+    ).json()
+    assert pagina["total"] > 0
+    assert all(
+        d["revisao_atual"]["status"] == "liberado_para_obra" for d in pagina["itens"]
+    )
+
+    # No detalhe do documento, as revisões antigas somem da lista.
+    documento = _documento(cliente, admin, obra["id"], "TRL001-EST-PE-001")
+    detalhe = cliente.get(
+        f"/documentos/{documento['id']}", headers=pessoal_da_obra
+    ).json()
+    assert [r["numero"] for r in detalhe["revisoes"]] == ["01"]
+
+
+def test_obra_nao_baixa_revisao_obsoleta(cliente, pessoal_da_obra, admin, obra):
+    documento = _documento(cliente, admin, obra["id"], "TRL001-EST-PE-001")
+    completo = cliente.get(f"/documentos/{documento['id']}", headers=admin).json()
+    obsoleta = next(r for r in completo["revisoes"] if r["status"] == "obsoleto")
+    arquivo = obsoleta["arquivos"][0]
+
+    r = cliente.get(f"/arquivos/{arquivo['id']}/download", headers=pessoal_da_obra)
+    assert r.status_code == 403
+    assert "obsoleta" in r.json()["detail"].lower()
+
+
+def test_arvore_da_obra_conta_so_o_liberado(cliente, pessoal_da_obra, admin, obra):
+    completa = cliente.get(f"/obras/{obra['id']}/arvore", headers=admin).json()
+    restrita = cliente.get(f"/obras/{obra['id']}/arvore", headers=pessoal_da_obra).json()
+    assert restrita["total"] < completa["total"]
+
+
+# --------------------------------------------------------------------------
+# Engenheiro responsável
+# --------------------------------------------------------------------------
+
+
+def test_responsavel_precisa_ser_da_equipe(cliente, admin, obra):
+    r = cliente.post(
+        "/usuarios",
+        json={
+            "nome": "De Fora",
+            "email": "defora@teste.com.br",
+            "senha": "senha-de-fora-12",
+        },
+        headers=admin,
+    )
+    de_fora = r.json()["id"]
+
+    recusa = cliente.patch(
+        f"/obras/{obra['id']}", json={"responsavel_id": de_fora}, headers=admin
+    )
+    assert recusa.status_code == 400
+    assert "equipe" in recusa.json()["detail"]
+
+
+def test_define_e_limpa_o_responsavel(cliente, admin, obra):
+    membros = cliente.get(f"/obras/{obra['id']}/membros", headers=admin).json()
+    alguem = next(m for m in membros if m["papel"] == "projetista")
+
+    r = cliente.patch(
+        f"/obras/{obra['id']}",
+        json={"responsavel_id": alguem["usuario_id"]},
+        headers=admin,
+    )
+    assert r.status_code == 200, r.text
+    assert r.json()["responsavel"]["id"] == alguem["usuario_id"]
+
+    # 0 limpa; ausente deixaria como está.
+    limpo = cliente.patch(f"/obras/{obra['id']}", json={"responsavel_id": 0}, headers=admin)
+    assert limpo.json()["responsavel"] is None
+
+
 def test_quem_nao_e_da_obra_nao_ve_nada(cliente, admin, obra):
     cliente.post(
         "/usuarios",

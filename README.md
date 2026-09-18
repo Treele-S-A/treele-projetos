@@ -149,12 +149,28 @@ verdade os dois endereços são iguais e basta preencher `S3_ENDPOINT`.
 |---|:--:|:--:|:--:|:--:|:--:|
 | Coordenador | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Projetista | ✓ | ✓ | | | |
-| Obra | ✓ | | | | |
+| Obra | | | | | |
 | Cliente | | | | | |
 
 Detalhes em [docs/permissoes.md](docs/permissoes.md).
 
 ---
+
+## Migrações de esquema
+
+O esquema é versionado com Alembic e as migrações rodam sozinhas na
+inicialização. Banco criado antes disso é carimbado automaticamente com a
+migração inicial, então atualizar uma instalação em uso não exige nada manual.
+
+Para criar uma migração depois de alterar `app/models.py`:
+
+```bash
+cd backend && .venv\Scripts\python -m alembic revision --autogenerate -m "o que mudou"
+```
+
+Leia o arquivo gerado antes de commitar — o autogenerate acerta quase sempre,
+mas não entende renomeação (vê como remover + criar, o que apaga dados) nem
+nomeia restrições sozinho.
 
 ## Testes
 
@@ -162,7 +178,7 @@ Detalhes em [docs/permissoes.md](docs/permissoes.md).
 cd backend && .venv\Scripts\python -m pytest tests -q
 ```
 
-45 testes cobrindo o parser de nomenclatura, a regra de arquivo companheiro, a
+50 testes cobrindo o parser de nomenclatura, a regra de arquivo companheiro, a
 obsolescência automática, o controle de permissões e a trilha de auditoria.
 
 ## Estrutura
@@ -200,10 +216,6 @@ vazar acesso.
       arquivo. Trocá-la depois invalida sessões e links ativos — o que é seguro,
       só avise a equipe.
 - [ ] **Postgres, não SQLite.** O SQLite é só para desenvolvimento.
-- [ ] **Alembic no lugar do `create_all`.** Hoje o esquema é criado na
-      inicialização (`app/main.py`). Isso cria tabelas novas, mas **não migra
-      tabelas existentes** — a primeira alteração de coluna depois de haver dados
-      em produção precisa de migração de verdade.
 - [ ] **HTTPS com certificado válido** (Caddy ou nginx com Let's Encrypt).
       `BASE_URL` precisa ser o endereço público em `https://`, senão os links
       assinados apontam para o lugar errado.

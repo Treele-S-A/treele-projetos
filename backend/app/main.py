@@ -22,16 +22,14 @@ from .api import (
 )
 from .config import settings
 from .db import SessionLocal, engine
-from .models import Base
+from .migracoes import aplicar as aplicar_migracoes
 from .seed import semear
 from .services.storage import ArmazenamentoS3, armazenamento
 
 
 @asynccontextmanager
 async def ciclo_de_vida(_: FastAPI):
-    # Fase 1 usa create_all. Antes de ir para produção, trocar por Alembic —
-    # ver a seção "Antes de subir" no README.
-    Base.metadata.create_all(bind=engine)
+    aplicar_migracoes(engine)
     with SessionLocal() as db:
         semear(db)
     if isinstance(armazenamento, ArmazenamentoS3):

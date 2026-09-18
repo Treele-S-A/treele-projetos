@@ -107,6 +107,8 @@ class ObraAtualizar(BaseModel):
     cliente: str | None = None
     ativa: bool | None = None
     regra_companheiro: dict[str, list[str]] | None = None
+    # 0 limpa o responsável; None (ausente) deixa como está.
+    responsavel_id: int | None = None
 
 
 class ObraOut(Modelo):
@@ -116,6 +118,7 @@ class ObraOut(Modelo):
     cliente: str | None
     ativa: bool
     regra_companheiro: dict
+    responsavel: UsuarioOut | None = None
 
 
 class ObraComPapel(ObraOut):

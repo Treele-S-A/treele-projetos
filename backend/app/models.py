@@ -83,8 +83,16 @@ class Obra(Base):
         JSON, default=lambda: {"dwg": ["pdf"], "rvt": ["ifc"]}
     )
 
+    # Engenheiro responsável pela obra. É para ele que as notificações vão, e é
+    # quem responde pela obra perante a equipe — papel diferente de "coordenador",
+    # que é permissão. Pode haver vários coordenadores; responsável é um só.
+    responsavel_id: Mapped[int | None] = mapped_column(
+        ForeignKey("usuarios.id"), nullable=True
+    )
+
     criado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=agora)
 
+    responsavel: Mapped["Usuario | None"] = relationship()
     membros: Mapped[list["ObraMembro"]] = relationship(
         back_populates="obra", cascade="all, delete-orphan"
     )

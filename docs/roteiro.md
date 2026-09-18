@@ -12,7 +12,61 @@ arquivo companheiro, papéis por obra, trilha de auditoria, lista mestra em CSV.
 Acervo em duas visões: tabela com filtros e navegação por pastas
 (disciplina → fase), com o histórico completo de cada documento dentro da pasta.
 
-45 testes automatizados cobrindo as regras de negócio.
+50 testes automatizados cobrindo as regras de negócio.
+
+---
+
+## Fase 1.5 — Colaboração
+
+**Estimativa: ~3 semanas**, mais o e-mail quando o TI liberar o envio.
+
+Entra **antes** da Fase 2 de propósito. A solicitação de revisão fecha o ciclo
+obra ↔ projetos, que é o trabalho de todo dia. O chat com IA ajuda a achar
+coisas — importante, mas menos.
+
+### O que entra
+
+**Comentários na revisão.** Qualquer pessoa com acesso à obra comenta numa
+revisão. O comentário fica preso à revisão, não ao documento: "o que foi dito
+sobre a R02" continua verdade depois que a R03 sair.
+
+**Solicitação de revisão.** Quem é da obra pede alteração, com descrição
+obrigatória. A equipe de projetos é notificada, e a última revisão do documento
+passa a exibir a solicitação em aberto.
+
+**Notificações dentro do sistema.** Aba com contador de não lidas. Dispara em:
+revisão liberada, revisão solicitada e comentário novo.
+
+**Notificação por e-mail.** Depois — ver a dependência abaixo.
+
+### Decisões tomadas (18/09/2026)
+
+| Pergunta | Resposta |
+|---|---|
+| Como mostrar a solicitação | **Marca ao lado do status**, não status novo |
+| Quem é notificado | **Toda a equipe de projetos** (3 pessoas, todas no escritório) |
+| Engenheiro responsável | **Um por obra** |
+
+Sobre a primeira: o carimbo continua `LIBERADO PARA OBRA`, com um aviso
+*"revisão solicitada em 18/09 por Fulano"* ao lado. O status responde uma
+pergunta só — *posso executar com isto?* — e a resposta continua sendo sim até
+a revisão nova sair. A solicitação ganha ciclo próprio (aberta → atendida), que
+é o que dá para cobrar prazo em cima.
+
+### A dependência que não é nossa
+
+E-mail precisa de servidor de envio. A TREELE usa Microsoft 365, então dá para
+enviar pela conta corporativa, mas alguém do TI precisa liberar uma conta de
+envio e configurar SPF e DKIM no domínio. Sem isso o e-mail cai em spam e a
+funcionalidade nasce morta.
+
+Por isso as notificações saem em duas partes: **dentro do sistema primeiro**
+(não depende de ninguém, ~1 semana), e-mail quando o TI resolver.
+
+### O que isso adianta da Fase 3
+
+Enviar e-mail exige fila de tarefas assíncronas — a **mesma** fila que a Fase 3
+usa para comparar revisões. Construir aqui adianta lá.
 
 ---
 
@@ -131,6 +185,10 @@ justamente como o BCF já funciona.
 | Disciplinas | 25 códigos (9 confirmados pela TREELE) | 17/09/2026 |
 | Fases | 7 códigos: EP, AP, PL, PA, PB, PE, AB | 17/09/2026 |
 | Revisão liberada | Aceita arquivo novo; substituição segue proibida | 17/09/2026 |
+| Migrações | Alembic no lugar de `create_all` | 18/09/2026 |
+| Responsável | Um engenheiro por obra, separado do papel de coordenador | 18/09/2026 |
+| Acesso da obra | Só o que está liberado — obsoleto deixou de ser visível | 18/09/2026 |
+| Ordem das fases | Colaboração (1.5) antes do chat com IA (2) | 18/09/2026 |
 
 ## Em aberto
 
