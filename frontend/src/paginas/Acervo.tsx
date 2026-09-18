@@ -139,10 +139,7 @@ export default function Acervo() {
 
       {visao === "arvore" ? (
         <div className="folha">
-          <Arvore
-            obraId={Number(obraId)}
-            podeVerHistorico={obra?.permissoes.includes("ver_obsoletos") ?? false}
-          />
+          <Arvore obraId={Number(obraId)} />
         </div>
       ) : (
       <div className="folha">

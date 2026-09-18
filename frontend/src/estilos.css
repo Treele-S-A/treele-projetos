@@ -1011,3 +1011,40 @@ table.tabela {
     display: none;
   }
 }
+
+/* A fase é um destino, não um nó que expande: abre a pasta. */
+.arvore-linha.linha-pasta {
+  padding-left: 38px;
+  cursor: pointer;
+  color: inherit;
+}
+
+.arvore-linha.linha-pasta:hover {
+  background: var(--azul-claro);
+}
+
+.arvore-linha.linha-pasta:hover .arvore-nome {
+  color: var(--azul);
+}
+
+.arvore-linha.nivel-disciplina {
+  padding-left: 16px;
+}
+
+.resumo-formatos {
+  display: flex;
+  gap: 4px;
+  flex: none;
+  margin-left: 4px;
+}
+
+.resumo-formatos .tipo {
+  font-size: 9px;
+  letter-spacing: 0.04em;
+}
+
+@media (max-width: 700px) {
+  .resumo-formatos {
+    display: none;
+  }
+}

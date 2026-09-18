@@ -103,10 +103,11 @@ parecendo válida até alguém imprimir e executar errado.
 **Lista** é uma tabela por documento, com filtros e busca — serve para procurar
 algo específico e para exportar a lista mestra.
 
-**Pastas** é a mesma coisa como árvore, `Disciplina → Fase → Formato → Arquivos`,
-com tamanho e data acumulados em cada nível — serve para navegar e ver de relance
-o que cada disciplina já entregou. Mostra a revisão vigente de cada documento;
-quem enxerga obsoletos pode marcar "incluir revisões anteriores".
+**Pastas** é um navegador em dois níveis — `Disciplina → Fase` — com tamanho,
+data e resumo de formatos acumulados. Clicar na fase abre a pasta: todos os
+documentos dali, cada um com o histórico completo de revisões e os arquivos de
+cada revisão. É onde se confere o que foi entregue e se libera para obra sem
+abrir documento por documento.
 
 As pastas não existem no armazenamento: são derivadas dos metadados que o nome
 do arquivo já carrega. Não há pasta para arrumar nem arquivo no lugar errado.
@@ -161,7 +162,7 @@ Detalhes em [docs/permissoes.md](docs/permissoes.md).
 cd backend && .venv\Scripts\python -m pytest tests -q
 ```
 
-41 testes cobrindo o parser de nomenclatura, a regra de arquivo companheiro, a
+45 testes cobrindo o parser de nomenclatura, a regra de arquivo companheiro, a
 obsolescência automática, o controle de permissões e a trilha de auditoria.
 
 ## Estrutura

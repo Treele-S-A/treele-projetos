@@ -12,15 +12,15 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy import and_, func, or_, select
-from sqlalchemy.orm import Session, aliased
+from sqlalchemy.orm import Session, aliased, selectinload
 
 from ..db import get_db
 from ..deps import ContextoObra, contexto_obra, montar_contexto, usuario_atual
 from ..enums import StatusArquivo, StatusRevisao, TipoArquivo
 from ..models import Arquivo, Disciplina, Documento, Fase, Revisao, Usuario
 from ..schemas import (
-    ArquivoNaArvore,
     ArvoreSaida,
+    CatalogoResumo,
     DocumentoAtualizar,
     DocumentoDetalhe,
     DocumentoOut,
@@ -28,6 +28,7 @@ from ..schemas import (
     NoFase,
     NoTipo,
     Pagina,
+    PastaSaida,
     RevisaoOut,
     RevisaoResumo,
 )
@@ -291,7 +292,7 @@ def arvore(
 
     saida = ArvoreSaida(obra_codigo=ctx.obra.codigo, obra_nome=ctx.obra.nome)
 
-    for arquivo, revisao, documento, disciplina, fase in linhas:
+    for arquivo, _revisao, _documento, disciplina, fase in linhas:
         d = disciplinas.get(disciplina.codigo)
         if d is None:
             d = NoDisciplina(
@@ -325,19 +326,6 @@ def arvore(
             )
             tipos_por_fase[(disciplina.codigo, fase.codigo)][chave_tipo] = tp
 
-        tp.arquivos.append(
-            ArquivoNaArvore(
-                id=arquivo.id,
-                nome=arquivo.nome_original,
-                tamanho=arquivo.tamanho,
-                enviado_em=arquivo.enviado_em,
-                documento_id=documento.id,
-                documento_codigo=documento.codigo,
-                documento_titulo=documento.titulo,
-                revisao=revisao.numero,
-                status=revisao.status,
-            )
-        )
         for no in (tp, f, d, saida):
             somar(no, arquivo.tamanho, arquivo.enviado_em)
 
@@ -345,8 +333,6 @@ def arvore(
         fases_por_disc[dcod][fcod].tipos = sorted(
             tipos.values(), key=lambda x: ORDEM_TIPOS.get(x.tipo, 9)
         )
-        for tp in fases_por_disc[dcod][fcod].tipos:
-            tp.arquivos.sort(key=lambda a: a.nome)
 
     for dcod, fases in fases_por_disc.items():
         disciplinas[dcod].fases = sorted(
@@ -357,6 +343,75 @@ def arvore(
         disciplinas.values(), key=lambda x: (ordem_disc.get(x.codigo, 99), x.codigo)
     )
     return saida
+
+
+@router.get(
+    "/obras/{obra_id}/pastas/{disciplina_codigo}/{fase_codigo}",
+    response_model=PastaSaida,
+)
+def pasta(
+    disciplina_codigo: str,
+    fase_codigo: str,
+    ctx: ContextoObra = Depends(contexto_obra),
+):
+    """Os documentos de uma disciplina numa fase, com o histórico inteiro.
+
+    É o destino do clique na fase, dentro da árvore. Traz tudo de uma vez —
+    documento, revisões e arquivos — porque a tela mostra tudo de uma vez, e
+    N chamadas ao detalhe de documento seriam N viagens de rede.
+    """
+    disciplina = ctx.db.scalar(
+        select(Disciplina).where(Disciplina.codigo == disciplina_codigo.upper())
+    )
+    fase = ctx.db.scalar(select(Fase).where(Fase.codigo == fase_codigo.upper()))
+    if disciplina is None or fase is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Pasta não encontrada.")
+
+    documentos = list(
+        ctx.db.scalars(
+            select(Documento)
+            .where(
+                Documento.obra_id == ctx.obra.id,
+                Documento.disciplina_id == disciplina.id,
+                Documento.fase_id == fase.id,
+            )
+            # selectinload: sem isto seriam N+1 consultas por documento.
+            .options(
+                selectinload(Documento.revisoes).selectinload(Revisao.arquivos),
+                selectinload(Documento.disciplina),
+                selectinload(Documento.fase),
+            )
+            .order_by(Documento.codigo)
+        )
+    )
+
+    saida: list[DocumentoDetalhe] = []
+    for documento in documentos:
+        revisoes = sorted(documento.revisoes, key=lambda r: r.ordem, reverse=True)
+        if not ctx.pode("ver_obsoletos"):
+            revisoes = [
+                r for r in revisoes if r.status == StatusRevisao.liberado_para_obra
+            ]
+            if not revisoes:
+                continue
+
+        item = DocumentoDetalhe.model_validate(documento)
+        item.total_revisoes = len(documento.revisoes)
+        item.revisoes = [RevisaoOut.model_validate(r) for r in revisoes]
+        atual = next(
+            (r for r in revisoes if r.status != StatusRevisao.cancelado), None
+        )
+        item.revisao_atual = RevisaoResumo.model_validate(atual) if atual else None
+        saida.append(item)
+
+    return PastaSaida(
+        obra_codigo=ctx.obra.codigo,
+        obra_nome=ctx.obra.nome,
+        disciplina=CatalogoResumo(codigo=disciplina.codigo, nome=disciplina.nome),
+        fase=CatalogoResumo(codigo=fase.codigo, nome=fase.nome),
+        total=len(saida),
+        documentos=saida,
+    )
 
 
 @router.get("/documentos/{documento_id}", response_model=DocumentoDetalhe)

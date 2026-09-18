@@ -9,10 +9,10 @@ Registro das decisões técnicas e do que vem pela frente.
 Nomenclatura obrigatória com extração de campos, catálogo por
 obra/disciplina/fase/formato, status com obsolescência automática, regra de
 arquivo companheiro, papéis por obra, trilha de auditoria, lista mestra em CSV.
-Acervo em duas visões: tabela com filtros e árvore de pastas por disciplina,
-fase e formato.
+Acervo em duas visões: tabela com filtros e navegação por pastas
+(disciplina → fase), com o histórico completo de cada documento dentro da pasta.
 
-41 testes automatizados cobrindo as regras de negócio.
+45 testes automatizados cobrindo as regras de negócio.
 
 ---
 

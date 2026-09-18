@@ -373,54 +373,83 @@ def test_arvore_agrupa_por_disciplina_fase_e_formato(cliente, admin, obra):
     a = r.json()
 
     assert a["obra_codigo"] == "TRL001"
-    assert a["total"] > 0
-    assert a["tamanho"] > 0
+    assert a["total"] > 0 and a["tamanho"] > 0
 
-    # O total da obra é a soma do que está abaixo, em cada nível.
+    # O total de cada nível é a soma do que está abaixo dele.
     assert a["total"] == sum(d["total"] for d in a["disciplinas"])
+    assert a["tamanho"] == sum(d["tamanho"] for d in a["disciplinas"])
     for d in a["disciplinas"]:
         assert d["total"] == sum(f["total"] for f in d["fases"])
         assert d["tamanho"] == sum(f["tamanho"] for f in d["fases"])
         for f in d["fases"]:
-            assert f["total"] == sum(len(tp["arquivos"]) for tp in f["tipos"])
+            assert f["total"] == sum(tp["total"] for tp in f["tipos"])
+            assert f["tamanho"] == sum(tp["tamanho"] for tp in f["tipos"])
 
     est = next(d for d in a["disciplinas"] if d["codigo"] == "EST")
     pe = next(f for f in est["fases"] if f["codigo"] == "PE")
     assert {tp["tipo"] for tp in pe["tipos"]} >= {"dwg", "pdf"}
 
-    arquivo = pe["tipos"][0]["arquivos"][0]
-    assert arquivo["documento_codigo"].startswith("TRL001-EST-PE-")
-    assert arquivo["revisao"]
-    assert arquivo["nome"].lower().endswith(("." + pe["tipos"][0]["tipo"],))
+
+def test_arvore_nao_carrega_a_lista_de_arquivos(cliente, admin, obra):
+    """A árvore navega; quem lista arquivo é a pasta. Mandar todos os nomes
+    aqui seriam megabytes de JSON que nenhuma tela desenha."""
+    a = cliente.get(f"/obras/{obra['id']}/arvore", headers=admin).json()
+    tipo = a["disciplinas"][0]["fases"][0]["tipos"][0]
+    assert "arquivos" not in tipo
+    assert tipo["total"] >= 1
 
 
-def test_arvore_mostra_so_a_revisao_vigente(cliente, admin, obra):
-    """TRL001-EST-PE-001 tem R00 (obsoleta) e R01. Só a R01 entra no acervo."""
+def test_arvore_conta_so_a_revisao_vigente(cliente, admin, obra):
+    """TRL001-EST-PE-001 tem R00 (obsoleta) e R01. Só a R01 conta no acervo."""
     vigente = cliente.get(f"/obras/{obra['id']}/arvore", headers=admin).json()
     todas = cliente.get(
         f"/obras/{obra['id']}/arvore", params={"todas_revisoes": "true"}, headers=admin
     ).json()
     assert todas["total"] > vigente["total"]
 
-    def revisoes(arvore, codigo):
-        return {
-            arq["revisao"]
-            for d in arvore["disciplinas"]
-            for f in d["fases"]
-            for tp in f["tipos"]
-            for arq in tp["arquivos"]
-            if arq["documento_codigo"] == codigo
-        }
 
-    assert revisoes(vigente, "TRL001-EST-PE-001") == {"01"}
-    assert revisoes(todas, "TRL001-EST-PE-001") == {"00", "01"}
+# --------------------------------------------------------------------------
+# Conteúdo da pasta
+# --------------------------------------------------------------------------
 
 
-def test_arvore_esconde_nao_liberado_de_quem_nao_pode_ver(cliente, projetista, obra):
-    """Projetista vê tudo; o teste garante que o filtro de papel é aplicado."""
-    r = cliente.get(f"/obras/{obra['id']}/arvore", headers=projetista)
+def test_pasta_traz_documentos_com_historico_completo(cliente, admin, obra):
+    r = cliente.get(f"/obras/{obra['id']}/pastas/EST/PE", headers=admin)
+    assert r.status_code == 200, r.text
+    pasta = r.json()
+
+    assert pasta["disciplina"] == {"codigo": "EST", "nome": "Estrutura"}
+    assert pasta["fase"]["codigo"] == "PE"
+    assert pasta["total"] == len(pasta["documentos"]) >= 1
+
+    doc = next(d for d in pasta["documentos"] if d["codigo"] == "TRL001-EST-PE-001")
+    numeros = [r["numero"] for r in doc["revisoes"]]
+    assert numeros == ["01", "00"], "mais recente no topo"
+    assert doc["revisao_atual"]["numero"] == "01"
+
+    por_numero = {r["numero"]: r for r in doc["revisoes"]}
+    assert por_numero["00"]["status"] == "obsoleto"
+    assert por_numero["01"]["status"] == "liberado_para_obra"
+    # Cada revisão traz os próprios arquivos.
+    assert {a["tipo"] for a in por_numero["01"]["arquivos"]} == {"dwg", "pdf"}
+
+
+def test_pasta_inexistente_responde_404(cliente, admin, obra):
+    assert cliente.get(f"/obras/{obra['id']}/pastas/ZZZ/PE", headers=admin).status_code == 404
+    assert cliente.get(f"/obras/{obra['id']}/pastas/EST/ZZ", headers=admin).status_code == 404
+
+
+def test_pasta_aceita_codigo_em_caixa_baixa(cliente, admin, obra):
+    r = cliente.get(f"/obras/{obra['id']}/pastas/est/pe", headers=admin)
     assert r.status_code == 200
-    assert r.json()["total"] > 0
+    assert r.json()["disciplina"]["codigo"] == "EST"
+
+
+def test_pasta_vazia_responde_lista_vazia(cliente, admin, obra):
+    r = cliente.get(f"/obras/{obra['id']}/pastas/PAI/AB", headers=admin)
+    assert r.status_code == 200
+    assert r.json()["total"] == 0
+    assert r.json()["documentos"] == []
 
 
 def test_lista_mestra_em_csv(cliente, admin, obra):

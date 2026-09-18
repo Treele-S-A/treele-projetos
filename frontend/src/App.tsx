@@ -8,6 +8,7 @@ import Documento from "./paginas/Documento";
 import Entrar from "./paginas/Entrar";
 import Enviar from "./paginas/Enviar";
 import Obras from "./paginas/Obras";
+import Pasta from "./paginas/Pasta";
 import Registro from "./paginas/Registro";
 import Usuarios from "./paginas/Usuarios";
 
@@ -156,6 +157,10 @@ export default function App() {
         <Route path="/obras" element={<Obras />} />
         <Route path="/obras/:obraId/acervo" element={<Acervo />} />
         <Route path="/obras/:obraId/enviar" element={<Enviar />} />
+        <Route
+          path="/obras/:obraId/pastas/:disciplina/:fase"
+          element={<Pasta />}
+        />
         <Route path="/obras/:obraId/configuracoes" element={<Configuracoes />} />
         <Route path="/obras/:obraId/registro" element={<Registro />} />
         <Route path="/documentos/:documentoId" element={<Documento />} />

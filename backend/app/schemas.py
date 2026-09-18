@@ -250,18 +250,6 @@ class DocumentoAtualizar(BaseModel):
 # --------------------------------------------------------------------------
 
 
-class ArquivoNaArvore(BaseModel):
-    id: int
-    nome: str
-    tamanho: int
-    enviado_em: datetime
-    documento_id: int
-    documento_codigo: str
-    documento_titulo: str | None
-    revisao: str
-    status: StatusRevisao
-
-
 class NoArvore(BaseModel):
     """Um nível da árvore. `tamanho` e `total` são a soma do que está abaixo."""
 
@@ -274,8 +262,11 @@ class NoArvore(BaseModel):
 
 
 class NoTipo(NoArvore):
+    """Só o resumo por formato. A árvore navega até a pasta; quem lista os
+    arquivos é a tela da pasta. Mandar todos os nomes aqui seriam megabytes
+    de JSON que nenhuma tela desenha."""
+
     tipo: TipoArquivo
-    arquivos: list[ArquivoNaArvore] = []
 
 
 class NoFase(NoArvore):
@@ -284,6 +275,27 @@ class NoFase(NoArvore):
 
 class NoDisciplina(NoArvore):
     fases: list[NoFase] = []
+
+
+class CatalogoResumo(BaseModel):
+    codigo: str
+    nome: str
+
+
+class PastaSaida(BaseModel):
+    """Conteúdo de uma pasta: os documentos de uma disciplina numa fase.
+
+    Vem com o histórico completo de cada documento — é o que a tela de pasta
+    mostra, e é o motivo de existir um endpoint próprio em vez de N chamadas
+    ao detalhe de documento.
+    """
+
+    obra_codigo: str
+    obra_nome: str
+    disciplina: CatalogoResumo
+    fase: CatalogoResumo
+    total: int
+    documentos: list["DocumentoDetalhe"] = []
 
 
 class ArvoreSaida(BaseModel):
