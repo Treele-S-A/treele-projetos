@@ -15,7 +15,13 @@ from sqlalchemy import and_, func, or_, select
 from sqlalchemy.orm import Session, aliased, selectinload
 
 from ..db import get_db
-from ..deps import ContextoObra, contexto_obra, montar_contexto, usuario_atual
+from ..deps import (
+    ContextoObra,
+    contexto_obra,
+    montar_contexto,
+    status_visiveis,
+    usuario_atual,
+)
 from ..enums import StatusArquivo, StatusRevisao, TipoArquivo
 from ..models import Arquivo, Disciplina, Documento, Fase, Revisao, Usuario
 from ..schemas import (
@@ -134,9 +140,7 @@ def listar(
         status_revisao=status_revisao, tipo=tipo, busca=busca,
     )
 
-    # Cliente não enxerga o que ainda não foi liberado.
-    if not ctx.pode("ver_obsoletos"):
-        consulta = consulta.where(atual.status == StatusRevisao.liberado_para_obra)
+    consulta = consulta.where(atual.status.in_(status_visiveis(ctx)))
 
     total = ctx.db.scalar(
         select(func.count()).select_from(consulta.order_by(None).subquery())
@@ -171,8 +175,7 @@ def exportar(
         disciplina_id=disciplina_id, fase_id=fase_id,
         status_revisao=status_revisao, tipo=None, busca=None,
     )
-    if not ctx.pode("ver_obsoletos"):
-        consulta = consulta.where(atual.status == StatusRevisao.liberado_para_obra)
+    consulta = consulta.where(atual.status.in_(status_visiveis(ctx)))
 
     linhas = ctx.db.execute(consulta.order_by(Documento.codigo)).all()
 
@@ -271,9 +274,7 @@ def arvore(
             and_(sub.c.doc_id == Documento.id, atual.ordem == sub.c.max_ordem),
         )
 
-    # Mesma regra da tabela: quem não enxerga obsoleto só vê o que foi liberado.
-    if not ctx.pode("ver_obsoletos"):
-        consulta = consulta.where(atual.status == StatusRevisao.liberado_para_obra)
+    consulta = consulta.where(atual.status.in_(status_visiveis(ctx)))
 
     linhas = ctx.db.execute(consulta).all()
 
@@ -388,12 +389,10 @@ def pasta(
     saida: list[DocumentoDetalhe] = []
     for documento in documentos:
         revisoes = sorted(documento.revisoes, key=lambda r: r.ordem, reverse=True)
-        if not ctx.pode("ver_obsoletos"):
-            revisoes = [
-                r for r in revisoes if r.status == StatusRevisao.liberado_para_obra
-            ]
-            if not revisoes:
-                continue
+        visiveis = status_visiveis(ctx)
+        revisoes = [r for r in revisoes if r.status in visiveis]
+        if not revisoes:
+            continue
 
         item = DocumentoDetalhe.model_validate(documento)
         item.total_revisoes = len(documento.revisoes)
@@ -425,9 +424,9 @@ def detalhe(
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Documento não encontrado.")
     ctx = montar_contexto(db, usuario, documento.obra_id)
 
+    visiveis = status_visiveis(ctx)
     revisoes = sorted(documento.revisoes, key=lambda r: r.ordem, reverse=True)
-    if not ctx.pode("ver_obsoletos"):
-        revisoes = [r for r in revisoes if r.status == StatusRevisao.liberado_para_obra]
+    revisoes = [r for r in revisoes if r.status in visiveis]
 
     saida = DocumentoDetalhe.model_validate(documento)
     saida.total_revisoes = len(documento.revisoes)

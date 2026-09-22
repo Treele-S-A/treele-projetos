@@ -39,6 +39,10 @@ from ..services.nomenclatura import analisar, validar_definicao
 
 router = APIRouter(prefix="/obras", tags=["obras"])
 
+# O administrador global ignora a matriz de papéis. A lista existe só para a
+# interface saber o que desenhar para ele.
+TUDO = sorted(set().union(*PERMISSOES.values()))
+
 
 def _com_papel(obra: Obra, papel) -> ObraComPapel:
     saida = ObraComPapel.model_validate(obra)
@@ -72,9 +76,7 @@ def listar(
     saida = [_com_papel(o, papeis.get(o.id)) for o in obras]
     if usuario.admin:
         for item in saida:
-            item.permissoes = sorted(
-                {"ver_obsoletos", "enviar", "publicar", "cancelar", "gerenciar"}
-            )
+            item.permissoes = TUDO
     return saida
 
 
@@ -117,9 +119,7 @@ def criar(
 def detalhe(ctx: ContextoObra = Depends(contexto_obra)):
     saida = _com_papel(ctx.obra, ctx.papel)
     if ctx.usuario.admin:
-        saida.permissoes = sorted(
-            {"ver_obsoletos", "enviar", "publicar", "cancelar", "gerenciar"}
-        )
+        saida.permissoes = TUDO
     return saida
 
 

@@ -331,36 +331,71 @@ def pessoal_da_obra(cliente, admin, obra):
     return autenticar(cliente, "encarregado@teste.com.br", "senha-encarregado-1")
 
 
-def test_obra_so_enxerga_o_que_esta_liberado(cliente, pessoal_da_obra, admin, obra):
-    """Decisão da TREELE em 18/09/2026: obra não vê obsoleto nem em revisão."""
-    pagina = cliente.get(
-        f"/obras/{obra['id']}/documentos?por_pagina=200", headers=pessoal_da_obra
-    ).json()
-    assert pagina["total"] > 0
-    assert all(
-        d["revisao_atual"]["status"] == "liberado_para_obra" for d in pagina["itens"]
-    )
+def test_obra_ve_o_historico_mas_nao_o_que_esta_em_andamento(
+    cliente, pessoal_da_obra, admin, obra
+):
+    """Decisão da TREELE em 22/09/2026.
 
-    # No detalhe do documento, as revisões antigas somem da lista.
+    A obra precisa do histórico para conferir o que executou semana passada.
+    Não precisa — e não deve — ver projeto ainda em elaboração.
+    """
     documento = _documento(cliente, admin, obra["id"], "TRL001-EST-PE-001")
     detalhe = cliente.get(
         f"/documentos/{documento['id']}", headers=pessoal_da_obra
     ).json()
-    assert [r["numero"] for r in detalhe["revisoes"]] == ["01"]
+    status = {r["status"] for r in detalhe["revisoes"]}
+    assert "obsoleto" in status, "a obra precisa enxergar o histórico"
+    assert "em_revisao" not in status
+    assert "cancelado" not in status
 
 
-def test_obra_nao_baixa_revisao_obsoleta(cliente, pessoal_da_obra, admin, obra):
+def test_obra_nao_ve_documento_que_nunca_foi_liberado(cliente, pessoal_da_obra, admin, obra):
+    """Documento que nunca saiu de 'em revisão' é invisível para a obra."""
+    em_andamento = cliente.get(
+        f"/obras/{obra['id']}/documentos?por_pagina=200&status_revisao=em_revisao",
+        headers=admin,
+    ).json()
+    assert em_andamento["total"] >= 1, "a base de teste precisa ter algo em revisão"
+    codigo = em_andamento["itens"][0]["codigo"]
+
+    da_obra = cliente.get(
+        f"/obras/{obra['id']}/documentos?por_pagina=200", headers=pessoal_da_obra
+    ).json()
+    assert codigo not in {d["codigo"] for d in da_obra["itens"]}
+
+
+def test_obra_baixa_obsoleto_com_aviso(cliente, pessoal_da_obra, admin, obra):
     documento = _documento(cliente, admin, obra["id"], "TRL001-EST-PE-001")
     completo = cliente.get(f"/documentos/{documento['id']}", headers=admin).json()
     obsoleta = next(r for r in completo["revisoes"] if r["status"] == "obsoleto")
-    arquivo = obsoleta["arquivos"][0]
 
-    r = cliente.get(f"/arquivos/{arquivo['id']}/download", headers=pessoal_da_obra)
+    r = cliente.get(
+        f"/arquivos/{obsoleta['arquivos'][0]['id']}/download", headers=pessoal_da_obra
+    )
+    assert r.status_code == 200, r.text
+    # Pode baixar, mas nunca sem saber que está obsoleto.
+    assert "OBSOLETA" in r.json()["aviso"]
+
+
+def test_obra_nao_baixa_o_que_ainda_esta_em_revisao(cliente, pessoal_da_obra, admin, obra):
+    pagina = cliente.get(
+        f"/obras/{obra['id']}/documentos?por_pagina=200&status_revisao=em_revisao",
+        headers=admin,
+    ).json()
+    documento = pagina["itens"][0]
+    detalhe = cliente.get(f"/documentos/{documento['id']}", headers=admin).json()
+    em_revisao = next(r for r in detalhe["revisoes"] if r["status"] == "em_revisao")
+
+    r = cliente.get(
+        f"/arquivos/{em_revisao['arquivos'][0]['id']}/download", headers=pessoal_da_obra
+    )
     assert r.status_code == 403
-    assert "obsoleta" in r.json()["detail"].lower()
+    assert "não foi liberada" in r.json()["detail"]
 
 
-def test_arvore_da_obra_conta_so_o_liberado(cliente, pessoal_da_obra, admin, obra):
+def test_arvore_da_obra_esconde_o_que_esta_em_andamento(
+    cliente, pessoal_da_obra, admin, obra
+):
     completa = cliente.get(f"/obras/{obra['id']}/arvore", headers=admin).json()
     restrita = cliente.get(f"/obras/{obra['id']}/arvore", headers=pessoal_da_obra).json()
     assert restrita["total"] < completa["total"]
@@ -569,8 +604,11 @@ def test_auditoria_registra_download_e_publicacao(cliente, admin, obra):
         f"/obras/{obra['id']}/eventos", params={"acao": "download"}, headers=admin
     ).json()
     assert downloads["total"] >= 1
-    evento = downloads["itens"][0]
-    assert evento["usuario"]["email"] == "admin@teste.com.br"
+    # Procura o evento em vez de supor a ordem: qualquer pessoa da obra baixando
+    # mudaria quem está no topo da lista.
+    evento = next(
+        e for e in downloads["itens"] if e["usuario"]["email"] == "admin@teste.com.br"
+    )
     assert evento["detalhes"]["documento"]
 
 

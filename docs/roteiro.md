@@ -12,7 +12,7 @@ arquivo companheiro, papéis por obra, trilha de auditoria, lista mestra em CSV.
 Acervo em duas visões: tabela com filtros e navegação por pastas
 (disciplina → fase), com o histórico completo de cada documento dentro da pasta.
 
-50 testes automatizados cobrindo as regras de negócio.
+52 testes automatizados cobrindo as regras de negócio.
 
 ---
 
@@ -187,7 +187,7 @@ justamente como o BCF já funciona.
 | Revisão liberada | Aceita arquivo novo; substituição segue proibida | 17/09/2026 |
 | Migrações | Alembic no lugar de `create_all` | 18/09/2026 |
 | Responsável | Um engenheiro por obra, separado do papel de coordenador | 18/09/2026 |
-| Acesso da obra | Só o que está liberado — obsoleto deixou de ser visível | 18/09/2026 |
+| Acesso da obra | Vê liberado e obsoleto; não vê o que está em andamento | 22/09/2026 |
 | Ordem das fases | Colaboração (1.5) antes do chat com IA (2) | 18/09/2026 |
 
 ## Em aberto

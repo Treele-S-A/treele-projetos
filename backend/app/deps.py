@@ -8,7 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from .db import get_db
-from .enums import PERMISSOES, PapelObra
+from .enums import PERMISSOES, PapelObra, StatusRevisao
 from .models import Disciplina, Fase, Obra, ObraMembro, PadraoNomenclatura, Usuario
 from .security import ler_token
 
@@ -89,6 +89,21 @@ def contexto_obra(
     db: Session = Depends(get_db),
 ) -> ContextoObra:
     return montar_contexto(db, usuario, obra_id)
+
+
+def status_visiveis(ctx: ContextoObra) -> list[StatusRevisao]:
+    """Quais status de revisão este papel pode enxergar.
+
+    Um só lugar decide isso. Espalhar a regra por cada endpoint é como uma
+    tela acaba mostrando o que outra esconde.
+    """
+    visiveis = [StatusRevisao.liberado_para_obra]
+    if ctx.pode("ver_obsoletos"):
+        visiveis.append(StatusRevisao.obsoleto)
+    if ctx.pode("ver_em_revisao"):
+        visiveis.append(StatusRevisao.em_revisao)
+        visiveis.append(StatusRevisao.cancelado)
+    return visiveis
 
 
 # --------------------------------------------------------------------------

@@ -65,8 +65,13 @@ class PapelObra(str, enum.Enum):
 
 # Matriz de permissões por papel. `admin` global ignora esta tabela.
 #
-#   ver_obsoletos ..... enxerga e baixa o que NÃO está liberado para obra:
-#                       revisões obsoletas e revisões ainda em revisão
+#   ver_obsoletos ..... enxerga e baixa revisões obsoletas (sempre com aviso)
+#   ver_em_revisao .... enxerga o que ainda não foi liberado: revisões em
+#                       andamento e canceladas
+#
+# São duas chaves separadas de propósito. Histórico e trabalho em andamento são
+# coisas diferentes: a obra precisa do primeiro para conferir o que executou, e
+# não deve ver o segundo — projeto ainda em elaboração não é projeto.
 #   enviar ............ cria documento e sobe arquivo (nasce "em revisão")
 #   publicar .......... libera para obra e torna a anterior obsoleta
 #   cancelar .......... cancela uma revisão que não deve mais existir
@@ -74,15 +79,16 @@ class PapelObra(str, enum.Enum):
 PERMISSOES: dict[PapelObra, set[str]] = {
     PapelObra.coordenador: {
         "ver_obsoletos",
+        "ver_em_revisao",
         "enviar",
         "publicar",
         "cancelar",
         "gerenciar",
     },
-    PapelObra.projetista: {"ver_obsoletos", "enviar"},
-    # Obra e cliente só enxergam o que está liberado para obra (TREELE,
-    # 18/09/2026). A diferença entre os dois entra na Fase 1.5: a obra poderá
-    # solicitar revisão, o cliente não.
-    PapelObra.obra: set(),
+    PapelObra.projetista: {"ver_obsoletos", "ver_em_revisao", "enviar"},
+    # A obra vê o histórico — precisa dele para conferir o que executou semana
+    # passada (TREELE, 22/09/2026) — mas não vê o que ainda está em elaboração.
+    PapelObra.obra: {"ver_obsoletos"},
+    # Para o cliente, revisão antiga é ruído.
     PapelObra.cliente: set(),
 }

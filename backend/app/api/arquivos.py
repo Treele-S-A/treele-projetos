@@ -90,7 +90,7 @@ def download(
             status.HTTP_403_FORBIDDEN, "Esta revisão foi cancelada."
         )
     elif revisao.status == StatusRevisao.em_revisao:
-        if not ctx.pode("enviar"):
+        if not ctx.pode("ver_em_revisao"):
             raise HTTPException(
                 status.HTTP_403_FORBIDDEN,
                 "Esta revisão ainda não foi liberada para obra.",

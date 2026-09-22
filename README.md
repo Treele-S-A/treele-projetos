@@ -149,7 +149,7 @@ verdade os dois endereços são iguais e basta preencher `S3_ENDPOINT`.
 |---|:--:|:--:|:--:|:--:|:--:|
 | Coordenador | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Projetista | ✓ | ✓ | | | |
-| Obra | | | | | |
+| Obra | ✓ | | | | |
 | Cliente | | | | | |
 
 Detalhes em [docs/permissoes.md](docs/permissoes.md).
@@ -178,7 +178,7 @@ nomeia restrições sozinho.
 cd backend && .venv\Scripts\python -m pytest tests -q
 ```
 
-50 testes cobrindo o parser de nomenclatura, a regra de arquivo companheiro, a
+52 testes cobrindo o parser de nomenclatura, a regra de arquivo companheiro, a
 obsolescência automática, o controle de permissões e a trilha de auditoria.
 
 ## Estrutura

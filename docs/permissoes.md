@@ -10,7 +10,7 @@ Obra A e projetista na Obra B. Além disso existe o perfil global de
 |---|:--:|:--:|:--:|:--:|
 | Ver documentos liberados | ✓ | ✓ | ✓ | ✓ |
 | Baixar documentos liberados | ✓ | ✓ | ✓ | ✓ |
-| Ver e baixar revisões obsoletas | ✓ | ✓ | | |
+| Ver e baixar revisões obsoletas | ✓ | ✓ | ✓ | |
 | Ver revisões ainda em revisão | ✓ | ✓ | | |
 | Enviar arquivos | ✓ | ✓ | | |
 | Editar título e descrição | ✓ | ✓ | | |
@@ -30,13 +30,21 @@ equipe de projeto, mas invisível para a obra. Só o coordenador decide que aqui
 virou o projeto oficial. Sem essa separação, o sistema é uma pasta compartilhada
 com aparência de sistema.
 
-**Obra e cliente só veem o que está liberado.** (Decisão da TREELE em
-18/09/2026 — antes disso a obra enxergava obsoletos.) Quem está em campo abre o
-sistema para saber com o que executar, e a resposta tem que ser uma só. Revisão
-antiga visível em campo é como projeto velho pendurado na parede do canteiro.
+**A obra vê o histórico, mas não o trabalho em andamento.** São duas coisas
+diferentes, e por isso são duas permissões separadas:
 
-Hoje obra e cliente têm o mesmo acesso. A diferença entra na Fase 1.5: **a obra
-poderá solicitar revisão, o cliente não.**
+- **Revisão obsoleta** é histórico. Quem está em campo às vezes precisa dela
+  para conferir o que foi executado semana passada, ou para entender o que
+  mudou. O download vem com aviso explícito de que aquela revisão está obsoleta,
+  e fica registrado quem baixou.
+- **Revisão em andamento** é rascunho. Projeto em elaboração não é projeto, e
+  mostrá-lo em campo convida alguém a executar o que ainda vai mudar. Isso a
+  obra não vê — nem na lista, nem na árvore, nem no histórico do documento.
+
+O cliente só enxerga o que está liberado: para ele, revisão antiga é ruído.
+
+A diferença entre obra e cliente cresce na Fase 1.5: **a obra poderá solicitar
+revisão, o cliente não.**
 
 **Revisão liberada aceita arquivo novo, mas nunca substituição.** É comum
 liberar o PDF para a obra não ficar esperando e mandar o DWG depois — isso é
