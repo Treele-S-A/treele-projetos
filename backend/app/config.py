@@ -3,6 +3,7 @@
 from functools import lru_cache
 from pathlib import Path
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # backend/
@@ -46,10 +47,16 @@ class Settings(BaseSettings):
     tamanho_max_mb: int = 2048
 
     base_url: str = "http://localhost:8000"
-    # Prefixo sob o qual a API é servida quando há proxy na frente. Em produção
-    # o Caddy atende /api/* e remove o prefixo antes de repassar; sem informar
-    # isto aqui, a documentação da API geraria links sem o /api.
-    root_path: str = ""
+
+    # Prefixo das rotas da API. Vazio quando a API tem endereço próprio (é o
+    # caso do desenvolvimento e dos testes). "/api" quando ela divide o
+    # endereço com a interface — aí o prefixo é o que evita que /obras da API
+    # colida com /obras da tela.
+    api_prefix: str = ""
+
+    # Pasta com a interface já compilada. Quando existe, a aplicação serve as
+    # telas além da API, num processo só. Vazio = a interface é servida à parte.
+    estaticos_dir: Path | None = None
     cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
 
     # Primeiro acesso. Sem ADMIN_SENHA definida, uma senha aleatória é gerada
@@ -58,6 +65,20 @@ class Settings(BaseSettings):
     # e-mail o recusa, o que deixaria o admin sem conseguir entrar.
     admin_email: str = "admin@treele.com.br"
     admin_senha: str | None = None
+
+    @field_validator("database_url")
+    @classmethod
+    def _driver_explicito(cls, valor: str) -> str:
+        """Hospedagens gerenciadas entregam a URL como `postgres://`.
+
+        O SQLAlchemy não reconhece esse esquema e escolheria o psycopg2, que
+        nem está instalado. Normalizar aqui evita um erro na subida que não diz
+        nada sobre a causa.
+        """
+        for prefixo in ("postgres://", "postgresql://"):
+            if valor.startswith(prefixo):
+                return "postgresql+psycopg://" + valor[len(prefixo) :]
+        return valor
 
     @property
     def s3_endpoint_servidor(self) -> str | None:

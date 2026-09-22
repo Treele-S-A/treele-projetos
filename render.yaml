@@ -1,0 +1,62 @@
+# Infraestrutura no Render, versionada junto com o código.
+#
+# No painel: New → Blueprint → aponte para este repositório. O Render lê este
+# arquivo, cria o banco e o serviço, e conecta os dois.
+#
+# O que NÃO está aqui são os segredos do armazenamento (Cloudflare R2). Eles
+# são preenchidos uma vez no painel — ver docs/render.md.
+
+databases:
+  - name: treele-banco
+    databaseName: treele
+    user: treele
+    plan: basic-256mb
+    # Postgres gerenciado: backup automático e atualização de versão ficam com
+    # o Render. O backup dos ARQUIVOS continua sendo por nossa conta — eles
+    # estão no R2, não no banco.
+
+services:
+  - type: web
+    name: treele
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: starter
+    healthCheckPath: /api/saude
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: treele-banco
+          property: connectionString
+
+      # Gerado pelo Render na criação e nunca mais mostrado. Assina as sessões
+      # e os links de download.
+      - key: SECRET_KEY
+        generateValue: true
+
+      - key: AMBIENTE
+        value: producao
+      - key: STORAGE_BACKEND
+        value: s3
+
+      # Cloudflare R2 — preencher no painel. O plano gratuito cobre 10 GB, mais
+      # que o acervo inteiro, e não cobra tráfego de saída (que é o que pesa
+      # quando a obra baixa modelo grande).
+      - key: S3_ENDPOINT
+        sync: false
+      - key: S3_ACCESS_KEY
+        sync: false
+      - key: S3_SECRET_KEY
+        sync: false
+      - key: S3_BUCKET
+        value: treele-projetos
+      - key: S3_REGION
+        value: auto
+
+      # Primeiro acesso. Trocar a senha logo depois de entrar.
+      - key: ADMIN_EMAIL
+        sync: false
+      - key: ADMIN_SENHA
+        generateValue: true
+
+      - key: TAMANHO_MAX_MB
+        value: "2048"
