@@ -173,12 +173,36 @@ class ArmazenamentoS3:
         )
 
     def garantir_bucket(self) -> None:
-        from botocore.exceptions import ClientError
+        """Cria o bucket se ele não existir — e nunca derruba a subida.
+
+        No MinIO a chave é de administrador e o bucket nasce aqui. Em serviço
+        gerenciado (R2, S3) o bucket é criado no painel e a chave costuma ter
+        permissão só sobre os objetos: criar bucket é negado, e `head_bucket`
+        pode ser negado junto mesmo com o bucket existindo.
+
+        Por isso a falha aqui vira aviso, não exceção. Recusar a subida
+        deixaria o sistema inteiro fora do ar — inclusive o catálogo, que nem
+        depende do storage — por causa de uma permissão que talvez esteja
+        certa. O erro real, se houver, aparece no primeiro envio, dizendo o
+        que é.
+        """
+        from botocore.exceptions import BotoCoreError, ClientError
 
         try:
             self.cliente.head_bucket(Bucket=self.bucket)
-        except ClientError:
+            return
+        except (ClientError, BotoCoreError) as erro:
+            motivo = erro
+
+        try:
             self.cliente.create_bucket(Bucket=self.bucket)
+        except (ClientError, BotoCoreError):
+            print(
+                f"aviso: não foi possível confirmar o bucket '{self.bucket}' "
+                f"({motivo}). Se ele existe e a chave enxerga os objetos, está "
+                "tudo certo; senão, o primeiro envio vai falhar.",
+                flush=True,
+            )
 
     def destino_upload(self, chave: str, content_type: str) -> DestinoUpload:
         url = self.assinador.generate_presigned_url(

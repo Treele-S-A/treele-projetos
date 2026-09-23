@@ -47,6 +47,11 @@ app = FastAPI(
         "catálogo por obra/disciplina/fase/tipo, status e trilha de auditoria."
     ),
     lifespan=ciclo_de_vida,
+    # A documentação acompanha o prefixo. Sem isto ela ficaria na raiz, junto
+    # com as telas, descrevendo rotas que moram em outro lugar.
+    docs_url=settings.api_prefix + "/docs",
+    redoc_url=settings.api_prefix + "/redoc",
+    openapi_url=settings.api_prefix + "/openapi.json",
 )
 
 app.add_middleware(
