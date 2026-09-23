@@ -198,6 +198,17 @@ nessa ordem de probabilidade.
 
 ---
 
+## Se der errado
+
+Os quatro tropeços prováveis, na ordem em que aparecem:
+
+| O que você vê | O que é |
+|---|---|
+| A construção falha antes de subir | Erro de build. A aba *Logs* mostra a linha exata. |
+| O serviço sobe e cai, dizendo `SECRET_KEY inválida para produção` | A chave não foi gerada ou ficou curta. Em *Environment*, apague `SECRET_KEY` e deixe o Render gerar outra. O sistema se recusa a rodar com chave fraca de propósito: ela assina as sessões *e* os links de download. |
+| Aparece `aviso: não foi possível confirmar o bucket` no log, mas o sistema sobe | Normal no R2: a chave enxerga os objetos, não o bucket. Só é problema se o envio também falhar. |
+| O envio de arquivo falha no navegador sem mensagem clara | CORS do bucket (passo 4). Confira se o endereço em `AllowedOrigins` é exatamente o do sistema, sem barra no fim. |
+
 ## Backup
 
 **O banco** — catálogo, revisões, permissões, auditoria — é responsabilidade do

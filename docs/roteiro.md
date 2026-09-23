@@ -189,11 +189,11 @@ justamente como o BCF já funciona.
 | Responsável | Um engenheiro por obra, separado do papel de coordenador | 18/09/2026 |
 | Acesso da obra | Vê liberado e obsoleto; não vê o que está em andamento | 22/09/2026 |
 | Ordem das fases | Colaboração (1.5) antes do chat com IA (2) | 18/09/2026 |
+| Hospedagem | Render (gerenciado) + Cloudflare R2; VPS fica como alternativa | 22/09/2026 |
+| Interface e API | Mesma imagem, mesmo processo: API sob `/api`, telas sob `/` | 22/09/2026 |
 
 ## Em aberto
 
-- Onde hospedar: VPS com Docker (mais barato, ~R$100–300/mês) ou Azure
-  (integra com o Microsoft 365 da empresa, 3–5× mais caro).
 - Login por SSO com Entra ID em vez de senha própria.
 - Confirmar os 16 códigos de disciplina que vieram da proposta inicial (os 9
   novos já estão confirmados) — ver [nomenclatura.md](nomenclatura.md).

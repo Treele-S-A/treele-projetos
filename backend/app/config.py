@@ -6,6 +6,8 @@ from pathlib import Path
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+SECRET_KEY_DEV = "dev-apenas-troque-em-producao"
+
 # backend/
 BASE_DIR = Path(__file__).resolve().parent.parent
 DATA_DIR = BASE_DIR / "data"
@@ -19,8 +21,9 @@ class Settings(BaseSettings):
     app_nome: str = "TREELE — Gestão de Projetos"
     ambiente: str = "dev"
 
-    # Trocar obrigatoriamente em produção (ver README).
-    secret_key: str = "dev-apenas-troque-em-producao"
+    # Trocar obrigatoriamente em produção (ver README) — e a validação abaixo
+    # garante que isso não passe batido.
+    secret_key: str = SECRET_KEY_DEV
     token_expira_minutos: int = 60 * 12
 
     # SQLite por padrão para rodar sem Docker; o docker-compose injeta Postgres.
@@ -94,9 +97,32 @@ class Settings(BaseSettings):
         return self.tamanho_max_mb * 1024 * 1024
 
 
+def _conferir_chave(s: Settings) -> None:
+    """Em produção, recusa subir com chave fraca ou com a de desenvolvimento.
+
+    Essa chave assina as sessões *e* os links de download: com ela, qualquer um
+    forja um acesso. Falhar ruidosamente na subida é melhor que rodar meses com
+    a chave de exemplo — é o tipo de erro que ninguém percebe, porque o sistema
+    funciona perfeitamente enquanto está errado.
+
+    A conferência fica aqui, e não num validador do pydantic, de propósito: o
+    erro de validação do pydantic imprime o modelo inteiro, e aí a senha do
+    administrador iria junto para o log da hospedagem.
+    """
+    if s.ambiente != "producao":
+        return
+    if s.secret_key == SECRET_KEY_DEV or len(s.secret_key) < 32:
+        raise RuntimeError(
+            "SECRET_KEY inválida para produção: defina uma chave própria de pelo "
+            'menos 32 caracteres. Gere com `python -c "import secrets; '
+            'print(secrets.token_urlsafe(48))"`.'
+        )
+
+
 @lru_cache
 def get_settings() -> Settings:
     s = Settings()
+    _conferir_chave(s)
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     if s.storage_backend == "local":
         s.storage_local_dir.mkdir(parents=True, exist_ok=True)
