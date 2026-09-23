@@ -178,8 +178,10 @@ nomeia restrições sozinho.
 cd backend && .venv\Scripts\python -m pytest tests -q
 ```
 
-52 testes cobrindo o parser de nomenclatura, a regra de arquivo companheiro, a
-obsolescência automática, o controle de permissões e a trilha de auditoria.
+69 testes cobrindo o parser de nomenclatura, a regra de arquivo companheiro, a
+obsolescência automática, o controle de permissões, a trilha de auditoria e as
+regras de configuração que só aparecem em produção (chave de sessão, URL e
+schema do banco).
 
 ## Estrutura
 
@@ -214,12 +216,15 @@ primeiro.**
 ### Render — sem servidor para administrar *(escolhido)*
 
 **[docs/render.md](docs/render.md)** — GitHub, Cloudflare R2, e o
-[`render.yaml`](render.yaml) monta banco e serviço sozinho a partir do
-repositório. Cerca de 40 minutos, quase tudo espera de build. Sem SSH, sem
-firewall para manter, sem certificado para renovar.
+[`render.yaml`](render.yaml) monta o serviço sozinho a partir do repositório.
+Cerca de 40 minutos, quase tudo espera de build. Sem SSH, sem firewall para
+manter, sem certificado para renovar.
 
-Custo estimado: **~US$ 13/mês (~R$ 70)**, com os arquivos no R2 — que não cobra
-tráfego de saída, e saída é quase tudo o que a obra faz.
+O banco é o **Supabase que a TREELE já usa** para outro sistema, num schema
+próprio (`DB_SCHEMA=treele`) — as tabelas deste não se misturam com as de lá.
+
+Custo estimado: **~US$ 7/mês (~R$ 35)**, só o serviço web. Os arquivos ficam no
+R2 — que não cobra tráfego de saída, e saída é quase tudo o que a obra faz.
 
 A interface e a API viajam na mesma imagem ([`Dockerfile`](Dockerfile)) e
 rodam num processo só: a API sob `/api`, as telas sob `/`. Um serviço em vez de
@@ -251,17 +256,21 @@ instalador (`deploy/instalar-servidor.sh`) no segundo:
 
 - [x] **`SECRET_KEY` própria e secreta** — gerada na criação, nunca digitada
       por ninguém. Ela assina as sessões *e* os links de download.
-- [x] **Postgres, não SQLite** — gerenciado no Render; no compose de produção
-      no VPS.
+- [x] **Postgres, não SQLite** — o Supabase, num schema próprio; no compose
+      de produção no VPS.
 - [x] **Migrações de esquema** — Alembic, automático na subida.
 - [x] **HTTPS com certificado válido** — pronto no Render; Caddy + Let's
       Encrypt no VPS.
 - [x] **Banco e armazenamento fechados** — o banco não fica exposto e o bucket
       não é público; o acesso aos arquivos é por URL assinada de uma hora.
-- [x] **Backup do banco** — do Render no primeiro caminho; diário às 02:15,
-      com rotação de 14 dias, no segundo.
+- [x] **Backup do banco no VPS** — diário às 02:15, com rotação de 14 dias.
 
-Sobram quatro, que dependem de você:
+Sobram cinco, que dependem de você:
+
+- [ ] **Backup do banco no caminho do Render** — o Supabase gratuito
+      normalmente não oferece cópia restaurável. Falta montar um `pg_dump`
+      periódico do schema `treele` para fora do Supabase. Até lá, não
+      desligue o fluxo antigo.
 
 - [ ] **Trocar a senha do administrador** depois do primeiro acesso.
 - [ ] **Liberar o CORS do bucket** — só no caminho do Render (passo 4 do

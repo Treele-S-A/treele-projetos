@@ -9,11 +9,11 @@ from logging.config import fileConfig
 from pathlib import Path
 
 from alembic import context
-from sqlalchemy import engine_from_config, pool
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from app.config import settings  # noqa: E402
+from app.db import engine  # noqa: E402
 from app.models import Base  # noqa: E402
 
 config = context.config
@@ -37,13 +37,11 @@ def executar_offline() -> None:
 
 
 def executar_online() -> None:
-    conexao = engine_from_config(
-        config.get_section(config.config_ini_section, {}),
-        prefix="sqlalchemy.",
-        poolclass=pool.NullPool,
-    )
-
-    with conexao.connect() as conn:
+    # A mesma engine da aplicação, não uma criada aqui a partir do ini: assim
+    # a migração herda os mesmos ajustes de conexão (schema isolado, prepared
+    # statements desligados para o pooler) e não existe o risco de migrar num
+    # schema e a aplicação ler de outro.
+    with engine.connect() as conn:
         context.configure(
             connection=conn,
             target_metadata=target_metadata,
@@ -52,6 +50,9 @@ def executar_online() -> None:
             # baixo dos panos. Sem isto, migração que altera coluna só rodaria
             # em Postgres.
             render_as_batch=settings.database_url.startswith("sqlite"),
+            # O controle de versão do Alembic mora junto com as tabelas dele,
+            # não no "public" de outra aplicação.
+            version_table_schema=settings.db_schema or None,
         )
         with context.begin_transaction():
             context.run_migrations()

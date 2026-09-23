@@ -133,9 +133,17 @@ def semear(db: Session) -> None:
         # O padrão global nunca foi editado por ninguém: ainda é um que nós
         # distribuímos. Pode ser atualizado com segurança. Se alguém tiver
         # customizado, o template não estará nesta lista e nada é tocado.
-        for campo, valor in PADRAO_INICIAL.items():
-            setattr(global_, campo, valor)
-        print("padrão de nomenclatura global atualizado", flush=True)
+        diferentes = {
+            campo: valor
+            for campo, valor in PADRAO_INICIAL.items()
+            if getattr(global_, campo) != valor
+        }
+        # Só avisa quando muda de fato — senão o log de cada subida diria que
+        # o padrão foi alterado sem ninguém ter alterado nada.
+        if diferentes:
+            for campo, valor in diferentes.items():
+                setattr(global_, campo, valor)
+            print("padrão de nomenclatura global atualizado", flush=True)
 
     if not db.scalar(select(func.count()).select_from(Usuario)):
         senha = settings.admin_senha or secrets.token_urlsafe(12)

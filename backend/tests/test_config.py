@@ -74,3 +74,37 @@ def test_sqlite_nao_e_tocado():
     assert _settings(database_url="sqlite:///./treele.db").database_url.startswith(
         "sqlite:///"
     )
+
+
+# ---------------------------------------------------------------- DB_SCHEMA
+
+
+def test_schema_vazio_mantem_o_padrao_do_banco():
+    """Vazio é o padrão, e precisa continuar sendo.
+
+    Quem já roda em Postgres dedicado tem os dados em "public". Um padrão
+    diferente faria o sistema achar o banco vazio na próxima subida.
+    """
+    assert _settings().db_schema == ""
+
+
+def test_schema_valido_e_aceito():
+    assert _settings(db_schema="treele").db_schema == "treele"
+
+
+@pytest.mark.parametrize(
+    "invalido",
+    ['treele"; drop table usuarios; --', "Treele", "treele-projetos", "1treele"],
+)
+def test_schema_que_viraria_sql_solto_e_recusado(invalido):
+    with pytest.raises(ValueError, match="DB_SCHEMA"):
+        _settings(db_schema=invalido)
+
+
+# ----------------------------------------------------------- ESTATICOS_DIR
+
+
+@pytest.mark.parametrize("vazio", ["", "   "])
+def test_estaticos_vazio_quer_dizer_sem_interface(vazio):
+    """Sem isto, Path("") vira "." — e a subida cai procurando ./assets."""
+    assert _settings(estaticos_dir=vazio).estaticos_dir is None

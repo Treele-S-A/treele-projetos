@@ -190,6 +190,7 @@ justamente como o BCF já funciona.
 | Acesso da obra | Vê liberado e obsoleto; não vê o que está em andamento | 22/09/2026 |
 | Ordem das fases | Colaboração (1.5) antes do chat com IA (2) | 18/09/2026 |
 | Hospedagem | Render (gerenciado) + Cloudflare R2; VPS fica como alternativa | 22/09/2026 |
+| Banco em produção | Supabase já existente (plano gratuito), schema próprio `treele` | 23/09/2026 |
 | Interface e API | Mesma imagem, mesmo processo: API sob `/api`, telas sob `/` | 22/09/2026 |
 
 ## Em aberto

@@ -1,19 +1,17 @@
 # Infraestrutura no Render, versionada junto com o código.
 #
 # No painel: New → Blueprint → aponte para este repositório. O Render lê este
-# arquivo, cria o banco e o serviço, e conecta os dois.
+# arquivo e cria o serviço.
 #
-# O que NÃO está aqui são os segredos do armazenamento (Cloudflare R2). Eles
-# são preenchidos uma vez no painel — ver docs/render.md.
-
-databases:
-  - name: treele-banco
-    databaseName: treele
-    user: treele
-    plan: basic-256mb
-    # Postgres gerenciado: backup automático e atualização de versão ficam com
-    # o Render. O backup dos ARQUIVOS continua sendo por nossa conta — eles
-    # estão no R2, não no banco.
+# O banco NÃO é criado aqui: a TREELE já usa um projeto no Supabase (Postgres
+# gerenciado, plano gratuito) para outro sistema, com espaço sobrando (161 de
+# 500 MB usados — conferido em 23/09/2026), e este sistema guarda só metadado —
+# os arquivos ficam no R2, não no banco. Reaproveitar evita pagar um banco a
+# mais. DATABASE_URL é preenchida no painel com a string do *Transaction
+# pooler* do Supabase (porta 6543) — ver docs/render.md, passo 2.3.
+#
+# O que também NÃO está aqui são os segredos do armazenamento (Cloudflare R2).
+# Eles são preenchidos uma vez no painel — ver docs/render.md.
 
 services:
   - type: web
@@ -24,9 +22,11 @@ services:
     healthCheckPath: /api/saude
     envVars:
       - key: DATABASE_URL
-        fromDatabase:
-          name: treele-banco
-          property: connectionString
+        sync: false
+      # Schema próprio dentro do banco compartilhado: as tabelas deste sistema
+      # não se misturam com as do outro app que já mora no "public".
+      - key: DB_SCHEMA
+        value: treele
 
       # Gerado pelo Render na criação e nunca mais mostrado. Assina as sessões
       # e os links de download.

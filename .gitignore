@@ -16,3 +16,6 @@ frontend/dist/
 # Sistema
 .DS_Store
 Thumbs.db
+
+# Anotações locais de credenciais — nunca versionar.
+cloudfare/

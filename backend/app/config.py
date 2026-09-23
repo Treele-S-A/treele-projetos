@@ -1,5 +1,6 @@
 """Configuração da aplicação, lida de variáveis de ambiente ou do arquivo .env."""
 
+import re
 from functools import lru_cache
 from pathlib import Path
 
@@ -28,6 +29,15 @@ class Settings(BaseSettings):
 
     # SQLite por padrão para rodar sem Docker; o docker-compose injeta Postgres.
     database_url: str = f"sqlite:///{(DATA_DIR / 'treele.db').as_posix()}"
+
+    # Vazio = as tabelas vão para o schema padrão do banco ("public"), como
+    # sempre foi. Preencher isola este sistema num schema próprio dentro de um
+    # banco Postgres que também serve outra aplicação — o caso de reaproveitar
+    # um projeto Supabase já existente. Nunca mudar o padrão para um valor
+    # fixo: quem já roda em Postgres dedicado tem os dados em "public", e
+    # trocar o schema por baixo faria o sistema achar o banco vazio na
+    # próxima subida.
+    db_schema: str = ""
 
     # "local" grava em disco e assina URLs pela própria API.
     # "s3" usa MinIO/S3 com URLs pré-assinadas (o navegador fala direto com o storage).
@@ -68,6 +78,33 @@ class Settings(BaseSettings):
     # e-mail o recusa, o que deixaria o admin sem conseguir entrar.
     admin_email: str = "admin@treele.com.br"
     admin_senha: str | None = None
+
+    @field_validator("db_schema")
+    @classmethod
+    def _schema_seguro(cls, valor: str) -> str:
+        """Identificador simples, porque vai direto para dentro de SQL.
+
+        O schema vem de variável de ambiente, não de entrada de usuário, mas um
+        valor mal colado viraria SQL solto no `SET search_path` — mesmo cuidado
+        do storage.py com nome de arquivo.
+        """
+        if valor and not re.fullmatch(r"[a-z_][a-z0-9_]*", valor):
+            raise ValueError(
+                "DB_SCHEMA inválido: use letras minúsculas, números e underscore."
+            )
+        return valor
+
+    @field_validator("estaticos_dir", mode="before")
+    @classmethod
+    def _vazio_e_nenhum(cls, valor):
+        """ESTATICOS_DIR vazia quer dizer "sem interface", não "pasta atual".
+
+        Sem isto, `Path("")` vira `.`, que existe — e a subida cai procurando
+        `./assets`, justamente quando alguém tentou desligar a interface.
+        """
+        if isinstance(valor, str) and not valor.strip():
+            return None
+        return valor
 
     @field_validator("database_url")
     @classmethod

@@ -23,15 +23,22 @@ mais controle; este aqui é mais simples e não pede administração de servidor
     │                          Render (um contêiner)
     │                          interface + API no mesmo processo
     │                                     │
-    │                                     └──── Postgres gerenciado (Render)
+    │                                     └──── Postgres (Supabase, já existente)
     │
     └──── PUT/GET direto por URL assinada ────── Cloudflare R2 (os arquivos)
 ```
 
-São **dois fornecedores de propósito**. O Render cobra tráfego de saída; o R2
-não cobra nada. Como quase todo o tráfego do sistema é gente da obra baixando
-arquivo, deixar os arquivos no R2 é o que mantém a conta previsível — e o
-arquivo já não passava pela API mesmo.
+São **três fornecedores de propósito**, e o banco é o único que já era de
+vocês antes deste roteiro: a TREELE já usa o Supabase (plano gratuito) para
+outro sistema, e sobra espaço (161 de 500 MB usados, conferido em 23/09/2026)
+para o metadado deste — que é texto (nome do documento, revisão, status,
+trilha de auditoria), não arquivo. Os arquivos pesados (DWG, RVT, PDF) vão
+para o R2, não para o Supabase; por isso este sistema, sozinho, ocupa poucos
+megabytes. O limite de 500 MB, porém, é um só para os dois sistemas.
+
+Usa-se **só o Postgres** do Supabase, não o Auth nem o Storage dele — o login
+deste sistema já está pronto e testado, e reescrevê-lo para depender de outro
+serviço seria trabalho sem necessidade.
 
 ---
 
@@ -40,27 +47,32 @@ arquivo já não passava pela API mesmo.
 | | Por mês |
 |---|---|
 | Render — serviço web (plano Starter) | US$ 7 |
-| Render — Postgres (plano Basic 256 MB) | US$ 6 |
+| Supabase — plano gratuito, já usado pela TREELE para outro sistema | R$ 0 |
 | Cloudflare R2 — até 10 GB, sem custo de saída | US$ 0 |
-| **Total** | **≈ US$ 13 (~R$ 70)** |
+| **Total adicional** | **≈ US$ 7 (~R$ 35)** |
 
 O acervo de vocês tem poucos gigabytes e cresce de 2 a 4 GB por ano — os
 modelos Revit continuam no Drive. Os 10 GB gratuitos do R2 cobrem alguns anos;
 depois disso o R2 cobra por GB armazenado, e continua sem cobrar saída.
 
-**Por que não o plano gratuito do Render.** O serviço web gratuito hiberna
+**Por que não o plano gratuito do Render para o serviço web.** Ele hiberna
 depois de alguns minutos parado e leva perto de um minuto para acordar — quem
-abre o sistema acha que caiu. E o Postgres gratuito tem prazo de validade. Para
-avaliar por uma tarde serve; para a equipe usar, não.
+abre o sistema acha que caiu. Para avaliar por uma tarde serve; para a equipe
+usar, não. (O Postgres próprio do Render nem entra mais nessa conta — ver
+acima.)
 
 Confira os preços no painel antes de confirmar: eles mudam, e a cotação do
-dólar também.
+dólar também. Vale acompanhar também o uso do Supabase (**Project Settings →
+Usage**) depois que este sistema entrar em produção, para saber quando os
+500 MB gratuitos vão apertar de vez — nesse dia, a saída é o plano Pro do
+Supabase, não sair dele.
 
 ---
 
 ## Antes de começar
 
-Três contas gratuitas:
+Três contas — criar é gratuito; o que se paga é o serviço no Render. O
+Supabase vocês já têm.
 
 | Conta | Para quê |
 |---|---|
@@ -123,17 +135,34 @@ O endpoint é o endereço **sem** o nome do bucket no fim. Se o painel mostrar
 > A configuração de CORS do bucket é o passo 4 — ela precisa do endereço do
 > sistema, que só existe depois do passo 3.
 
+## 2.3 — Pegar a string de conexão do Supabase
+
+No projeto do Supabase que a TREELE já usa: botão **Connect**, no topo do
+painel (ou *Project Settings → Database*). Escolha a string do **Transaction
+pooler** (porta `6543`) — é a que divide melhor o limite de conexões do plano
+gratuito. A do *Session pooler* também funciona; a *Direct connection*, não
+use: ela pode não ser alcançável a partir do Render.
+
+Troque `[YOUR-PASSWORD]` na string pela senha do banco. Se ninguém lembra
+qual é, dá para gerar outra em *Database → Settings* — mas **confira antes se o
+outro sistema usa essa senha**: o Lovable costuma falar com o Supabase por
+chave de API, não pela senha do banco, mas vale a certeza antes de trocar.
+
+Copie essa string agora, mas **não cole em lugar nenhum ainda** além do
+próprio Render, no próximo passo — ela contém a senha do banco.
+
 ## 3. Criar tudo no Render
 
 No painel: **New → Blueprint → Connect a repository** e escolha
 `treele-projetos`. O Render lê o [`render.yaml`](../render.yaml) do repositório
-e monta sozinho o banco, o serviço web e a ligação entre os dois.
+e monta o serviço web.
 
 Ele vai pedir os valores que o arquivo deixou em branco de propósito, porque
 são segredos:
 
 | Campo | O que pôr |
 |---|---|
+| `DATABASE_URL` | a string de conexão do passo 2.3, exatamente como o Supabase mostrou |
 | `S3_ENDPOINT` | o endpoint do passo 2.2 |
 | `S3_ACCESS_KEY` | a Access Key ID do passo 2.2 |
 | `S3_SECRET_KEY` | a Secret Access Key do passo 2.2 |
@@ -144,6 +173,12 @@ são segredos:
 Clique em **Apply**. A primeira construção leva de 8 a 15 minutos: ela compila
 a interface e instala as dependências do Python. As seguintes são mais rápidas,
 por causa do cache.
+
+Na primeira subida, o sistema cria o schema `treele` dentro do banco do
+Supabase e as tabelas dele lá dentro — o `public`, onde mora o outro sistema,
+não é tocado. Isso foi testado com uma tabela de mesmo nome (`usuarios`) já
+existindo no `public`, e através de um pooler igual ao do Supabase, com
+conexões simultâneas.
 
 Quando terminar, o Render mostra o endereço — algo como
 `https://treele.onrender.com`. **Anote.**
@@ -200,7 +235,7 @@ nessa ordem de probabilidade.
 
 ## Se der errado
 
-Os quatro tropeços prováveis, na ordem em que aparecem:
+Os cinco tropeços prováveis, na ordem em que aparecem:
 
 | O que você vê | O que é |
 |---|---|
@@ -208,12 +243,25 @@ Os quatro tropeços prováveis, na ordem em que aparecem:
 | O serviço sobe e cai, dizendo `SECRET_KEY inválida para produção` | A chave não foi gerada ou ficou curta. Em *Environment*, apague `SECRET_KEY` e deixe o Render gerar outra. O sistema se recusa a rodar com chave fraca de propósito: ela assina as sessões *e* os links de download. |
 | Aparece `aviso: não foi possível confirmar o bucket` no log, mas o sistema sobe | Normal no R2: a chave enxerga os objetos, não o bucket. Só é problema se o envio também falhar. |
 | O envio de arquivo falha no navegador sem mensagem clara | CORS do bucket (passo 4). Confira se o endereço em `AllowedOrigins` é exatamente o do sistema, sem barra no fim. |
+| O serviço sobe e cai, dizendo `DB_SCHEMA é 'treele', mas a transação está em ...` | O sistema se recusou a criar tabelas fora do schema dele — de propósito, para não tocar no banco do outro app. Confira se `DATABASE_URL` é a string do Supabase, completa. |
 
 ## Backup
 
-**O banco** — catálogo, revisões, permissões, auditoria — é responsabilidade do
-Render no plano pago: ele faz cópia diária e permite restaurar por lá. Confirme
-no painel do banco, em *Backups*, que está ativo e qual é a retenção.
+**O banco** — catálogo, revisões, permissões, auditoria — mora no Supabase, no
+plano gratuito. **Confira em *Database → Backups* do Supabase se existe cópia
+restaurável nesse plano.** O comum no gratuito é não existir — e aí o backup do
+banco passa a ser por nossa conta, porque ele é a única coisa que não se
+reconstrói: os arquivos estão no R2 (e no Drive), mas qual revisão está
+liberada, quem enviou e a trilha de auditoria só existem aqui.
+
+A defesa é um `pg_dump` só do schema `treele`, periódico, guardado fora do
+Supabase — por exemplo, no próprio R2. Isso **ainda não está montado**: é o
+próximo item depois de o sistema subir. Enquanto não estiver, não desligue o
+fluxo antigo.
+
+Esse é o custo real de reaproveitar o Supabase gratuito em vez do Postgres
+pago do Render: os US$ 6 por mês incluíam backup diário. Vale a troca, mas só
+com o dump montado.
 
 **Os arquivos** ficam no R2 e são responsabilidade de vocês. O risco real não é
 corromper um arquivo — o sistema nunca substitui bytes de revisão liberada,
@@ -257,5 +305,12 @@ Vale saber antes, para não virar surpresa:
 - **O plano Starter tem 512 MB de RAM.** Sobra para a Fase 1. A Fase 3 —
   descrição automática do que mudou entre revisões, que abre IFC e PDF — vai
   pedir mais; na hora, é trocar o plano no painel, sem mexer em código.
-- **Dependência de dois fornecedores.** Em compensação, o dado fica separado do
-  processamento: se um dia trocarmos de hospedagem, o acervo no R2 não se move.
+- **Dependência de três fornecedores** (Render, Supabase, Cloudflare). Em
+  compensação, dado e processamento ficam separados: se um dia trocarmos de
+  hospedagem, nem o banco nem o acervo se movem.
+- **O banco é dividido com outro sistema.** As tabelas deste ficam no schema
+  `treele`, sem tocar nas do outro app — mas o limite de 500 MB do plano
+  gratuito é um só, para os dois. Acompanhe em *Project Settings → Usage*.
+- **O Supabase gratuito pausa projetos parados por uma semana.** Com dois
+  sistemas usando o mesmo projeto todo dia, isso não deve acontecer; se um dia
+  acontecer, é reativar no painel.
