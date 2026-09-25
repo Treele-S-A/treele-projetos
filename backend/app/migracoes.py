@@ -65,10 +65,18 @@ def aplicar(engine: Engine) -> None:
         inspect(engine).get_table_names(schema=settings.db_schema or None)
     )
 
-    if tabelas and "alembic_version" not in tabelas:
-        # Banco anterior ao Alembic: as tabelas existem mas não há histórico.
-        # Sem carimbar, o Alembic tentaria criar tudo de novo e falharia.
-        command.stamp(_config(), BASELINE)
-        print("banco existente carimbado com a migração inicial", flush=True)
+    with engine.connect() as conn:
+        # A conexão vai junto para o env.py: é ela que diz qual banco migrar.
+        # Sem isto o env.py migraria sempre o banco da aplicação, qualquer que
+        # fosse a engine recebida aqui.
+        cfg = _config()
+        cfg.attributes["connection"] = conn
 
-    command.upgrade(_config(), "head")
+        if tabelas and "alembic_version" not in tabelas:
+            # Banco anterior ao Alembic: as tabelas existem mas não há
+            # histórico. Sem carimbar, o Alembic tentaria criar tudo de novo e
+            # falharia.
+            command.stamp(cfg, BASELINE)
+            print("banco existente carimbado com a migração inicial", flush=True)
+
+        command.upgrade(cfg, "head")
