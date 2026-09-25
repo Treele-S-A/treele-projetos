@@ -19,7 +19,7 @@ class Settings(BaseSettings):
         env_file=".env", env_file_encoding="utf-8", extra="ignore"
     )
 
-    app_nome: str = "TREELE — Gestão de Projetos"
+    app_nome: str = "Treèle — Controle de revisões"
     ambiente: str = "dev"
 
     # Trocar obrigatoriamente em produção (ver README) — e a validação abaixo

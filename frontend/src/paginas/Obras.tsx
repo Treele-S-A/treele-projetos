@@ -95,44 +95,30 @@ export default function Obras() {
         </div>
       )}
 
-      <div className="folha">
-        {obras.length === 0 ? (
+      {obras.length === 0 ? (
+        <div className="folha">
           <Vazio titulo="Nenhuma obra ainda">
             {usuario?.admin
               ? "Crie a primeira obra para começar o acervo."
               : "Peça ao coordenador para incluir você na equipe de uma obra."}
           </Vazio>
-        ) : (
-          <div className="tabela-rolagem">
-            <table className="tabela">
-              <thead>
-                <tr>
-                  <th>Código</th>
-                  <th>Nome</th>
-                  <th>Cliente</th>
-                  <th>Seu papel</th>
-                </tr>
-              </thead>
-              <tbody>
-                {obras.map((o) => (
-                  <tr key={o.id}>
-                    <td>
-                      <Link className="link-doc" to={`/obras/${o.id}/acervo`}>
-                        {o.codigo}
-                      </Link>
-                    </td>
-                    <td>{o.nome}</td>
-                    <td className="silencioso">{o.cliente ?? "—"}</td>
-                    <td className="silencioso">
-                      {o.papel ? ROTULO_PAPEL[o.papel] : usuario?.admin ? "Administrador" : "—"}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+        </div>
+      ) : (
+        <div className="obras-grade" style={{ marginTop: abrindoForm ? 16 : 0 }}>
+          {obras.map((o) => (
+            <Link key={o.id} className="cartao-obra" to={`/obras/${o.id}/acervo`}>
+              <span className="codigo">{o.codigo}</span>
+              <span className="nome-obra">{o.nome}</span>
+              <span className="pe">
+                <span>{o.cliente ?? "Sem cliente informado"}</span>
+                <span>
+                  {o.papel ? ROTULO_PAPEL[o.papel] : usuario?.admin ? "Administrador" : ""}
+                </span>
+              </span>
+            </Link>
+          ))}
+        </div>
+      )}
     </>
   );
 }

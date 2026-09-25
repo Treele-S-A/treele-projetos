@@ -354,7 +354,7 @@ def texto_sem_acento(valor: str) -> str:
 
 # Padrão global usado por obras que não definiram o seu.
 PADRAO_INICIAL = {
-    "nome": "Padrão TREELE",
+    "nome": "Padrão Treèle",
     "template": "{obra}-{disciplina}-{fase}-{prancha}-R{revisao}",
     "tokens": {
         "obra": {"tipo": "obra", "rotulo": "obra"},

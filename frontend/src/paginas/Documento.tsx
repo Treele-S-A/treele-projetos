@@ -134,7 +134,17 @@ export default function Documento() {
             </div>
           )}
         </div>
-        {atual && <Selo status={atual.status} />}
+        {atual && (
+          <Selo
+            status={atual.status}
+            numero={atual.numero}
+            data={
+              atual.status === "liberado_para_obra" && atual.publicada_em
+                ? new Date(atual.publicada_em).toLocaleDateString("pt-BR")
+                : null
+            }
+          />
+        )}
       </div>
 
       {erro && <Aviso tom="erro" titulo={erro.message} itens={erro.erros} />}

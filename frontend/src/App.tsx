@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Navigate, NavLink, Outlet, Route, Routes, useLocation, useNavigate } from "react-router-dom";
-import { Carregando } from "./componentes";
+import { Carregando, SIMBOLO } from "./componentes";
 import { useSessao } from "./sessao";
 import Acervo from "./paginas/Acervo";
 import Configuracoes from "./paginas/Configuracoes";
@@ -52,8 +52,11 @@ function Moldura() {
     <div className="app">
       <nav className="prancheta">
         <div className="marca">
-          <div className="marca-nome">TREELE</div>
-          <div className="marca-sub">Controle de revisões</div>
+          <img className="marca-simbolo" src={SIMBOLO} alt="" />
+          <div>
+            <div className="marca-nome">Projetos</div>
+            <div className="marca-sub">Treèle Construtora</div>
+          </div>
         </div>
 
         {obras.length > 0 && (
@@ -80,7 +83,12 @@ function Moldura() {
             <>
               <NavLink
                 to={`/obras/${obra.id}/acervo`}
-                className={({ isActive }) => (isActive ? "ativo" : "")}
+                // A pasta é uma vista do acervo: o item continua marcado nela.
+                className={({ isActive }) =>
+                  isActive || local.pathname.startsWith(`/obras/${obra.id}/pastas/`)
+                    ? "ativo"
+                    : ""
+                }
               >
                 Acervo
               </NavLink>
@@ -124,7 +132,7 @@ function Moldura() {
 
         <div className="rodape-rail">
           <div className="nome">{usuario?.nome}</div>
-          <div style={{ color: "#77828f" }}>
+          <div className="papel">
             {obra?.papel
               ? `${obra.papel[0].toUpperCase()}${obra.papel.slice(1)} nesta obra`
               : usuario?.admin
