@@ -15,7 +15,7 @@ from fastapi import APIRouter, HTTPException, Request, status
 from fastapi.responses import FileResponse, Response
 
 from ..config import settings
-from ..services.storage import ArmazenamentoLocal, armazenamento
+from ..services.storage import ArmazenamentoLocal, armazenamento, detectar_imagem
 
 router = APIRouter(prefix="/storage", tags=["storage"], include_in_schema=False)
 
@@ -71,7 +71,7 @@ async def enviar(request: Request, chave: str, acao: str, exp: int, assinatura: 
 
 @router.get("/local")
 def baixar(chave: str, acao: str, exp: int, assinatura: str, nome: str | None = None):
-    if acao != "get":
+    if acao not in ("get", "img"):
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Ação inválida para este link.")
     local = _validar(chave, acao, exp, assinatura)
 
@@ -82,6 +82,19 @@ def baixar(chave: str, acao: str, exp: int, assinatura: str, nome: str | None = 
 
     if not caminho.is_file():
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Arquivo não encontrado.")
+
+    if acao == "img":
+        # Exibir, não baixar. O tipo vem dos bytes do arquivo, e só imagem
+        # passa: "nosniff" impede o navegador de adivinhar outra coisa.
+        with open(caminho, "rb") as fh:
+            imagem = detectar_imagem(fh.read(16))
+        if imagem is None:
+            raise HTTPException(status.HTTP_415_UNSUPPORTED_MEDIA_TYPE, "Não é imagem.")
+        return FileResponse(
+            caminho,
+            media_type=imagem[0],
+            headers={"Content-Disposition": "inline", "X-Content-Type-Options": "nosniff"},
+        )
 
     nome_final = nome or caminho.name
     return FileResponse(

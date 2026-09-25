@@ -19,3 +19,6 @@ Thumbs.db
 
 # Anotações locais de credenciais — nunca versionar.
 cloudfare/
+
+# Cache do compilador TypeScript — refeito a cada "tsc -b".
+*.tsbuildinfo

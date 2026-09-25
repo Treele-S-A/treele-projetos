@@ -57,6 +57,9 @@ class Settings(BaseSettings):
     s3_secret_key: str | None = None
 
     url_expira_segundos: int = 3600
+    # Logo fica na tela o expediente inteiro; link de uma hora quebraria a
+    # imagem de quem deixa a aba aberta. Arquivo de projeto continua em uma.
+    url_imagem_expira_segundos: int = 12 * 3600
     tamanho_max_mb: int = 2048
 
     base_url: str = "http://localhost:8000"

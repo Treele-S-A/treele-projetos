@@ -92,6 +92,9 @@ export const api = {
   put: <T>(c: string, corpo?: unknown) =>
     pedir<T>(c, { method: "PUT", body: corpo === undefined ? undefined : JSON.stringify(corpo) }),
   delete: <T>(c: string) => pedir<T>(c, { method: "DELETE" }),
+  /** Imagem crua no corpo, com o tipo dela — não é JSON. */
+  enviarImagem: <T>(c: string, imagem: Blob) =>
+    pedir<T>(c, { method: "PUT", body: imagem, headers: { "Content-Type": imagem.type } }),
   base: BASE,
 };
 
@@ -122,6 +125,8 @@ export interface Obra {
   ativa: boolean;
   regra_companheiro: Record<string, string[]>;
   responsavel: Usuario | null;
+  /** Assinado e com prazo (12 h): vem novo a cada leitura da obra. */
+  logo_url: string | null;
   papel: PapelObra | null;
   permissoes: string[];
 }

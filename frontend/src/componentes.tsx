@@ -1,8 +1,37 @@
-import { useId, type ReactNode } from "react";
-import { ROTULO_STATUS, type StatusRevisao } from "./api";
+import { useId, useState, type ReactNode } from "react";
+import { ROTULO_STATUS, type Obra, type StatusRevisao } from "./api";
 
 /** Servido pela própria aplicação (frontend/public). */
 export const SIMBOLO = "/simbolo-treele.png";
+
+/**
+ * Logo do empreendimento, ou a reserva quando não há — ou quando o endereço
+ * assinado venceu (aba aberta há mais de 12 h). Imagem quebrada nunca aparece.
+ */
+export function LogoObra({
+  obra,
+  className,
+  alt = "",
+  reserva = null,
+}: {
+  obra: Pick<Obra, "logo_url">;
+  className?: string;
+  alt?: string;
+  reserva?: ReactNode;
+}) {
+  // Guarda QUAL endereço falhou: trocar o logo traz um endereço novo, e ele
+  // merece nova chance.
+  const [falhou, setFalhou] = useState<string | null>(null);
+  if (!obra.logo_url || falhou === obra.logo_url) return <>{reserva}</>;
+  return (
+    <img
+      className={className}
+      src={obra.logo_url}
+      alt={alt}
+      onError={() => setFalhou(obra.logo_url)}
+    />
+  );
+}
 
 export function Rotulo({ children }: { children: ReactNode }) {
   return <span className="rotulo">{children}</span>;

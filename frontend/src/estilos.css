@@ -1053,6 +1053,16 @@ table.tabela {
   transform: translateY(-1px);
 }
 
+/* O palco do logo: faixa clara no topo do cartão, de borda a borda. Altura
+   fixa para a grade não ficar desalinhada entre obra com e sem logo. */
+.cartao-obra .palco-logo {
+  margin: -18px -20px 14px;
+  height: 104px;
+  padding: 16px 24px;
+  background: #f7fafb;
+  border-bottom: 1px solid var(--traco-fino);
+}
+
 .cartao-obra .codigo {
   color: var(--link);
   font-size: 12px;
@@ -1075,6 +1085,81 @@ table.tabela {
   border-top: 1px solid var(--traco-fino);
   font-size: 12.5px;
   color: var(--tinta-2);
+}
+
+/* --------------------------------------------------------------------------
+   Logo do empreendimento
+   -------------------------------------------------------------------------- */
+
+/* A linha da grade precisa ter altura definida (minmax(0, 1fr) sobre a altura
+   do palco). Com linha "auto", o 100% da imagem não tem contra o que medir,
+   ela assume o tamanho natural e sai cortada pelo overflow. */
+.palco-logo {
+  display: grid;
+  grid-template: minmax(0, 1fr) / minmax(0, 1fr);
+  place-items: center;
+  overflow: hidden;
+}
+
+.palco-logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+/* Obra sem logo: o símbolo da treèle, apagado — a obra é da casa, só ainda
+   não tem marca própria cadastrada. */
+.palco-logo img.sem-logo {
+  width: 40px;
+  height: 40px;
+  opacity: 0.22;
+  filter: grayscale(1);
+}
+
+.config-logo {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  gap: 20px;
+  align-items: center;
+}
+
+.config-logo .palco-logo {
+  height: 120px;
+  padding: 14px;
+  background: #f7fafb;
+  border: 1px dashed var(--traco-medio);
+  border-radius: var(--raio-folha);
+}
+
+.cabecalho-obra {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  min-width: 0;
+}
+
+.logo-cabecalho {
+  flex: none;
+  height: 68px;
+  max-width: 180px;
+  padding: 8px 12px;
+  object-fit: contain;
+  background: var(--folha);
+  border: 1px solid var(--traco-fino);
+  border-radius: var(--raio-folha);
+  box-shadow: var(--sombra-folha);
+}
+
+@media (max-width: 700px) {
+  .config-logo {
+    grid-template-columns: 1fr;
+  }
+
+  .logo-cabecalho {
+    height: 52px;
+    max-width: 120px;
+    padding: 6px 8px;
+  }
 }
 
 /* --------------------------------------------------------------------------

@@ -191,6 +191,8 @@ justamente como o BCF já funciona.
 | Ordem das fases | Colaboração (1.5) antes do chat com IA (2) | 18/09/2026 |
 | Hospedagem | Render (gerenciado) + Cloudflare R2; VPS fica como alternativa | 22/09/2026 |
 | Banco em produção | Supabase já existente (plano gratuito), schema próprio `treele` | 23/09/2026 |
+| Identidade visual | Cores, símbolo e site da treèle; carimbo de liberação redondo | 25/09/2026 |
+| Logo por obra | Enviado em Configurações; passa pela API, conferido pelos bytes, sem SVG | 25/09/2026 |
 | Interface e API | Mesma imagem, mesmo processo: API sob `/api`, telas sob `/` | 22/09/2026 |
 
 ## Em aberto

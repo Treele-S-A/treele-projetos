@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from fastapi.concurrency import run_in_threadpool
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -36,6 +37,7 @@ from ..schemas import (
 )
 from ..services import auditoria
 from ..services.nomenclatura import analisar, validar_definicao
+from ..services.storage import armazenamento, chave_logo, detectar_imagem
 
 router = APIRouter(prefix="/obras", tags=["obras"])
 
@@ -164,6 +166,98 @@ def atualizar(
     )
     ctx.db.commit()
     return ctx.obra
+
+
+# --------------------------------------------------------------------------
+# Logo do empreendimento
+# --------------------------------------------------------------------------
+
+# A interface reduz a imagem antes de enviar (lado maior de 640 px), o que
+# deixa um logo típico em dezenas de KB. O limite só barra quem burlar a tela.
+LOGO_MAX_BYTES = 1024 * 1024
+
+
+@router.put("/{obra_id}/logo", response_model=ObraOut)
+async def enviar_logo(request: Request, ctx: ContextoObra = Depends(contexto_obra)):
+    """Troca o logo da obra. A imagem vem crua no corpo do PUT.
+
+    Diferente dos arquivos de projeto, que vão do navegador direto para o
+    armazenamento, o logo passa pela API: é pequeno, e precisa ser conferido
+    byte a byte antes de ser guardado — é ele que aparece para todo mundo.
+    """
+    ctx.exigir("gerenciar")
+
+    dados = bytearray()
+    async for pedaco in request.stream():
+        dados.extend(pedaco)
+        if len(dados) > LOGO_MAX_BYTES:
+            raise HTTPException(
+                status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                "O logo passa de 1 MB. Envie uma imagem menor.",
+            )
+    if not dados:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Nenhuma imagem recebida.")
+
+    imagem = detectar_imagem(bytes(dados[:16]))
+    if imagem is None:
+        raise HTTPException(
+            status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+            "Envie o logo em PNG, JPG ou WebP. SVG não é aceito.",
+        )
+
+    # Banco e armazenamento são chamadas bloqueantes (o R2 é rede): fora do
+    # laço de eventos, para um envio não travar as outras requisições.
+    return await run_in_threadpool(_trocar_logo, ctx, bytes(dados), *imagem, request)
+
+
+def _trocar_logo(
+    ctx: ContextoObra, dados: bytes, tipo: str, extensao: str, request: Request
+) -> Obra:
+    anterior = ctx.obra.logo_chave
+    chave = chave_logo(ctx.obra.codigo, extensao)
+
+    # Grava antes de apontar o banco para ele: se a gravação falhar, a obra
+    # continua com o logo que tinha, em vez de apontar para o vazio.
+    armazenamento.gravar_bytes(chave, dados, tipo)
+    ctx.obra.logo_chave = chave
+    ctx.obra.logo_tipo = tipo
+    auditoria.registrar(
+        ctx.db, acao="obra_logo_alterado", entidade="obra", entidade_id=ctx.obra.id,
+        usuario=ctx.usuario, obra_id=ctx.obra.id,
+        detalhes={"tipo": tipo, "tamanho": len(dados)}, request=request,
+    )
+    ctx.db.commit()
+
+    if anterior:
+        _apagar_imagem(anterior)
+    return ctx.obra
+
+
+@router.delete("/{obra_id}/logo", status_code=status.HTTP_204_NO_CONTENT)
+def remover_logo(request: Request, ctx: ContextoObra = Depends(contexto_obra)):
+    ctx.exigir("gerenciar")
+    anterior = ctx.obra.logo_chave
+    if anterior is None:
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+    ctx.obra.logo_chave = None
+    ctx.obra.logo_tipo = None
+    auditoria.registrar(
+        ctx.db, acao="obra_logo_removido", entidade="obra", entidade_id=ctx.obra.id,
+        usuario=ctx.usuario, obra_id=ctx.obra.id, request=request,
+    )
+    ctx.db.commit()
+    _apagar_imagem(anterior)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+def _apagar_imagem(chave: str) -> None:
+    """Apaga o logo substituído. Falhar aqui não desfaz nada: o banco já não
+    aponta para ele, e o pior caso é uma imagem órfã no armazenamento."""
+    try:
+        armazenamento.remover(chave)
+    except Exception as erro:  # noqa: BLE001 — limpeza, nunca motivo de erro
+        print(f"aviso: logo antigo não apagado ({chave}): {erro}", flush=True)
 
 
 # --------------------------------------------------------------------------

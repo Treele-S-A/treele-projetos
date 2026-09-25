@@ -90,6 +90,11 @@ class Obra(Base):
         ForeignKey("usuarios.id"), nullable=True
     )
 
+    # Logo do empreendimento. Guarda-se a chave no armazenamento, não a URL:
+    # a URL é assinada e expira, e é gerada a cada leitura (ver logo_url).
+    logo_chave: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    logo_tipo: Mapped[str | None] = mapped_column(String(40), nullable=True)
+
     criado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=agora)
 
     responsavel: Mapped["Usuario | None"] = relationship()
@@ -97,6 +102,22 @@ class Obra(Base):
         back_populates="obra", cascade="all, delete-orphan"
     )
     documentos: Mapped[list["Documento"]] = relationship(back_populates="obra")
+
+    @property
+    def logo_url(self) -> str | None:
+        """Endereço assinado do logo, para o navegador exibir numa <img>.
+
+        A <img> não manda o token de sessão, então o endereço carrega a própria
+        autorização — como os links de download. Não é público: logo de
+        empreendimento que ainda não foi lançado é segredo comercial.
+        """
+        if not self.logo_chave or not self.logo_tipo:
+            return None
+        # Importado aqui: o modelo não deve depender do armazenamento para
+        # ser carregado (migrações, scripts).
+        from .services.storage import armazenamento
+
+        return armazenamento.url_imagem(self.logo_chave, self.logo_tipo)
 
 
 class Disciplina(Base):

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import {
   api,
@@ -10,7 +10,8 @@ import {
   type PapelObra,
   type Usuario,
 } from "../api";
-import { Aviso, Carregando } from "../componentes";
+import { Aviso, Carregando, LogoObra } from "../componentes";
+import { prepararLogo } from "../imagem";
 import { useSessao } from "../sessao";
 
 const PAPEIS: PapelObra[] = ["coordenador", "projetista", "obra", "cliente"];
@@ -51,6 +52,7 @@ export default function Configuracoes() {
         </div>
       </div>
 
+      <Logo obra={obra} aoSalvar={recarregarObras} />
       <Responsavel obra={obra} aoSalvar={recarregarObras} />
       <Equipe obraId={obra.id} />
       <Nomenclatura obraId={obra.id} />
@@ -60,6 +62,110 @@ export default function Configuracoes() {
         aoSalvar={recarregarObras}
       />
     </>
+  );
+}
+
+/* ---------------------------------------------------------------------- logo */
+
+function Logo({ obra, aoSalvar }: { obra: Obra; aoSalvar: () => Promise<void> }) {
+  const entrada = useRef<HTMLInputElement>(null);
+  const [erro, setErro] = useState<string | null>(null);
+  const [ok, setOk] = useState<string | null>(null);
+  const [ocupado, setOcupado] = useState<"enviando" | "removendo" | null>(null);
+
+  async function enviar(arquivo: File | undefined) {
+    if (!arquivo) return;
+    setErro(null);
+    setOk(null);
+    setOcupado("enviando");
+    try {
+      const imagem = await prepararLogo(arquivo);
+      await api.enviarImagem(`/obras/${obra.id}/logo`, imagem);
+      await aoSalvar();
+      setOk("Logo salvo.");
+    } catch (ex) {
+      setErro(ex instanceof Error ? ex.message : "Não foi possível enviar o logo.");
+    } finally {
+      setOcupado(null);
+      // Sem limpar, escolher o mesmo arquivo de novo não dispara nada.
+      if (entrada.current) entrada.current.value = "";
+    }
+  }
+
+  async function remover() {
+    setErro(null);
+    setOk(null);
+    setOcupado("removendo");
+    try {
+      await api.delete(`/obras/${obra.id}/logo`);
+      await aoSalvar();
+      setOk("Logo removido.");
+    } catch (ex) {
+      setErro(ex instanceof Error ? ex.message : "Não foi possível remover o logo.");
+    } finally {
+      setOcupado(null);
+    }
+  }
+
+  return (
+    <div className="folha">
+      <div className="folha-titulo">
+        <strong>Logo do empreendimento</strong>
+        <span className="silencioso" style={{ fontSize: 12 }}>
+          Aparece na lista de obras e no acervo
+        </span>
+      </div>
+      <div className="folha-corpo">
+        {erro && <Aviso tom="erro">{erro}</Aviso>}
+        {ok && <Aviso tom="ok">{ok}</Aviso>}
+
+        <div className="config-logo">
+          <div className="palco-logo">
+            <LogoObra
+              obra={obra}
+              alt={`Logo do ${obra.nome}`}
+              reserva={<span className="silencioso">Sem logo</span>}
+            />
+          </div>
+          <div>
+            <p className="silencioso" style={{ marginTop: 0 }}>
+              PNG, JPG ou WebP. Prefira a versão colorida e com fundo transparente — a
+              versão branca some sobre o fundo claro. A imagem é reduzida e as margens
+              vazias são cortadas antes de enviar.
+            </p>
+            <div className="linha">
+              <button
+                className="botao"
+                onClick={() => entrada.current?.click()}
+                disabled={ocupado !== null}
+              >
+                {ocupado === "enviando"
+                  ? "Enviando…"
+                  : obra.logo_url
+                    ? "Trocar logo"
+                    : "Enviar logo"}
+              </button>
+              {obra.logo_url && (
+                <button
+                  className="botao secundario"
+                  onClick={remover}
+                  disabled={ocupado !== null}
+                >
+                  {ocupado === "removendo" ? "Removendo…" : "Remover"}
+                </button>
+              )}
+            </div>
+            <input
+              ref={entrada}
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              hidden
+              onChange={(e) => enviar(e.target.files?.[0])}
+            />
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
 

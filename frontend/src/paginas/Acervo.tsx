@@ -11,7 +11,7 @@ import {
   type TipoArquivo,
 } from "../api";
 import Arvore from "../Arvore";
-import { Aviso, Carregando, Estado, Vazio } from "../componentes";
+import { Aviso, Carregando, Estado, LogoObra, Vazio } from "../componentes";
 import { useSessao } from "../sessao";
 
 const POR_PAGINA = 50;
@@ -99,9 +99,12 @@ export default function Acervo() {
   return (
     <>
       <div className="cabecalho-area">
-        <div>
-          <span className="rotulo">{obra ? `Obra ${obra.codigo}` : "Obra"}</span>
-          <h1>{obra?.nome ?? "Acervo"}</h1>
+        <div className="cabecalho-obra">
+          {obra && <LogoObra obra={obra} className="logo-cabecalho" />}
+          <div>
+            <span className="rotulo">{obra ? `Obra ${obra.codigo}` : "Obra"}</span>
+            <h1>{obra?.nome ?? "Acervo"}</h1>
+          </div>
         </div>
         <div className="linha">
           <div className="seletor-visao" role="group" aria-label="Forma de ver o acervo">

@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { api, ErroApi, ROTULO_PAPEL } from "../api";
-import { Aviso, Vazio } from "../componentes";
+import { Aviso, LogoObra, SIMBOLO, Vazio } from "../componentes";
 import { useSessao } from "../sessao";
 
 export default function Obras() {
@@ -107,6 +107,13 @@ export default function Obras() {
         <div className="obras-grade" style={{ marginTop: abrindoForm ? 16 : 0 }}>
           {obras.map((o) => (
             <Link key={o.id} className="cartao-obra" to={`/obras/${o.id}/acervo`}>
+              {/* O nome vem logo abaixo, então o logo é decorativo (alt vazio). */}
+              <span className="palco-logo">
+                <LogoObra
+                  obra={o}
+                  reserva={<img className="sem-logo" src={SIMBOLO} alt="" />}
+                />
+              </span>
               <span className="codigo">{o.codigo}</span>
               <span className="nome-obra">{o.nome}</span>
               <span className="pe">

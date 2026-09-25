@@ -15,6 +15,8 @@ const ROTULO_ACAO: Record<string, string> = {
   documento_atualizado: "Editou documento",
   obra_criada: "Criou a obra",
   obra_atualizada: "Alterou a obra",
+  obra_logo_alterado: "Trocou o logo",
+  obra_logo_removido: "Removeu o logo",
   membro_adicionado: "Incluiu na equipe",
   membro_removido: "Removeu da equipe",
   padrao_definido: "Alterou a nomenclatura",

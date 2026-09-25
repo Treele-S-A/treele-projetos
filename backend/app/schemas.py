@@ -119,6 +119,7 @@ class ObraOut(Modelo):
     ativa: bool
     regra_companheiro: dict
     responsavel: UsuarioOut | None = None
+    logo_url: str | None = None
 
 
 class ObraComPapel(ObraOut):

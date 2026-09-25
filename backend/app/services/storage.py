@@ -41,6 +41,36 @@ def _ascii_seguro(valor: str) -> str:
     return _RE_INSEGURO.sub("_", sem_acento).strip("._-") or "arquivo"
 
 
+# Imagem reconhecida pelos primeiros bytes, não pela extensão nem pelo
+# Content-Type que o navegador declara — os dois são o remetente dizendo o que
+# quer. SVG fica de fora de propósito: é texto, pode carregar script, e aberto
+# direto no navegador roda.
+_ASSINATURAS_IMAGEM = (
+    (b"\x89PNG\r\n\x1a\n", "image/png", "png"),
+    (b"\xff\xd8\xff", "image/jpeg", "jpg"),
+)
+
+
+def detectar_imagem(dados: bytes) -> tuple[str, str] | None:
+    """(tipo, extensão) se os bytes forem PNG, JPEG ou WebP; senão None."""
+    for assinatura, tipo, extensao in _ASSINATURAS_IMAGEM:
+        if dados.startswith(assinatura):
+            return tipo, extensao
+    if len(dados) >= 12 and dados[:4] == b"RIFF" and dados[8:12] == b"WEBP":
+        return "image/webp", "webp"
+    return None
+
+
+def chave_logo(obra_codigo: str, extensao: str) -> str:
+    """Chave do logo da obra. Leva um sufixo aleatório: trocar o logo muda o
+    endereço, e nenhum navegador fica mostrando o antigo guardado."""
+    import secrets
+
+    return "/".join(
+        ["obras", _ascii_seguro(obra_codigo), "_marca", f"logo-{secrets.token_hex(6)}.{extensao}"]
+    )
+
+
 def montar_chave(
     obra_codigo: str, codigo_documento: str, revisao: str, nome_arquivo: str
 ) -> str:
@@ -77,8 +107,10 @@ class ArmazenamentoLocal:
             return False
         return hmac.compare_digest(self._assinar(chave, acao, exp), sig)
 
-    def _url(self, chave: str, acao: str, extra: dict | None = None) -> str:
-        exp = int(time.time()) + settings.url_expira_segundos
+    def _url(
+        self, chave: str, acao: str, extra: dict | None = None, expira: int | None = None
+    ) -> str:
+        exp = int(time.time()) + (expira or settings.url_expira_segundos)
         params = {
             "chave": chave,
             "acao": acao,
@@ -108,6 +140,15 @@ class ArmazenamentoLocal:
 
     def url_download(self, chave: str, nome_arquivo: str) -> str:
         return self._url(chave, "get", {"nome": nome_arquivo})
+
+    def url_imagem(self, chave: str, tipo: str) -> str:
+        # O tipo não vai na URL: ela é assinada só sobre chave, ação e prazo, e
+        # um parâmetro solto deixaria quem tem o link escolher o Content-Type.
+        # O endpoint descobre o tipo pelos bytes do arquivo.
+        return self._url(chave, "img", expira=settings.url_imagem_expira_segundos)
+
+    def gravar_bytes(self, chave: str, dados: bytes, tipo: str) -> None:
+        self.gravar(chave, [dados])
 
     def gravar(self, chave: str, pedacos) -> tuple[int, str]:
         destino = self.caminho(chave)
@@ -227,6 +268,27 @@ class ArmazenamentoS3:
                 "ResponseContentDisposition": disposicao,
             },
             ExpiresIn=settings.url_expira_segundos,
+        )
+
+    def url_imagem(self, chave: str, tipo: str) -> str:
+        # "inline" e o tipo fixados na própria assinatura: quem tem o link não
+        # consegue trocar nenhum dos dois.
+        return self.assinador.generate_presigned_url(
+            "get_object",
+            Params={
+                "Bucket": self.bucket,
+                "Key": chave,
+                "ResponseContentType": tipo,
+                "ResponseContentDisposition": "inline",
+            },
+            ExpiresIn=settings.url_imagem_expira_segundos,
+        )
+
+    def gravar_bytes(self, chave: str, dados: bytes, tipo: str) -> None:
+        # Única escrita que passa pela API: o logo tem no máximo 1 MB, e
+        # precisa ser conferido byte a byte antes de ser guardado.
+        self.cliente.put_object(
+            Bucket=self.bucket, Key=chave, Body=dados, ContentType=tipo
         )
 
     def info(self, chave: str) -> tuple[bool, int]:

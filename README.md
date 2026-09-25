@@ -127,6 +127,12 @@ O arquivo **nunca** passa pela API: o navegador recebe uma URL assinada de curta
 duração e fala direto com o storage. Sem isso um DWG de 800 MB ocupa um worker
 inteiro no upload, e quem está na obra com 4G não baixa nada.
 
+A única exceção é o **logo do empreendimento**, e ela é deliberada: tem no
+máximo 1 MB (a interface reduz e corta as margens antes de enviar) e passa
+pela API justamente para ser conferido byte a byte — só PNG, JPG ou WebP de
+verdade, nunca SVG, que pode carregar script. Quem troca é o coordenador, em
+Configurações da obra.
+
 O armazenamento tem dois back-ends com a mesma interface — `local` (disco, para
 desenvolvimento) e `s3` (MinIO auto-hospedado, S3, Cloudflare R2 ou Backblaze B2).
 Trocar é uma variável de ambiente; nenhum outro arquivo muda.
@@ -178,10 +184,10 @@ nomeia restrições sozinho.
 cd backend && .venv\Scripts\python -m pytest tests -q
 ```
 
-69 testes cobrindo o parser de nomenclatura, a regra de arquivo companheiro, a
-obsolescência automática, o controle de permissões, a trilha de auditoria e as
-regras de configuração que só aparecem em produção (chave de sessão, URL e
-schema do banco).
+86 testes cobrindo o parser de nomenclatura, a regra de arquivo companheiro, a
+obsolescência automática, o controle de permissões, a trilha de auditoria, o
+logo das obras, a migração sobre banco com dados e as regras de configuração
+que só aparecem em produção (chave de sessão, URL e schema do banco).
 
 ## Estrutura
 
