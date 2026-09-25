@@ -94,7 +94,7 @@ class Api:
         return self._chamar("PATCH", c, corpo)
 
 
-def enviar(api: Api, obra_id: int, nome: str, conteudo: bytes) -> dict:
+def enviar(api: Api, obra_id: int, nome: str, conteudo: bytes, titulo: str) -> dict:
     inicio = api.post(
         f"/obras/{obra_id}/uploads/iniciar",
         {
@@ -102,6 +102,9 @@ def enviar(api: Api, obra_id: int, nome: str, conteudo: bytes) -> dict:
             "tamanho": len(conteudo),
             "content_type": "application/octet-stream",
             "substituir": True,
+            # Obrigatório no primeiro envio do documento; nos seguintes a API
+            # ignora — o título já está lá.
+            "titulo": titulo,
         },
     )
     api._chamar(
@@ -162,21 +165,14 @@ def principal():
             continue
 
         revisoes = sorted({*liberar, "00"})
-        documento_id = None
         for rev in revisoes:
             revisao_id = None
             for formato in formatos:
                 nome = f"{codigo}-{disciplina}-{fase}-{seq}-R{rev}.{formato}"
                 corpo = CABECALHOS[formato] + f"{titulo} R{rev}".encode() + b"\n" * 64
-                r = enviar(api, obra_id, nome, corpo)
+                r = enviar(api, obra_id, nome, corpo, titulo)
                 revisao_id = r["revisao_id"]
-                documento_id = r["documento_id"]
                 enviados += 1
-
-            # O template padrão não tem campo de título, então ele é preenchido
-            # à parte — é o que a equipe faria pela interface.
-            if documento_id and rev == revisoes[0]:
-                api.patch(f"/documentos/{documento_id}", {"titulo": titulo})
 
             if rev in liberar and revisao_id:
                 api.post(

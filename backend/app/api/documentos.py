@@ -39,6 +39,7 @@ from ..schemas import (
     RevisaoResumo,
 )
 from ..services import auditoria
+from ..services.titulos import limpar_titulo, problema_no_titulo
 
 router = APIRouter(tags=["documentos"])
 
@@ -454,7 +455,12 @@ def atualizar(
     ctx.exigir("enviar")
 
     if dados.titulo is not None:
-        documento.titulo = dados.titulo.strip() or None
+        # Título pode ser trocado, nunca apagado: todo documento tem um.
+        titulo = limpar_titulo(dados.titulo)
+        problema = problema_no_titulo(titulo)
+        if problema:
+            raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, problema)
+        documento.titulo = titulo
 
     auditoria.registrar(
         db, acao="documento_atualizado", entidade="documento",

@@ -28,6 +28,7 @@ from ..schemas import UploadIniciarEntrada, UploadIniciarSaida
 from ..services import auditoria
 from ..services.nomenclatura import analisar
 from ..services.storage import armazenamento, montar_chave
+from ..services.titulos import limpar_titulo, problema_no_titulo
 
 router = APIRouter(tags=["envio"])
 
@@ -97,19 +98,42 @@ def iniciar(
         )
     )
     documento_novo = documento is None
+
+    # --- título -----------------------------------------------------------
+    # Obrigatório na primeira vez que o documento aparece; das revisões
+    # seguintes em diante, reaproveitado — quem manda a R03 não redigita, e um
+    # título diferente enviado junto é ignorado (título se edita na tela do
+    # documento). Documento antigo que ficou sem título pede um no próximo
+    # envio: assim, com o tempo, todo documento passa a ter. Conferido antes de
+    # criar qualquer coisa, para um envio recusado não deixar rastro.
+    titulo = limpar_titulo(dados.titulo) or limpar_titulo(r.titulo)
+    if documento is None or not documento.titulo:
+        problema = problema_no_titulo(titulo)
+        if problema:
+            raise HTTPException(
+                status.HTTP_422_UNPROCESSABLE_ENTITY,
+                {
+                    "mensagem": f"{r.codigo_documento} ainda não tem título.",
+                    "erros": [
+                        f"{problema} É por ele que a equipe encontra a prancha "
+                        "na lista e na pasta."
+                    ],
+                },
+            )
+
     if documento is None:
         documento = Documento(
             obra_id=ctx.obra.id,
             disciplina_id=disciplina.id,
             fase_id=fase.id,
             codigo=r.codigo_documento,
-            titulo=r.titulo,
+            titulo=titulo,
             criado_por_id=ctx.usuario.id,
         )
         db.add(documento)
         db.flush()
-    elif r.titulo and not documento.titulo:
-        documento.titulo = r.titulo
+    elif not documento.titulo:
+        documento.titulo = titulo
 
     # --- revisão ----------------------------------------------------------
     revisao = db.scalar(

@@ -219,6 +219,10 @@ export interface NomeAnalisado {
   titulo: string | null;
   tipo: TipoArquivo | null;
   documento_existe: boolean;
+  /** Título que o documento já tem, para quem envia a revisão seguinte conferir. */
+  documento_titulo: string | null;
+  /** O envio vai exigir título (documento novo, ou antigo que ficou sem). */
+  precisa_titulo: boolean;
   revisao_existe: boolean;
   revisao_status: StatusRevisao | null;
 }

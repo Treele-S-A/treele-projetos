@@ -631,6 +631,39 @@ table.tabela {
   text-underline-offset: 3px;
 }
 
+/* O título é o que se lê primeiro na linha — o código ao lado identifica. */
+.tabela td.titulo-lista {
+  font-weight: 500;
+  color: var(--tinta);
+}
+
+.tabela td.titulo-lista .sem,
+.doc-na-pasta .titulo.sem {
+  font-weight: 400;
+  font-style: italic;
+  color: var(--tinta-3);
+}
+
+.doc-na-pasta {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.doc-na-pasta .codigo {
+  font-size: 11.5px;
+  color: var(--tinta-3);
+}
+
+.doc-na-pasta .titulo {
+  font-size: 15.5px;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--tinta);
+  overflow-wrap: anywhere;
+}
+
 .tipos {
   display: flex;
   gap: 4px;
@@ -875,6 +908,68 @@ table.tabela {
   font-family: var(--fonte-mono);
   font-size: 11px;
   color: var(--tinta-2);
+}
+
+/* Título do documento, na linha do arquivo: é o que a pessoa reconhece. */
+.titulo-envio {
+  margin-top: 3px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--tinta);
+}
+
+/* Documento novo pede título antes de subir. Âmbar: não é erro, é um passo
+   que falta. */
+.titulos-novos {
+  margin-top: 14px;
+  padding: 14px 16px 16px;
+  border: 1px solid #f3dd9a;
+  border-left: 4px solid var(--revisao-marca);
+  border-radius: var(--raio);
+  background: var(--revisao-fundo);
+}
+
+.titulos-novos > p {
+  margin: 4px 0 12px;
+  font-size: 13px;
+}
+
+.campo-titulo {
+  display: grid;
+  grid-template-columns: minmax(150px, auto) 1fr auto;
+  gap: 12px;
+  align-items: center;
+}
+
+.campo-titulo + .campo-titulo {
+  margin-top: 8px;
+}
+
+.campo-titulo input {
+  width: 100%;
+  padding: 9px 11px;
+  background: var(--folha);
+  border: 1px solid var(--traco-medio);
+  border-radius: var(--raio);
+  font-size: 13.5px;
+}
+
+.campo-titulo input:focus {
+  outline: none;
+  border-color: var(--foco);
+  box-shadow: 0 0 0 3px rgba(0, 112, 168, 0.16);
+}
+
+.campo-titulo .silencioso {
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+@media (max-width: 700px) {
+  .campo-titulo {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
 }
 
 .barra {

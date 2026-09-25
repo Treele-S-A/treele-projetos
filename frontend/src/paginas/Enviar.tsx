@@ -11,6 +11,9 @@ import { useSessao } from "../sessao";
 
 type Estado = "pronto" | "invalido" | "enviando" | "concluido" | "erro";
 
+/** Mesmo mínimo do servidor (app/services/titulos.py). */
+const TITULO_MIN = 3;
+
 interface Item {
   arquivo: File;
   analise: NomeAnalisado;
@@ -65,6 +68,9 @@ export default function Enviar() {
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [sobre, setSobre] = useState(false);
+  // Um título por documento novo, não por arquivo: PDF e DWG da mesma prancha
+  // nova dividem o mesmo campo.
+  const [titulos, setTitulos] = useState<Record<string, string>>({});
   const entradaRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -118,6 +124,7 @@ export default function Enviar() {
           tamanho: item.arquivo.size,
           content_type: item.arquivo.type || "application/octet-stream",
           substituir: true,
+          titulo: tituloDe(item),
         });
 
         await enviarBytes(inicio.url, inicio.metodo, inicio.headers, item.arquivo, (f) =>
@@ -144,7 +151,29 @@ export default function Enviar() {
     setEnviando(false);
   }
 
-  const prontos = itens.filter((i) => i.estado === "pronto" || i.estado === "erro").length;
+  const pendentes = itens.filter((i) => i.estado === "pronto" || i.estado === "erro");
+  const prontos = pendentes.length;
+
+  // Documentos desta remessa que o servidor vai exigir título — quem decide é
+  // ele (precisa_titulo), com a mesma regra do envio.
+  const semTitulo = [
+    ...pendentes
+      .filter((i) => i.analise.precisa_titulo && i.analise.codigo_documento)
+      .reduce((mapa, i) => {
+        const codigo = i.analise.codigo_documento as string;
+        mapa.set(codigo, [...(mapa.get(codigo) ?? []), i.arquivo.name]);
+        return mapa;
+      }, new Map<string, string[]>()),
+  ];
+  const faltam = semTitulo.filter(
+    ([codigo]) => (titulos[codigo] ?? "").trim().length < TITULO_MIN,
+  ).length;
+
+  function tituloDe(item: Item): string | undefined {
+    const codigo = item.analise.codigo_documento;
+    if (!codigo || !item.analise.precisa_titulo) return undefined;
+    return titulos[codigo]?.trim() || undefined;
+  }
   const invalidos = itens.filter((i) => i.estado === "invalido").length;
   const concluidos = itens.filter((i) => i.estado === "concluido").length;
 
@@ -226,12 +255,56 @@ export default function Enviar() {
             <>
               <div className="lista-envio">
                 {itens.map((item, i) => (
-                  <Linha key={`${item.arquivo.name}-${i}`} item={item} />
+                  <Linha
+                    key={`${item.arquivo.name}-${i}`}
+                    item={item}
+                    titulo={
+                      item.analise.documento_titulo ??
+                      titulos[item.analise.codigo_documento ?? ""]?.trim() ??
+                      null
+                    }
+                  />
                 ))}
               </div>
 
+              {semTitulo.length > 0 && (
+                <div className="titulos-novos">
+                  <span className="rotulo">
+                    {semTitulo.length === 1
+                      ? "Documento novo — dê um título"
+                      : `${semTitulo.length} documentos novos — dê um título a cada um`}
+                  </span>
+                  <p className="silencioso">
+                    É por ele que a equipe encontra a prancha na lista e na pasta. Vale para
+                    todas as revisões seguintes — na próxima, ninguém precisa digitar de novo.
+                  </p>
+                  {semTitulo.map(([codigo, arquivos]) => (
+                    <label className="campo-titulo" key={codigo}>
+                      <span className="codigo">{codigo}</span>
+                      <input
+                        value={titulos[codigo] ?? ""}
+                        onChange={(e) =>
+                          setTitulos((t) => ({ ...t, [codigo]: e.target.value }))
+                        }
+                        placeholder="Ex.: Planta de Forma — Pav. Tipo"
+                        maxLength={300}
+                        disabled={enviando}
+                        aria-label={`Título de ${codigo}`}
+                      />
+                      <span className="silencioso">
+                        {arquivos.length === 1 ? "1 arquivo" : `${arquivos.length} arquivos`}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              )}
+
               <div className="linha" style={{ marginTop: 14 }}>
-                <button className="botao" disabled={enviando || prontos === 0} onClick={enviarTudo}>
+                <button
+                  className="botao"
+                  disabled={enviando || prontos === 0 || faltam > 0}
+                  onClick={enviarTudo}
+                >
                   {enviando
                     ? "Enviando…"
                     : `Enviar ${prontos} arquivo${prontos === 1 ? "" : "s"}`}
@@ -243,6 +316,13 @@ export default function Enviar() {
                 >
                   Limpar lista
                 </button>
+                {faltam > 0 && !enviando && (
+                  <span className="silencioso" style={{ fontSize: 12.5 }}>
+                    {faltam === 1
+                      ? "Falta o título de 1 documento."
+                      : `Falta o título de ${faltam} documentos.`}
+                  </span>
+                )}
                 <div className="espaco" />
                 {invalidos > 0 && (
                   <span className="silencioso" style={{ fontSize: 12 }}>
@@ -268,7 +348,7 @@ export default function Enviar() {
   );
 }
 
-function Linha({ item }: { item: Item }) {
+function Linha({ item, titulo }: { item: Item; titulo: string | null }) {
   const a = item.analise;
   return (
     <div className={`linha-envio ${item.estado === "invalido" ? "invalida" : ""}`}>
@@ -276,6 +356,7 @@ function Linha({ item }: { item: Item }) {
         <div className="mono" style={{ fontSize: 12, overflowWrap: "anywhere" }}>
           {item.arquivo.name}
         </div>
+        {item.estado !== "invalido" && titulo && <div className="titulo-envio">{titulo}</div>}
 
         {item.estado === "invalido" && (
           <ul className="erros">

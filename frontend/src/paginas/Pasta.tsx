@@ -149,11 +149,11 @@ export default function Pasta() {
                   <span className={`arvore-seta ${recolhido ? "" : "aberta"}`}>
                     &#9656;
                   </span>
-                  <span style={{ minWidth: 0 }}>
-                    <span className="codigo" style={{ display: "block" }}>
-                      {doc.codigo}
-                    </span>
-                    <span className="silencioso" style={{ fontSize: 12 }}>
+                  {/* Título em destaque, código como rótulo: quem navega
+                      procura a prancha pelo nome, não pelo número. */}
+                  <span className="doc-na-pasta">
+                    <span className="codigo">{doc.codigo}</span>
+                    <span className={doc.titulo ? "titulo" : "titulo sem"}>
                       {doc.titulo ?? "Sem título"}
                     </span>
                   </span>

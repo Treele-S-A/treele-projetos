@@ -72,12 +72,21 @@ monta o histórico automaticamente.
 Por decisão de vocês, o título descritivo ("Planta de Forma — Pav. Tipo") fica
 **fora** do nome do arquivo. O nome carrega só identificação.
 
-O título é preenchido na tela do documento, em **Adicionar título**, por quem tem
-permissão de enviar (coordenador ou projetista). Ele é do documento, não da
-revisão: preenche uma vez e vale para todas as revisões.
+**O título é obrigatório no primeiro envio do documento** (decisão de 25/09/2026).
+Ao enviar a primeira revisão de uma prancha nova, a tela de envio pede o título
+antes de liberar o botão — um campo por documento, mesmo que suba PDF e DWG
+juntos. Ele é do documento, não da revisão: nas revisões seguintes é
+reaproveitado, e ninguém digita de novo.
 
-Documento sem título aparece no acervo com o campo vazio — funciona normalmente,
-só fica menos fácil de achar na busca.
+A regra mora no servidor, não só na tela: um envio sem título para documento
+novo é recusado antes de criar qualquer coisa.
+
+Documento que ficou sem título (de antes da regra) pede um no próximo envio.
+Trocar o título depois se faz na tela do documento, em **Editar título**, por
+quem pode enviar; apagar, não — todo documento tem título.
+
+Na lista e na pasta, o título é a linha em destaque: ninguém procura
+"MIL-ELE-PE-001", procura "Pontos Elétricos Pav. Tipo".
 
 ## Catálogos
 

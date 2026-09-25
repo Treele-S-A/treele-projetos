@@ -178,6 +178,12 @@ class NomeAnalisado(BaseModel):
     titulo: str | None = None
     tipo: TipoArquivo | None = None
     documento_existe: bool = False
+    # Título que o documento já tem — a tela mostra, para quem envia a R03
+    # confirmar que é a prancha certa.
+    documento_titulo: str | None = None
+    # Se o envio vai exigir título. Quem decide é o servidor, com a mesma
+    # regra do envio; a tela só pergunta.
+    precisa_titulo: bool = False
     revisao_existe: bool = False
     # Status da revisão de destino, quando ela já existe. A tela de envio usa
     # isto para avisar que o arquivo será acrescentado a algo já liberado.
@@ -330,6 +336,9 @@ class UploadIniciarEntrada(BaseModel):
     content_type: str = "application/octet-stream"
     descricao: str | None = None
     substituir: bool = False
+    # Obrigatório só quando o documento ainda não tem título (novo, ou antigo
+    # que ficou sem). Nos demais casos é ignorado — ver api/uploads.py.
+    titulo: str | None = None
 
 
 class UploadIniciarSaida(BaseModel):

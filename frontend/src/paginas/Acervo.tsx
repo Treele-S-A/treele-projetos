@@ -257,7 +257,9 @@ export default function Acervo() {
                           {d.codigo}
                         </Link>
                       </td>
-                      <td>{d.titulo ?? <span className="silencioso">—</span>}</td>
+                      <td className="titulo-lista">
+                        {d.titulo ?? <span className="sem">Sem título</span>}
+                      </td>
                       <td className="mono silencioso">{d.disciplina.codigo}</td>
                       <td className="mono silencioso">{d.fase.codigo}</td>
                       <td className="mono">

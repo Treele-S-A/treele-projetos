@@ -38,6 +38,7 @@ from ..schemas import (
 from ..services import auditoria
 from ..services.nomenclatura import analisar, validar_definicao
 from ..services.storage import armazenamento, chave_logo, detectar_imagem
+from ..services.titulos import limpar_titulo
 
 router = APIRouter(prefix="/obras", tags=["obras"])
 
@@ -452,6 +453,12 @@ def validar_nomes(
                 titulo=r.titulo,
                 tipo=TipoArquivo.da_extensao(nome) if r.extensao else None,
                 documento_existe=documento is not None,
+                documento_titulo=documento.titulo if documento is not None else None,
+                precisa_titulo=bool(
+                    r.valido
+                    and not (documento is not None and documento.titulo)
+                    and not limpar_titulo(r.titulo)
+                ),
                 revisao_existe=revisao is not None,
                 revisao_status=revisao.status if revisao is not None else None,
             )

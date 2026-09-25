@@ -52,19 +52,23 @@ def admin(cliente):
     return autenticar(cliente, EMAIL_ADMIN, SENHA_ADMIN)
 
 
+SEM_TITULO = object()
+
+
 def enviar_arquivo(cliente, cabecalhos, obra_id: int, nome: str, conteudo: bytes,
-                   substituir: bool = False):
-    """Executa os três passos do envio e devolve a resposta da confirmação."""
+                   substituir: bool = False, titulo="Prancha de teste"):
+    """Executa os três passos do envio e devolve a resposta da confirmação.
+
+    Manda um título por padrão, porque documento novo exige um. Passe
+    ``titulo=SEM_TITULO`` para testar justamente a falta dele.
+    """
     from urllib.parse import urlsplit
 
+    corpo = {"nome_arquivo": nome, "tamanho": len(conteudo), "substituir": substituir}
+    if titulo is not SEM_TITULO:
+        corpo["titulo"] = titulo
     inicio = cliente.post(
-        f"/obras/{obra_id}/uploads/iniciar",
-        json={
-            "nome_arquivo": nome,
-            "tamanho": len(conteudo),
-            "substituir": substituir,
-        },
-        headers=cabecalhos,
+        f"/obras/{obra_id}/uploads/iniciar", json=corpo, headers=cabecalhos
     )
     if inicio.status_code >= 400:
         return inicio
