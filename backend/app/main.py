@@ -23,17 +23,14 @@ from .api import (
     usuarios,
 )
 from .config import settings
-from .db import SessionLocal, engine
-from .migracoes import aplicar as aplicar_migracoes
-from .seed import semear
+from .db import engine
+from .migracoes import preparar_banco
 from .services.storage import ArmazenamentoS3, armazenamento
 
 
 @asynccontextmanager
 async def ciclo_de_vida(_: FastAPI):
-    aplicar_migracoes(engine)
-    with SessionLocal() as db:
-        semear(db)
+    preparar_banco(engine)
     if isinstance(armazenamento, ArmazenamentoS3):
         armazenamento.garantir_bucket()
     yield

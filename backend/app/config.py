@@ -163,7 +163,13 @@ def _conferir_chave(s: Settings) -> None:
 def get_settings() -> Settings:
     s = Settings()
     _conferir_chave(s)
-    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    # Pasta só é criada quando algo vai mesmo ser gravado nela. Em produção nem
+    # o banco (Postgres) nem os arquivos (S3/R2) moram no disco — e na Vercel o
+    # disco é só leitura: criar a pasta à toa derrubaria a subida.
+    if s.database_url.startswith("sqlite:///"):
+        Path(s.database_url.removeprefix("sqlite:///")).parent.mkdir(
+            parents=True, exist_ok=True
+        )
     if s.storage_backend == "local":
         s.storage_local_dir.mkdir(parents=True, exist_ok=True)
     return s

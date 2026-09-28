@@ -1,0 +1,11 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "cd frontend && npm ci && VITE_API=/api npm run build && rm -rf ../backend/estaticos && cp -r dist ../backend/estaticos",
+  "regions": ["gru1"],
+  "functions": {
+    "index.py": {
+      "maxDuration": 60,
+      "excludeFiles": "{**/.env,**/.env.*,cloudfare/**,.claude/**,frontend/**,docs/**,deploy/**,backend/tests/**,backend/data/**,backend/.venv/**,**/.pytest_cache/**,**/__pycache__/**,**/*.md,Dockerfile,docker-compose.yml,render.yaml}"
+    }
+  }
+}

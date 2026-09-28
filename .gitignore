@@ -22,3 +22,9 @@ cloudfare/
 
 # Cache do compilador TypeScript — refeito a cada "tsc -b".
 *.tsbuildinfo
+
+# Interface compilada pelo build da Vercel (ver vercel.json).
+backend/estaticos/
+
+# Ajustes locais da Vercel (vercel link / vercel build).
+.vercel/

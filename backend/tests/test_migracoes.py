@@ -71,3 +71,19 @@ def test_sqlite_com_dados_migra_ate_o_fim(tmp_path):
     assert not any(
         t.startswith("_alembic_tmp") for t in inspect(engine).get_table_names()
     )
+
+
+def test_schema_isolado_e_ignorado_no_sqlite(tmp_path, monkeypatch):
+    """DB_SCHEMA é coisa de Postgres. A entrada da Vercel liga ele por padrão,
+    e rodá-la com SQLite (teste local) derrubava a subida: no SQLite, "schema"
+    é outro arquivo de banco anexado, e "treele.sqlite_master" não existe."""
+    from app.config import settings
+    from app.migracoes import preparar_banco
+
+    monkeypatch.setattr(settings, "db_schema", "treele")
+    engine = _engine_como_a_aplicacao(tmp_path / "com-schema.db")
+
+    preparar_banco(engine)
+
+    assert "alembic_version" in inspect(engine).get_table_names()
+    assert "disciplinas" in inspect(engine).get_table_names()

@@ -184,10 +184,11 @@ nomeia restrições sozinho.
 cd backend && .venv\Scripts\python -m pytest tests -q
 ```
 
-86 testes cobrindo o parser de nomenclatura, a regra de arquivo companheiro, a
+102 testes cobrindo o parser de nomenclatura, a regra de arquivo companheiro, a
 obsolescência automática, o controle de permissões, a trilha de auditoria, o
 logo das obras, a migração sobre banco com dados e as regras de configuração
-que só aparecem em produção (chave de sessão, URL e schema do banco).
+que só aparecem em produção (chave de sessão, URL e schema do banco, arquivos
+da Vercel).
 
 ## Estrutura
 
@@ -216,25 +217,34 @@ docs/
 
 ## Colocar no ar
 
-Dois caminhos, ambos com roteiro pronto. **O escolhido pela TREELE é o
-primeiro.**
+Três caminhos, todos com roteiro pronto. **O escolhido pela TREELE é a
+Vercel**, onde a empresa vai centralizar seus sistemas, cada um num subdomínio
+de `treele.com.br`.
 
-### Render — sem servidor para administrar *(escolhido)*
+### Vercel — `projetos.treele.com.br` *(escolhido)*
 
-**[docs/render.md](docs/render.md)** — GitHub, Cloudflare R2, e o
-[`render.yaml`](render.yaml) monta o serviço sozinho a partir do repositório.
-Cerca de 40 minutos, quase tudo espera de build. Sem SSH, sem firewall para
-manter, sem certificado para renovar.
+**[docs/vercel.md](docs/vercel.md)** — importar o repositório, preencher as
+senhas e publicar. Cerca de 30 minutos. O sistema roda como uma função: a Vercel
+reconhece a aplicação FastAPI pelo [`index.py`](index.py) da raiz, e o build
+([`vercel.json`](vercel.json)) compila a interface junto — a API sob `/api`,
+as telas sob `/`, no mesmo endereço.
 
-O banco é o **Supabase que a TREELE já usa** para outro sistema, num schema
-próprio (`DB_SCHEMA=treele`) — as tabelas deste não se misturam com as de lá.
+O banco é o **Supabase da TREELE** (plano Pro, com backup diário), num schema
+próprio (`treele`) — as tabelas deste sistema não se misturam com as de outros.
 
-Custo estimado: **~US$ 7/mês (~R$ 35)**, só o serviço web. Os arquivos ficam no
-R2 — que não cobra tráfego de saída, e saída é quase tudo o que a obra faz.
+Custo: o Pro da Vercel (US$ 20/mês por pessoa que publica) e o do Supabase
+(US$ 25/mês) são **divididos entre todos os sistemas** da empresa.
 
-A interface e a API viajam na mesma imagem ([`Dockerfile`](Dockerfile)) e
-rodam num processo só: a API sob `/api`, as telas sob `/`. Um serviço em vez de
-dois, sem CORS e sem endereço de API para configurar.
+Várias instâncias da função podem ligar ao mesmo tempo; a preparação do banco
+na subida é travada no próprio Postgres — uma instância prepara, as outras
+esperam ([`app/migracoes.py`](backend/app/migracoes.py)).
+
+### Render — um serviço só, com a imagem Docker
+
+**[docs/render.md](docs/render.md)** — o [`render.yaml`](render.yaml) monta o
+serviço a partir do repositório. Serve se um dia a Vercel deixar de ser o lugar
+certo. A interface e a API viajam na mesma imagem ([`Dockerfile`](Dockerfile)),
+a mesma do servidor próprio abaixo.
 
 ### VPS próprio — mais barato, mais controle
 
@@ -257,32 +267,33 @@ pequena; a diferença está em quem administra a máquina.
 Esta lista não é opcional. Cada item é um jeito conhecido de perder dados ou
 vazar acesso.
 
-Os dois caminhos já resolvem quase tudo — o `render.yaml` no primeiro, o
-instalador (`deploy/instalar-servidor.sh`) no segundo:
+O que o código e a implantação já garantem:
 
-- [x] **`SECRET_KEY` própria e secreta** — gerada na criação, nunca digitada
-      por ninguém. Ela assina as sessões *e* os links de download.
-- [x] **Postgres, não SQLite** — o Supabase, num schema próprio; no compose
-      de produção no VPS.
-- [x] **Migrações de esquema** — Alembic, automático na subida.
-- [x] **HTTPS com certificado válido** — pronto no Render; Caddy + Let's
-      Encrypt no VPS.
-- [x] **Banco e armazenamento fechados** — o banco não fica exposto e o bucket
-      não é público; o acesso aos arquivos é por URL assinada de uma hora.
-- [x] **Backup do banco no VPS** — diário às 02:15, com rotação de 14 dias.
+- [x] **`SECRET_KEY` própria e forte** — em produção o sistema se recusa a
+      subir com chave curta ou com a de exemplo. Ela assina as sessões *e* os
+      links de download.
+- [x] **Postgres, não SQLite** — o Supabase, num schema próprio.
+- [x] **Migrações de esquema** — Alembic, automático na subida, travado no
+      Postgres para várias instâncias não migrarem ao mesmo tempo.
+- [x] **HTTPS com certificado válido** — pronto na Vercel (e no Render; Caddy +
+      Let's Encrypt no servidor próprio).
+- [x] **Banco e armazenamento fechados** — o bucket não é público; o acesso aos
+      arquivos é por URL assinada de uma hora.
+- [x] **Backup do banco** — o Supabase Pro faz cópia diária, guardada por 7
+      dias (no servidor próprio: diário às 02:15, 14 dias).
+- [x] **Nenhum segredo no deploy** — `.vercelignore` e o `excludeFiles` do
+      `vercel.json` barram `.env` e anotações de credencial, mesmo num deploy
+      feito da pasta local.
 
 Sobram cinco, que dependem de você:
 
-- [ ] **Backup do banco no caminho do Render** — o Supabase gratuito
-      normalmente não oferece cópia restaurável. Falta montar um `pg_dump`
-      periódico do schema `treele` para fora do Supabase. Até lá, não
-      desligue o fluxo antigo.
-
+- [ ] **Variáveis da Vercel só em Production** — senão as prévias de cada
+      branch rodam migração no banco de produção (docs/vercel.md, passo 5).
 - [ ] **Trocar a senha do administrador** depois do primeiro acesso.
-- [ ] **Liberar o CORS do bucket** — só no caminho do Render (passo 4 do
-      roteiro). Sem isso o envio é bloqueado pelo navegador.
-- [ ] **Cópia dos arquivos fora do fornecedor** (rclone para o OneDrive).
-      Banco e arquivos são duas coisas distintas, e backup que só existe onde
-      o original está não é backup.
+- [ ] **Liberar o CORS do armazenamento** para o endereço do sistema (passo 7
+      do roteiro). Sem isso o envio é bloqueado pelo navegador.
+- [ ] **Cópia dos arquivos fora do fornecedor** (rclone para o OneDrive). O
+      backup do Supabase cobre o banco, não os arquivos — e arquivo apagado
+      não volta. Até lá, o Drive é a segunda cópia: não desligue o Mobuss.
 - [ ] **Testar a restauração pelo menos uma vez.** Backup nunca restaurado é um
       arquivo grande com nome tranquilizador.

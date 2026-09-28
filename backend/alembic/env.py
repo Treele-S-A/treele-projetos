@@ -61,8 +61,11 @@ def _migrar(conn) -> None:
             # em Postgres.
             render_as_batch=sqlite,
             # O controle de versão do Alembic mora junto com as tabelas dele,
-            # não no "public" de outra aplicação.
-            version_table_schema=settings.db_schema or None,
+            # não no "public" de outra aplicação. Só no Postgres: no SQLite,
+            # "schema" seria outro arquivo de banco anexado.
+            version_table_schema=(
+                (settings.db_schema or None) if conn.dialect.name == "postgresql" else None
+            ),
         )
         with context.begin_transaction():
             context.run_migrations()
