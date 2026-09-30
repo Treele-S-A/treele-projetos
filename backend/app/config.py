@@ -188,6 +188,16 @@ def _conferir_producao(s: Settings) -> None:
     # SQLite escolhido de propósito continua valendo.
     if s.database_url == Settings.model_fields["database_url"].default:
         problemas.append("DATABASE_URL não definida.")
+    elif not s.database_url.startswith(("postgresql", "sqlite")):
+        # Só o esquema aparece na mensagem: o resto da string tem a senha.
+        # Caso real: o endereço do storage (https://…) colado no lugar dela.
+        esquema = s.database_url.split("://", 1)[0] if "://" in s.database_url else ""
+        problemas.append(
+            (f'DATABASE_URL começa com "{esquema}://", ' if esquema else
+             "DATABASE_URL não tem o formato de uma string de conexão, ")
+            + "mas precisa ser a do Postgres (Supabase: Connect → Transaction "
+            "pooler), que começa com postgresql://."
+        )
     elif "[YOUR-PASSWORD]" in s.database_url:
         problemas.append(
             "DATABASE_URL ainda tem [YOUR-PASSWORD]: troque pela senha do banco."
@@ -205,6 +215,12 @@ def _conferir_producao(s: Settings) -> None:
         ]
         if faltando:
             problemas.append(f"Não definida(s): {', '.join(faltando)}.")
+        endpoint = (s.s3_endpoint or "").strip()
+        if endpoint and not endpoint.startswith(("https://", "http://")):
+            problemas.append(
+                "S3_ENDPOINT precisa começar com https:// "
+                "(Supabase: Project Settings → Storage → S3 Connection)."
+            )
 
     if problemas:
         raise RuntimeError(

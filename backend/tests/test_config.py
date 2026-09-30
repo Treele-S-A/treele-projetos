@@ -91,6 +91,36 @@ def test_senha_do_banco_esquecida_no_modelo():
         _conferir_producao(_settings(database_url=url))
 
 
+def test_endereco_do_storage_no_lugar_do_banco():
+    """Caso real da primeira implantação: o S3_ENDPOINT (https://…) colado na
+    DATABASE_URL. Sem esta conferência, o erro era "Can't load plugin:
+    sqlalchemy.dialects:https" — que não diz qual variável está errada."""
+    url = "https://abcdef.storage.supabase.co/storage/v1/s3"
+    with pytest.raises(RuntimeError, match='DATABASE_URL começa com "https://"') as erro:
+        _conferir_producao(_settings(database_url=url))
+    assert "abcdef" not in str(erro.value)
+
+
+def test_banco_sem_formato_de_url_nao_repete_o_valor():
+    with pytest.raises(RuntimeError, match="não tem o formato") as erro:
+        _conferir_producao(_settings(database_url="senha-colada-sozinha"))
+    assert "senha-colada-sozinha" not in str(erro.value)
+
+
+def test_string_do_banco_no_lugar_do_endpoint():
+    """O inverso da troca: a string do banco (com senha) no S3_ENDPOINT."""
+    with pytest.raises(RuntimeError, match="S3_ENDPOINT precisa começar") as erro:
+        _conferir_producao(
+            _settings(
+                storage_backend="s3",
+                s3_endpoint="postgresql://postgres.abc:senha-do-banco@host:6543/postgres",
+                s3_access_key="chave",
+                s3_secret_key="segredo",
+            )
+        )
+    assert "senha-do-banco" not in str(erro.value)
+
+
 def test_storage_s3_sem_chaves_e_recusado():
     with pytest.raises(RuntimeError) as erro:
         _conferir_producao(
