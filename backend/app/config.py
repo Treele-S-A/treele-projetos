@@ -137,32 +137,86 @@ class Settings(BaseSettings):
         return self.tamanho_max_mb * 1024 * 1024
 
 
-def _conferir_chave(s: Settings) -> None:
-    """Em produção, recusa subir com chave fraca ou com a de desenvolvimento.
+def _problema_na_chave(chave: str) -> str | None:
+    """O que está errado com a SECRET_KEY, sem nunca repetir o valor dela."""
+    if chave == SECRET_KEY_DEV:
+        return (
+            "SECRET_KEY não chegou ao sistema. Confira o nome exato da variável "
+            "e se ela está marcada para o ambiente Production."
+        )
+    if chave.upper().startswith("SECRET_KEY"):
+        return (
+            "SECRET_KEY foi colada com o nome junto (\"SECRET_KEY = ...\"). "
+            "O valor é só a chave."
+        )
+    if chave != chave.strip() or chave[:1] in "\"'":
+        return "SECRET_KEY tem espaço ou aspas nas pontas. Cole só a chave."
+    if len(chave) < 32:
+        return (
+            f"SECRET_KEY tem {len(chave)} caractere(s); precisa de pelo menos 32. "
+            'Gere com `python -c "import secrets; print(secrets.token_urlsafe(48))"`.'
+        )
+    return None
 
-    Essa chave assina as sessões *e* os links de download: com ela, qualquer um
-    forja um acesso. Falhar ruidosamente na subida é melhor que rodar meses com
-    a chave de exemplo — é o tipo de erro que ninguém percebe, porque o sistema
-    funciona perfeitamente enquanto está errado.
+
+def _conferir_producao(s: Settings) -> None:
+    """Em produção, recusa subir com configuração faltando — listando tudo.
+
+    A SECRET_KEY assina as sessões *e* os links de download: com a chave de
+    exemplo, qualquer um forja um acesso. Falhar ruidosamente na subida é
+    melhor que rodar meses assim — é o tipo de erro que ninguém percebe,
+    porque o sistema funciona perfeitamente enquanto está errado.
+
+    Todos os problemas saem numa mensagem só: na hospedagem, cada rodada de
+    "corrige, publica, lê o log" custa minutos, e descobrir as variáveis que
+    faltam uma por vez multiplica isso.
 
     A conferência fica aqui, e não num validador do pydantic, de propósito: o
     erro de validação do pydantic imprime o modelo inteiro, e aí a senha do
-    administrador iria junto para o log da hospedagem.
+    administrador iria junto para o log da hospedagem. Pelo mesmo motivo, as
+    mensagens dizem o que falta ou o tamanho — nunca o valor.
     """
     if s.ambiente != "producao":
         return
-    if s.secret_key == SECRET_KEY_DEV or len(s.secret_key) < 32:
+
+    problemas = []
+    if erro := _problema_na_chave(s.secret_key):
+        problemas.append(erro)
+
+    # Banco não definido cai no SQLite padrão, que em produção vira um banco
+    # vazio e descartável (e, na Vercel, nem abre: o disco é só leitura).
+    # SQLite escolhido de propósito continua valendo.
+    if s.database_url == Settings.model_fields["database_url"].default:
+        problemas.append("DATABASE_URL não definida.")
+    elif "[YOUR-PASSWORD]" in s.database_url:
+        problemas.append(
+            "DATABASE_URL ainda tem [YOUR-PASSWORD]: troque pela senha do banco."
+        )
+
+    if s.storage_backend == "s3":
+        faltando = [
+            nome
+            for nome, valor in (
+                ("S3_ENDPOINT", s.s3_endpoint),
+                ("S3_ACCESS_KEY", s.s3_access_key),
+                ("S3_SECRET_KEY", s.s3_secret_key),
+            )
+            if not (valor or "").strip()
+        ]
+        if faltando:
+            problemas.append(f"Não definida(s): {', '.join(faltando)}.")
+
+    if problemas:
         raise RuntimeError(
-            "SECRET_KEY inválida para produção: defina uma chave própria de pelo "
-            'menos 32 caracteres. Gere com `python -c "import secrets; '
-            'print(secrets.token_urlsafe(48))"`.'
+            "Configuração de produção incompleta — nada foi iniciado:\n"
+            + "\n".join(f"  - {p}" for p in problemas)
         )
 
 
 @lru_cache
 def get_settings() -> Settings:
     s = Settings()
-    _conferir_chave(s)
+    _conferir_producao(s)
     # Pasta só é criada quando algo vai mesmo ser gravado nela. Em produção nem
     # o banco (Postgres) nem os arquivos (S3/R2) moram no disco — e na Vercel o
     # disco é só leitura: criar a pasta à toa derrubaria a subida.
