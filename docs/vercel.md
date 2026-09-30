@@ -141,13 +141,27 @@ Abra `https://<nome-do-projeto>.vercel.app/api/saude`. Tem que aparecer:
 {"ok": true, "ambiente": "producao", "storage": "s3"}
 ```
 
-Se aparecer erro, a aba **Logs** do deploy diz qual. Os mais prováveis:
+Se aparecer erro, a aba **Logs** do projeto diz qual — clique na linha
+vermelha para ver a mensagem inteira. Os mais prováveis:
 
 | O que aparece | O que é |
 |---|---|
-| `SECRET_KEY inválida para produção` | chave curta ou esquecida — volte ao passo 4 |
-| erro de conexão com o banco | `DATABASE_URL` errada, ou a senha ainda com `[YOUR-PASSWORD]` |
+| `Configuração de produção incompleta` | a própria mensagem lista cada variável que falta ou está errada — corrija todas e faça **Redeploy** |
+| erro de conexão com o banco | `DATABASE_URL` com a senha errada |
 | `aviso: não foi possível confirmar o bucket` | normal com chave restrita ao bucket; só é problema se o envio falhar |
+| deploy **Blocked**, "commit author email is not a valid email" | o e-mail dos commits não está ligado à conta do GitHub. Use o endereço interno do GitHub: `git config user.email "<id>+<usuário>@users.noreply.github.com"` e envie um commit novo |
+
+Armadilhas que já aconteceram nesta implantação:
+
+- **Variável nova ou alterada só vale no deploy seguinte.** Depois de mexer em
+  qualquer uma: *Deployments → ⋯ do deploy do topo → Redeploy*.
+- **Ao editar, o campo Value aparece vazio.** Variável do tipo *Secret* não é
+  mostrada de volta. Cole o valor de novo ao editar.
+- **Tirar o Preview, não o Production.** Com só *Preview* marcado, a variável
+  some da produção.
+- **Cada valor no seu lugar.** `DATABASE_URL` começa com `postgresql://`;
+  `S3_ENDPOINT` começa com `https://` — as duas linhas ficam vizinhas no
+  arquivo de segredos e é fácil trocar.
 
 ## 7. Liberar o envio direto do navegador (CORS)
 
