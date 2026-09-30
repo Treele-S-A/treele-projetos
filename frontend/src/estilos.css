@@ -305,19 +305,28 @@ textarea {
   color: var(--tinta-invertida-2);
 }
 
-.rodape-rail button {
+.rodape-rail .acoes {
+  display: flex;
+  gap: 14px;
   margin-top: 8px;
+}
+
+.rodape-rail .acoes a,
+.rodape-rail .acoes button {
   background: none;
   border: none;
   padding: 0;
   color: var(--tinta-invertida-2);
+  font: inherit;
   font-size: 12px;
   cursor: pointer;
   text-decoration: underline;
   text-underline-offset: 3px;
 }
 
-.rodape-rail button:hover {
+.rodape-rail .acoes a:hover,
+.rodape-rail .acoes button:hover,
+.rodape-rail .acoes a.ativo {
   color: #fff;
 }
 
@@ -1390,7 +1399,7 @@ table.tabela {
     padding: 10px 16px 12px;
   }
 
-  .rodape-rail button {
+  .rodape-rail .acoes {
     margin-top: 0;
     margin-left: auto;
   }

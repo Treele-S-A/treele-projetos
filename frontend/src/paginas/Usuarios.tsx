@@ -30,7 +30,10 @@ export default function Usuarios() {
     setSalvando(true);
     try {
       await api.post("/usuarios", { nome: nome.trim(), email: email.trim(), senha, admin });
-      setOk(`${nome.trim()} já pode entrar. Passe a senha por um canal seguro.`);
+      setOk(
+        `${nome.trim()} já pode entrar. Passe a senha por um canal seguro e peça ` +
+          "para trocá-la em Minha conta no primeiro acesso.",
+      );
       setNome("");
       setEmail("");
       setSenha("");
@@ -40,6 +43,26 @@ export default function Usuarios() {
       setErro(ex instanceof ErroApi ? ex : null);
     } finally {
       setSalvando(false);
+    }
+  }
+
+  async function redefinir(u: Usuario) {
+    const senha = window.prompt(`Nova senha para ${u.nome} (pelo menos 8 caracteres):`);
+    if (senha === null) return;
+    setErro(null);
+    setOk(null);
+    if (senha.length < 8) {
+      setErro(new ErroApi(0, "A senha precisa ter ao menos 8 caracteres."));
+      return;
+    }
+    try {
+      await api.post(`/usuarios/${u.id}/senha`, { senha_nova: senha });
+      setOk(
+        `Senha de ${u.nome} redefinida. Passe a nova por um canal seguro e peça ` +
+          "para trocá-la em Minha conta.",
+      );
+    } catch (ex) {
+      setErro(ex instanceof ErroApi ? ex : null);
     }
   }
 
@@ -141,10 +164,15 @@ export default function Usuarios() {
                         {u.ativo ? "Ativo" : "Inativo"}
                       </span>
                     </td>
-                    <td style={{ textAlign: "right" }}>
-                      <button className="botao secundario pequeno" onClick={() => alternar(u)}>
-                        {u.ativo ? "Desativar" : "Reativar"}
-                      </button>
+                    <td>
+                      <div className="linha" style={{ gap: 8, justifyContent: "flex-end" }}>
+                        <button className="botao secundario pequeno" onClick={() => redefinir(u)}>
+                          Redefinir senha
+                        </button>
+                        <button className="botao secundario pequeno" onClick={() => alternar(u)}>
+                          {u.ativo ? "Desativar" : "Reativar"}
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}

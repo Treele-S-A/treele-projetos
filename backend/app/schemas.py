@@ -57,6 +57,12 @@ class SenhaAlterar(BaseModel):
     senha_nova: str = Field(min_length=8, max_length=128)
 
 
+class SenhaRedefinir(BaseModel):
+    # No corpo, nunca na URL: endereço com query string vai para o log de
+    # acesso da hospedagem, para o histórico do navegador e para proxies.
+    senha_nova: str = Field(min_length=8, max_length=128)
+
+
 # --------------------------------------------------------------------------
 # Catálogos
 # --------------------------------------------------------------------------

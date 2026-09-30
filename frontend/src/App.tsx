@@ -4,6 +4,7 @@ import { Carregando, SIMBOLO } from "./componentes";
 import { useSessao } from "./sessao";
 import Acervo from "./paginas/Acervo";
 import Configuracoes from "./paginas/Configuracoes";
+import Conta from "./paginas/Conta";
 import Documento from "./paginas/Documento";
 import Entrar from "./paginas/Entrar";
 import Enviar from "./paginas/Enviar";
@@ -139,7 +140,12 @@ function Moldura() {
                 ? "Administrador"
                 : ""}
           </div>
-          <button onClick={sair}>Sair</button>
+          <div className="acoes">
+            <NavLink to="/conta" className={({ isActive }) => (isActive ? "ativo" : "")}>
+              Minha conta
+            </NavLink>
+            <button onClick={sair}>Sair</button>
+          </div>
         </div>
       </nav>
 
@@ -173,6 +179,7 @@ export default function App() {
         <Route path="/obras/:obraId/registro" element={<Registro />} />
         <Route path="/documentos/:documentoId" element={<Documento />} />
         <Route path="/usuarios" element={<Usuarios />} />
+        <Route path="/conta" element={<Conta />} />
         <Route path="*" element={<Navigate to={inicial} replace />} />
       </Route>
     </Routes>

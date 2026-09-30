@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from ..db import get_db
 from ..deps import usuario_admin, usuario_atual
 from ..models import Usuario
-from ..schemas import UsuarioCriar, UsuarioOut
+from ..schemas import SenhaRedefinir, UsuarioCriar, UsuarioOut
 from ..security import gerar_hash_senha
 from ..services import auditoria
 
@@ -84,20 +84,16 @@ def alternar_ativo(
 @router.post("/{usuario_id}/senha", status_code=status.HTTP_204_NO_CONTENT)
 def redefinir_senha(
     usuario_id: int,
-    senha_nova: str,
+    dados: SenhaRedefinir,
     request: Request,
     admin: Usuario = Depends(usuario_admin),
     db: Session = Depends(get_db),
 ):
-    if len(senha_nova) < 8:
-        raise HTTPException(
-            status.HTTP_400_BAD_REQUEST, "A senha precisa ter ao menos 8 caracteres."
-        )
     usuario = db.get(Usuario, usuario_id)
     if usuario is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Usuário não encontrado.")
 
-    usuario.senha_hash = gerar_hash_senha(senha_nova)
+    usuario.senha_hash = gerar_hash_senha(dados.senha_nova)
     auditoria.registrar(
         db, acao="senha_redefinida", entidade="usuario", entidade_id=usuario.id,
         usuario=admin, request=request,
