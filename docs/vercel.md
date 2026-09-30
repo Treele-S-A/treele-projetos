@@ -56,13 +56,21 @@ Duas opções, e o sistema funciona igual nas duas:
 
 - **Cloudflare R2** — o bucket e a chave já foram criados. Ver
   [render.md](render.md), passos 2.1 e 2.2.
-- **Supabase Storage** — com o Supabase Pro contratado, dispensa o Cloudflare.
-  **Antes de escolher, precisa de um teste**: o Supabase não deixa configurar
-  pelo S3 a liberação de envio direto do navegador (CORS). Ver a conversa de
-  28/09/2026 — o teste leva 15 minutos.
+- **Supabase Storage** — **a escolhida.** Dispensa o Cloudflare e fica no
+  mesmo projeto do banco. Testado em 30/09/2026 com envio e download direto
+  do navegador pelas URLs assinadas do sistema: funciona sem configurar nada.
 
-Em qualquer das duas você vai ter quatro valores: **endpoint, região, Access Key
-ID e Secret Access Key**.
+No Supabase Storage:
+
+1. *Storage → New bucket* → nome `treele-projetos`, **Public desligado**.
+2. *Project Settings → Storage* → seção *S3 Connection*: anote o **endpoint**
+   (`https://<projeto>.storage.supabase.co/storage/v1/s3`) e a **região**.
+3. Na mesma página, *S3 Access Keys → New access key*: anote **Access Key ID**
+   e **Secret Access Key** (o secret só aparece uma vez).
+
+Nomes de arquivo com acento ou espaço não são problema: o sistema guarda cada
+arquivo com um nome só de letras sem acento, números, `.`, `_` e `-` (o
+Supabase recusa o resto), e devolve o nome original no download.
 
 ## 3. Banco: a string do Supabase
 
@@ -113,7 +121,7 @@ Production** em cada uma.
 | `ADMIN_EMAIL` | o e-mail de quem administra (o seu) |
 | `ADMIN_SENHA` | a do passo 4 |
 | `S3_ENDPOINT` | endpoint do passo 2 |
-| `S3_REGION` | região do passo 2 (`auto` no R2) |
+| `S3_REGION` | região do passo 2 (`sa-east-1` no Supabase de São Paulo; `auto` no R2) |
 | `S3_ACCESS_KEY` | Access Key ID do passo 2 |
 | `S3_SECRET_KEY` | Secret Access Key do passo 2 |
 
@@ -145,9 +153,14 @@ Se aparecer erro, a aba **Logs** do deploy diz qual. Os mais prováveis:
 
 O navegador envia os arquivos direto para o armazenamento, num endereço
 diferente do sistema, e só consegue se o armazenamento liberar o endereço do
-sistema. No **R2**: bucket → *Settings → CORS Policy*, o mesmo JSON do
-[render.md](render.md), passo 4, com o endereço `.vercel.app` — e, depois do
-passo 9, também `https://projetos.treele.com.br`.
+sistema.
+
+- **Supabase Storage:** nada a fazer — ele já libera qualquer origem. Não é
+  brecha: sem uma URL assinada pelo sistema, válida por uma hora e para um
+  único arquivo, o Supabase recusa o envio e o download.
+- **R2:** bucket → *Settings → CORS Policy*, o mesmo JSON do
+  [render.md](render.md), passo 4, com o endereço `.vercel.app` — e, depois do
+  passo 9, também `https://projetos.treele.com.br`.
 
 ## 8. Primeiro acesso
 
@@ -165,7 +178,7 @@ Entre com `ADMIN_EMAIL` e `ADMIN_SENHA` e **troque a senha** em seguida. Depois:
 No projeto da Vercel: *Settings → Domains → Add* → `projetos.treele.com.br`. A
 Vercel mostra um registro **CNAME**; cadastre-o no DNS de `treele.com.br`
 (quem cuida do domínio da TREELE). Em minutos o endereço passa a funcionar, com
-HTTPS. Não esqueça de acrescentar o novo endereço no CORS do passo 7.
+HTTPS. Se estiver usando R2, acrescente o novo endereço no CORS do passo 7.
 
 ---
 
