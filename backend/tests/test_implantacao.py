@@ -40,3 +40,23 @@ def test_entrada_da_vercel_entrega_a_aplicacao():
 
     modulo = runpy.run_path(str(RAIZ / "index.py"))
     assert modulo["app"] is esperado
+
+
+def test_pagina_inicial_nunca_fica_guardada_no_navegador(tmp_path):
+    """Caso real (01/10/2026): depois de uma atualização, tela em branco.
+
+    Na Vercel a data dos arquivos é zerada e o index tem sempre o mesmo
+    tamanho, então ETag e Last-Modified não mudavam entre versões. O navegador
+    revalidava, recebia 304 e ficava com o index antigo — que apontava para um
+    JS que a versão nova já não tinha."""
+    from app.main import pagina_inicial
+
+    index = tmp_path / "index.html"
+    index.write_text("<!doctype html><script src=/assets/index-abc.js></script>")
+
+    r = pagina_inicial(index)
+
+    assert r.headers["cache-control"] == "no-store"
+    assert "etag" not in r.headers
+    assert "last-modified" not in r.headers
+    assert b"index-abc.js" in r.body

@@ -7,7 +7,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 from .api import (
@@ -92,6 +92,24 @@ def saude():
 # Poupa um serviço na hospedagem e elimina o CORS: mesma origem, sem endereço
 # de API para configurar em lugar nenhum.
 
+def pagina_inicial(index) -> Response:
+    """O index.html, sempre fresco — sem ETag nem Last-Modified.
+
+    O FileResponse identifica a versão pela data e pelo tamanho do arquivo.
+    Na Vercel a data é zerada no pacote (sai "2018") e o tamanho do index não
+    muda entre versões — os nomes com hash têm sempre o mesmo comprimento.
+    Resultado real: a cada atualização o navegador perguntava "mudou?", ouvia
+    "não" e ficava com o index antigo, que aponta para um JS que não existe
+    mais — tela em branco até um Ctrl+F5. O arquivo tem menos de 1 KB:
+    mandar de novo a cada visita não custa nada.
+    """
+    return Response(
+        content=index.read_bytes(),
+        media_type="text/html",
+        headers={"Cache-Control": "no-store"},
+    )
+
+
 if settings.estaticos_dir and settings.estaticos_dir.is_dir():
     ESTATICOS = settings.estaticos_dir
     INDEX = ESTATICOS / "index.html"
@@ -114,6 +132,6 @@ if settings.estaticos_dir and settings.estaticos_dir.is_dir():
             raise HTTPException(status.HTTP_404_NOT_FOUND, "Rota de API inexistente.")
 
         arquivo = (ESTATICOS / caminho).resolve()
-        if ESTATICOS.resolve() in arquivo.parents and arquivo.is_file():
+        if arquivo != INDEX.resolve() and ESTATICOS.resolve() in arquivo.parents and arquivo.is_file():
             return FileResponse(arquivo)
-        return FileResponse(INDEX)
+        return pagina_inicial(INDEX)
