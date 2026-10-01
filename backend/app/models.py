@@ -95,6 +95,10 @@ class Obra(Base):
     logo_chave: Mapped[str | None] = mapped_column(String(300), nullable=True)
     logo_tipo: Mapped[str | None] = mapped_column(String(40), nullable=True)
 
+    # Cor de identidade do empreendimento (#rrggbb): pinta o cartão e o
+    # cabeçalho da obra. Vazia, a tela usa o petróleo da treèle.
+    cor: Mapped[str | None] = mapped_column(String(7), nullable=True)
+
     criado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=agora)
 
     responsavel: Mapped["Usuario | None"] = relationship()

@@ -1,8 +1,41 @@
-import { useId, useState, type ReactNode } from "react";
+import { useId, useState, type CSSProperties, type ReactNode } from "react";
 import { ROTULO_STATUS, type Obra, type StatusRevisao } from "./api";
 
 /** Servido pela própria aplicação (frontend/public). */
 export const SIMBOLO = "/simbolo-treele.png";
+
+/** A cor de identidade da obra vira variável CSS: o degradê, o brilho e a
+ *  marca d'água saem dela no CSS. Sem cor, o CSS cai no petróleo. */
+export function estiloDaObra(obra?: Pick<Obra, "cor"> | null): CSSProperties | undefined {
+  return obra?.cor ? ({ "--cor-obra": obra.cor } as CSSProperties) : undefined;
+}
+
+/**
+ * Capa da obra: faixa na cor do empreendimento, logo num selo claro e o logo
+ * de novo, grande e apagado, como a estampa dos painéis da treèle.
+ */
+export function CapaObra({
+  obra,
+  children,
+  className = "",
+}: {
+  obra: Pick<Obra, "cor" | "logo_url">;
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className={`capa-obra ${className}`} style={estiloDaObra(obra)}>
+      <span className="capa-fundo" aria-hidden="true" />
+      {obra.logo_url && (
+        <img className="capa-estampa" src={obra.logo_url} alt="" aria-hidden="true" />
+      )}
+      <span className="selo-logo">
+        <LogoObra obra={obra} reserva={<img className="sem-logo" src={SIMBOLO} alt="" />} />
+      </span>
+      {children}
+    </div>
+  );
+}
 
 /**
  * Logo do empreendimento, ou a reserva quando não há — ou quando o endereço

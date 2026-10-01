@@ -115,6 +115,8 @@ class ObraAtualizar(BaseModel):
     regra_companheiro: dict[str, list[str]] | None = None
     # 0 limpa o responsável; None (ausente) deixa como está.
     responsavel_id: int | None = None
+    # "" limpa (volta ao petróleo); None (ausente) deixa como está.
+    cor: str | None = Field(default=None, pattern=r"^(#[0-9a-fA-F]{6})?$")
 
 
 class ObraOut(Modelo):
@@ -126,6 +128,7 @@ class ObraOut(Modelo):
     regra_companheiro: dict
     responsavel: UsuarioOut | None = None
     logo_url: str | None = None
+    cor: str | None = None
 
 
 class ObraComPapel(ObraOut):

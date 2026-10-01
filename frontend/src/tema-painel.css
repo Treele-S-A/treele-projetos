@@ -1,0 +1,616 @@
+/* ==========================================================================
+   Tema "painel" — em teste na branch design
+
+   A linguagem dos painéis da treèle (treeledashboard), aplicada por cima do
+   estilos.css: papel creme no lugar da névoa azulada, Fraunces nos títulos
+   com uma palavra em itálico, Poppins no corpo, cartões com o "bisel" de
+   sombras em camadas e, principalmente, cada obra com a SUA cor — a capa
+   da obra é a identidade do empreendimento, não a da treèle.
+
+   Fica num arquivo separado de propósito: aprovado, vira o estilos.css;
+   recusado, sai inteiro apagando uma linha do main.tsx.
+
+   O que não muda: código de documento, prancha e revisão continuam em mono,
+   e o vermelho de obsoleto continua sendo o único tom de alerta.
+   ========================================================================== */
+
+:root {
+  /* papel */
+  --nevoa: #f3efe6;
+  --nevoa-2: #ece6d9;
+  --folha: #ffffff;
+
+  /* tinta — verde-acinzentado dos painéis, não preto */
+  --tinta: #22312f;
+  --tinta-2: #4d5c58;
+  --tinta-3: #78837d;
+
+  /* traços quentes, puxados para o creme */
+  --traco-fino: #ebe5d8;
+  --traco-medio: #dcd4c3;
+  --traco-forte: #bdb39e;
+
+  /* estrutura: o petróleo dos painéis, mais acinzentado que o do site */
+  --petroleo: #2f4c52;
+  --petroleo-fundo: #1f3237;
+  --petroleo-alto: rgba(255, 255, 255, 0.1);
+  --acao: #2f4c52;
+  --acao-escura: #23383d;
+  --link: #2f6f7c;
+  --foco: #2f6f7c;
+
+  /* a marca, nos tons dos painéis */
+  --marca-verde: #7cb93c;
+  --marca-amarelo: #f7b616;
+  --marca-azul: #1ba0e1;
+
+  /* estados: fundos translúcidos, texto com contraste AA */
+  --liberado: #3d7330;
+  --liberado-fundo: rgba(65, 122, 51, 0.1);
+  --revisao: #84590d;
+  --revisao-fundo: rgba(247, 182, 22, 0.16);
+  --obsoleto: #a23d27;
+  --obsoleto-fundo: rgba(168, 65, 42, 0.1);
+  --obsoleto-marca: #c4553b;
+  --cancelado-fundo: rgba(34, 49, 47, 0.06);
+
+  --fonte-titulo: "Fraunces", Georgia, serif;
+  --fonte-ui: "Poppins", system-ui, -apple-system, "Segoe UI", sans-serif;
+
+  --raio: 9px;
+  --raio-folha: 18px;
+
+  /* o "bisel": aro branco, aro escuro finíssimo, luz por dentro e sombra longa */
+  --bisel: 0 0 0 1px rgba(255, 255, 255, 0.7), 0 0 0 2px rgba(17, 24, 28, 0.07),
+    inset 0 1px 1px rgba(255, 252, 240, 0.9), inset 0 0 0 1px rgba(255, 255, 255, 0.5),
+    0 1px 2px -1px rgba(17, 24, 28, 0.1), 0 10px 26px -18px rgba(20, 30, 30, 0.55);
+  --bisel-alto: 0 0 0 1px rgba(255, 255, 255, 0.8), 0 0 0 2px rgba(17, 24, 28, 0.1),
+    inset 0 1px 1px rgba(255, 252, 240, 0.9), inset 0 0 0 1px rgba(255, 255, 255, 0.6),
+    0 2px 4px -2px rgba(17, 24, 28, 0.14), 0 22px 42px -22px rgba(20, 30, 30, 0.6);
+  --aro: 0 0 0 1px rgba(0, 0, 0, 0.08), 0 0 0 3px #fffdf7, 0 0 0 4px rgba(0, 0, 0, 0.07);
+  --sombra-folha: var(--bisel);
+
+  /* as três cores do símbolo numa régua só — o sublinhado dos painéis */
+  --regua-marca: linear-gradient(90deg, var(--marca-verde) 0 33%, var(--marca-azul) 33% 66%, var(--marca-amarelo) 66%);
+
+  /* sem cor própria, a obra usa o petróleo */
+  --cor-obra: #2f4c52;
+}
+
+body {
+  font-size: 13.5px;
+  background:
+    radial-gradient(900px 520px at 88% -8%, rgba(27, 160, 225, 0.07), transparent 70%),
+    radial-gradient(760px 520px at -6% 104%, rgba(124, 185, 60, 0.08), transparent 70%),
+    var(--nevoa);
+  background-attachment: fixed;
+}
+
+::selection {
+  background: rgba(247, 182, 22, 0.28);
+}
+
+/* --------------------------------------------------------------- títulos */
+
+.cabecalho-area h1,
+.titulo-secao {
+  font-family: var(--fonte-titulo);
+  font-weight: 400;
+  font-size: 34px;
+  line-height: 1.08;
+  letter-spacing: -0.022em;
+  font-variation-settings: "opsz" 96;
+}
+
+.cabecalho-area h1 em,
+.titulo-secao em {
+  font-style: italic;
+  font-weight: 300;
+  color: var(--petroleo);
+}
+
+.titulo-secao {
+  font-size: 23px;
+  margin-top: 3px;
+}
+
+.rotulo {
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+}
+
+/* --------------------------------------------------------------- barra */
+
+.prancheta {
+  background:
+    radial-gradient(320px 260px at 0% 0%, rgba(255, 255, 255, 0.08), transparent 70%),
+    linear-gradient(172deg, #34555c 0%, #24393e 55%, #1b2b2f 100%);
+  --foco: var(--marca-amarelo);
+}
+
+.marca-nome {
+  font-family: var(--fonte-titulo);
+  font-weight: 400;
+  font-size: 22px;
+  letter-spacing: -0.015em;
+}
+
+.marca-sub {
+  font-size: 8.5px;
+  letter-spacing: 0.2em;
+}
+
+.seletor-obra select {
+  background: rgba(0, 0, 0, 0.18);
+  border-color: rgba(255, 255, 255, 0.12);
+  border-radius: var(--raio);
+}
+
+.menu a {
+  border-radius: 10px;
+  font-size: 13px;
+}
+
+.menu a.ativo {
+  background: rgba(255, 255, 255, 0.1);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+
+.menu a.ativo::before {
+  background: var(--marca-amarelo);
+}
+
+/* --------------------------------------------------------------- folha */
+
+.folha {
+  border: none;
+  border-radius: var(--raio-folha);
+  background: linear-gradient(rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.8));
+  box-shadow: var(--bisel);
+}
+
+.folha + .folha {
+  margin-top: 18px;
+}
+
+.folha-titulo {
+  border-bottom-color: rgba(34, 49, 47, 0.07);
+  padding: 15px 20px;
+}
+
+.folha-titulo strong {
+  font-family: var(--fonte-titulo);
+  font-weight: 400;
+  font-size: 18px;
+  letter-spacing: -0.01em;
+}
+
+.folha-corpo {
+  padding: 20px;
+}
+
+.carimbo,
+.carimbo-campo {
+  border-color: rgba(34, 49, 47, 0.07);
+}
+
+/* --------------------------------------------------------------- estados */
+
+.estado {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 3px 10px 3px 8px;
+}
+
+.estado::before {
+  width: 7px;
+  height: 7px;
+}
+
+/* --------------------------------------------------------------- tabela */
+
+.tabela th {
+  background: transparent;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  border-bottom-color: rgba(34, 49, 47, 0.08);
+}
+
+.tabela td {
+  border-bottom-color: rgba(34, 49, 47, 0.06);
+}
+
+.tabela tbody tr:hover {
+  background: rgba(247, 182, 22, 0.05);
+}
+
+.tabela a.link-doc {
+  color: var(--petroleo);
+}
+
+.tipo {
+  background: rgba(34, 49, 47, 0.06);
+  border-radius: 999px;
+  padding: 2px 7px;
+}
+
+/* --------------------------------------------------------------- controles */
+
+.botao {
+  border-radius: var(--raio);
+  font-size: 13px;
+  box-shadow: 0 1px 2px rgba(17, 24, 28, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+
+.botao.secundario {
+  background: rgba(255, 255, 255, 0.6);
+  color: var(--petroleo);
+  border-color: rgba(0, 0, 0, 0.14);
+  box-shadow: none;
+}
+
+.botao.secundario:hover:not(:disabled) {
+  background: #fff;
+  border-color: rgba(0, 0, 0, 0.22);
+}
+
+.botao.perigo {
+  background: transparent;
+  border-color: rgba(168, 65, 42, 0.32);
+  box-shadow: none;
+}
+
+.campo input,
+.campo select,
+.campo textarea,
+.entrada {
+  border-radius: var(--raio);
+  border-color: var(--traco-medio);
+  background: rgba(255, 255, 255, 0.85);
+}
+
+.campo input:focus,
+.campo select:focus,
+.campo textarea:focus,
+.entrada:focus {
+  border-color: var(--petroleo);
+  box-shadow: 0 0 0 3px rgba(47, 76, 82, 0.14);
+}
+
+/* O seletor em pílula dos painéis, com a régua da marca sob o item ativo. */
+.seletor-visao {
+  padding: 4px;
+  border-radius: 999px;
+  background: rgba(34, 49, 47, 0.06);
+  box-shadow: inset 0 1px 2px rgba(17, 24, 28, 0.09), 0 0 0 1px rgba(255, 255, 255, 0.6);
+}
+
+.seletor-visao button {
+  position: relative;
+  padding: 7px 20px;
+  border-radius: 999px;
+  font-size: 12px;
+  color: var(--tinta-3);
+}
+
+.seletor-visao button.ativo {
+  background: #fff;
+  color: var(--tinta);
+  box-shadow: 0 1px 3px rgba(17, 24, 28, 0.12);
+}
+
+.seletor-visao button.ativo::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 4px;
+  width: 22px;
+  height: 2px;
+  margin-left: -11px;
+  border-radius: 2px;
+  background: var(--regua-marca);
+}
+
+/* --------------------------------------------------------------- avisos e revisões */
+
+.aviso {
+  border-radius: 12px;
+}
+
+.revisao {
+  border-bottom-color: rgba(34, 49, 47, 0.07);
+}
+
+.revisao.obsoleta {
+  background: rgba(236, 230, 217, 0.35);
+}
+
+.arquivos {
+  border-color: rgba(34, 49, 47, 0.08);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.6);
+}
+
+.arquivo {
+  border-bottom-color: rgba(34, 49, 47, 0.06);
+}
+
+/* ==========================================================================
+   Capa da obra — a identidade do empreendimento
+
+   Uma cor só por obra (--cor-obra, vinda do cadastro); o degradê, o brilho e
+   a estampa saem dela. A estampa é o próprio logo, branco e apagado, grande
+   na direita — o papel que o desenho de folhas faz nos painéis.
+   ========================================================================== */
+
+.capa-obra {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-height: 112px;
+  padding: 20px;
+  border-radius: 17px;
+  color: #fff;
+  box-shadow: var(--aro);
+}
+
+.capa-fundo {
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  background: linear-gradient(
+    150deg,
+    var(--cor-obra),
+    color-mix(in oklab, var(--cor-obra) 36%, #081216)
+  );
+}
+
+.capa-fundo::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(260px circle at 88% -10%, rgba(255, 255, 255, 0.2), transparent 68%);
+}
+
+.capa-estampa {
+  position: absolute;
+  z-index: -1;
+  right: -4%;
+  top: 50%;
+  height: 150%;
+  max-width: 55%;
+  object-fit: contain;
+  transform: translateY(-50%) rotate(-8deg);
+  filter: brightness(0) invert(1);
+  opacity: 0.09;
+  pointer-events: none;
+}
+
+.selo-logo {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  padding: 8px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 8px 18px -10px rgba(0, 0, 0, 0.55), inset 0 0 0 1px rgba(255, 255, 255, 0.7);
+}
+
+.selo-logo img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.selo-logo img.sem-logo {
+  width: 30px;
+  height: 30px;
+  opacity: 0.55;
+  filter: grayscale(0.4);
+}
+
+.capa-textos {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.capa-obra .codigo {
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.capa-obra .nome-obra {
+  margin: 0;
+  font-family: var(--fonte-titulo);
+  font-weight: 400;
+  font-size: 25px;
+  line-height: 1.08;
+  letter-spacing: -0.015em;
+  color: #fff;
+  overflow-wrap: anywhere;
+}
+
+.capa-sub {
+  font-size: 12px;
+  font-weight: 300;
+  letter-spacing: 0.02em;
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.capa-seta {
+  flex: none;
+  align-self: flex-start;
+  margin-left: auto;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.14);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.18);
+  font-size: 14px;
+  transition: background 150ms ease, transform 150ms ease;
+}
+
+/* Cartão na carteira: moldura clara com a capa dentro, como nos painéis. */
+.cartao-obra {
+  gap: 0;
+  padding: 8px;
+  border: none;
+  border-radius: 24px;
+  background: linear-gradient(rgba(255, 255, 255, 0.94), rgba(255, 255, 255, 0.66));
+  box-shadow: var(--bisel);
+  transition: box-shadow 180ms ease, transform 180ms ease;
+}
+
+.cartao-obra:hover {
+  box-shadow: var(--bisel-alto);
+  transform: translateY(-2px);
+}
+
+.cartao-obra:hover .capa-seta {
+  background: rgba(255, 255, 255, 0.26);
+  transform: translateX(2px);
+}
+
+.cartao-obra .pe {
+  margin: 0;
+  padding: 12px 10px 6px;
+  border-top: none;
+  font-size: 12px;
+}
+
+.obras-grade {
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 18px;
+}
+
+/* No acervo, a capa abre a página. */
+.capa-acervo {
+  min-height: 150px;
+  padding: 28px 30px;
+  margin-bottom: 26px;
+}
+
+.capa-acervo .selo-logo {
+  width: 88px;
+  height: 88px;
+  padding: 10px;
+  border-radius: 18px;
+}
+
+.capa-acervo .nome-obra {
+  font-size: 38px;
+  letter-spacing: -0.025em;
+}
+
+.capa-previa {
+  margin-bottom: 4px;
+}
+
+/* --------------------------------------------------------------- cor da obra */
+
+.amostras {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.amostra {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: var(--aro);
+  transition: transform 120ms ease;
+}
+
+.amostra:hover {
+  transform: scale(1.08);
+}
+
+.amostra.escolhida {
+  outline: 2px solid var(--tinta);
+  outline-offset: 4px;
+}
+
+.amostra-livre {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: 6px;
+  font-size: 12.5px;
+  color: var(--tinta-2);
+  cursor: pointer;
+}
+
+.amostra-livre input {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: none;
+  cursor: pointer;
+}
+
+/* --------------------------------------------------------------- entrar */
+
+.tela-entrar {
+  background:
+    radial-gradient(700px 480px at 85% 0%, rgba(27, 160, 225, 0.09), transparent 70%),
+    radial-gradient(640px 480px at 0% 100%, rgba(124, 185, 60, 0.1), transparent 70%),
+    var(--nevoa);
+}
+
+.cartao-entrar {
+  border-radius: 24px;
+  box-shadow: var(--bisel-alto);
+}
+
+.cartao-entrar .topo .marca-nome {
+  font-size: 30px;
+}
+
+.tela-entrar .legenda {
+  color: var(--tinta-3);
+}
+
+/* --------------------------------------------------------------- celular */
+
+@media (max-width: 700px) {
+  .cabecalho-area h1 {
+    font-size: 27px;
+  }
+
+  .capa-acervo {
+    min-height: 0;
+    padding: 20px;
+  }
+
+  .capa-acervo .selo-logo {
+    width: 64px;
+    height: 64px;
+  }
+
+  .capa-acervo .nome-obra {
+    font-size: 28px;
+  }
+}

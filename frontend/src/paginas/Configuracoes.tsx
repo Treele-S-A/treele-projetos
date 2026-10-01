@@ -10,7 +10,7 @@ import {
   type PapelObra,
   type Usuario,
 } from "../api";
-import { Aviso, Carregando, LogoObra } from "../componentes";
+import { Aviso, CapaObra, Carregando, LogoObra } from "../componentes";
 import { prepararLogo } from "../imagem";
 import { useSessao } from "../sessao";
 
@@ -53,6 +53,7 @@ export default function Configuracoes() {
       </div>
 
       <Logo obra={obra} aoSalvar={recarregarObras} />
+      <Identidade obra={obra} aoSalvar={recarregarObras} />
       <Responsavel obra={obra} aoSalvar={recarregarObras} />
       <Equipe obraId={obra.id} />
       <Nomenclatura obraId={obra.id} />
@@ -163,6 +164,92 @@ function Logo({ obra, aoSalvar }: { obra: Obra; aoSalvar: () => Promise<void> })
               onChange={(e) => enviar(e.target.files?.[0])}
             />
           </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ---------------------------------------------------------------- identidade */
+
+/** Pontos de partida tirados dos painéis da treèle; qualquer cor vale. */
+const CORES_SUGERIDAS: Array<[string, string]> = [
+  ["#2f4c52", "Petróleo treèle"],
+  ["#7a4a28", "Terra (Serra Dourada)"],
+  ["#3a5b62", "Verde-petróleo (Treviso)"],
+  ["#0a3a4d", "Azul profundo (Creta)"],
+  ["#12a3bd", "Azul-mar (Milos)"],
+  ["#4f6b3a", "Oliva"],
+  ["#6b3a4a", "Vinho"],
+];
+
+function Identidade({ obra, aoSalvar }: { obra: Obra; aoSalvar: () => Promise<void> }) {
+  const [cor, setCor] = useState(obra.cor ?? "#2f4c52");
+  const [erro, setErro] = useState<ErroApi | null>(null);
+  const [ok, setOk] = useState(false);
+  const [salvando, setSalvando] = useState(false);
+
+  async function salvar(valor: string) {
+    setErro(null);
+    setOk(false);
+    setSalvando(true);
+    try {
+      await api.patch(`/obras/${obra.id}`, { cor: valor });
+      await aoSalvar();
+      setOk(true);
+    } catch (ex) {
+      setErro(ex instanceof ErroApi ? ex : null);
+    } finally {
+      setSalvando(false);
+    }
+  }
+
+  return (
+    <div className="folha">
+      <div className="folha-titulo">
+        <strong>Cor da obra</strong>
+        <span className="silencioso" style={{ fontSize: 12 }}>
+          A cor da identidade do empreendimento — pinta o cartão e o cabeçalho
+        </span>
+      </div>
+      <div className="folha-corpo">
+        {erro && <Aviso tom="erro" titulo={erro.message} itens={erro.erros} />}
+        {ok && <Aviso tom="ok">Cor salva.</Aviso>}
+
+        <CapaObra obra={{ ...obra, cor }} className="capa-previa">
+          <span className="capa-textos">
+            <span className="codigo">Obra {obra.codigo}</span>
+            <span className="nome-obra">{obra.nome}</span>
+          </span>
+        </CapaObra>
+
+        <div className="amostras" role="group" aria-label="Cores sugeridas">
+          {CORES_SUGERIDAS.map(([valor, nome]) => (
+            <button
+              key={valor}
+              type="button"
+              className={`amostra ${cor === valor ? "escolhida" : ""}`}
+              style={{ background: valor }}
+              title={nome}
+              aria-label={nome}
+              onClick={() => setCor(valor)}
+            />
+          ))}
+          <label className="amostra-livre" title="Outra cor">
+            <input type="color" value={cor} onChange={(e) => setCor(e.target.value)} />
+            <span>Outra cor</span>
+          </label>
+        </div>
+
+        <div className="linha" style={{ marginTop: 14 }}>
+          <button className="botao" disabled={salvando} onClick={() => salvar(cor)}>
+            {salvando ? "Salvando…" : "Salvar cor"}
+          </button>
+          {obra.cor && (
+            <button className="botao secundario" disabled={salvando} onClick={() => salvar("")}>
+              Voltar ao petróleo
+            </button>
+          )}
         </div>
       </div>
     </div>

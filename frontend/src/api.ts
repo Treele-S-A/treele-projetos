@@ -127,6 +127,8 @@ export interface Obra {
   responsavel: Usuario | null;
   /** Assinado e com prazo (12 h): vem novo a cada leitura da obra. */
   logo_url: string | null;
+  /** Cor de identidade do empreendimento (#rrggbb), ou null = petróleo. */
+  cor: string | null;
   papel: PapelObra | null;
   permissoes: string[];
 }

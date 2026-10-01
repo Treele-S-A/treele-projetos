@@ -141,6 +141,8 @@ def atualizar(
         ctx.obra.ativa = dados.ativa
     if dados.regra_companheiro is not None:
         ctx.obra.regra_companheiro = dados.regra_companheiro
+    if dados.cor is not None:
+        ctx.obra.cor = dados.cor.lower() or None
     if dados.responsavel_id is not None:
         if dados.responsavel_id == 0:
             ctx.obra.responsavel_id = None

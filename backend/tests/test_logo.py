@@ -188,3 +188,22 @@ def test_troca_e_remocao_ficam_no_registro(cliente, admin, obra):
     itens = eventos["itens"] if isinstance(eventos, dict) else eventos
     acoes = {e["acao"] for e in itens}
     assert {"obra_logo_alterado", "obra_logo_removido"} <= acoes
+
+
+# ------------------------------------------------------------ cor da obra
+
+
+def test_cor_da_obra_define_e_limpa(cliente, admin, obra):
+    r = cliente.patch(f"/obras/{obra['id']}", json={"cor": "#3A5B62"}, headers=admin)
+    assert r.status_code == 200, r.text
+    assert r.json()["cor"] == "#3a5b62"
+
+    limpa = cliente.patch(f"/obras/{obra['id']}", json={"cor": ""}, headers=admin)
+    assert limpa.json()["cor"] is None
+
+
+def test_cor_fora_do_formato_e_recusada(cliente, admin, obra):
+    """Vai direto para um atributo de estilo na tela: só #rrggbb passa."""
+    for invalida in ["red", "#fff", "#12345g", "url(javascript:x)"]:
+        r = cliente.patch(f"/obras/{obra['id']}", json={"cor": invalida}, headers=admin)
+        assert r.status_code == 422, invalida
