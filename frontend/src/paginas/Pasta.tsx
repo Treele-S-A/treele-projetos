@@ -29,7 +29,9 @@ export default function Pasta() {
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
-  const [recolhidos, setRecolhidos] = useState<Set<number>>(new Set());
+  // Guarda os abertos, não os recolhidos: a pasta chega toda recolhida, como
+  // um índice de pranchas, e a pessoa abre só o documento que procura.
+  const [abertos, setAbertos] = useState<Set<number>>(new Set());
 
   const podePublicar = obra?.permissoes.includes("publicar") ?? false;
   const podeCancelar = obra?.permissoes.includes("cancelar") ?? false;
@@ -62,7 +64,7 @@ export default function Pasta() {
   }
 
   function alternar(id: number) {
-    setRecolhidos((atual) => {
+    setAbertos((atual) => {
       const novo = new Set(atual);
       if (novo.has(id)) novo.delete(id);
       else novo.add(id);
@@ -104,15 +106,13 @@ export default function Pasta() {
             <>
               <button
                 className="botao secundario pequeno"
-                onClick={() => setRecolhidos(new Set())}
+                onClick={() => setAbertos(new Set(dados.documentos.map((d) => d.id)))}
               >
                 Expandir tudo
               </button>
               <button
                 className="botao secundario pequeno"
-                onClick={() =>
-                  setRecolhidos(new Set(dados.documentos.map((d) => d.id)))
-                }
+                onClick={() => setAbertos(new Set())}
               >
                 Recolher
               </button>
@@ -135,7 +135,7 @@ export default function Pasta() {
         </div>
       ) : (
         dados.documentos.map((doc) => {
-          const recolhido = recolhidos.has(doc.id);
+          const recolhido = !abertos.has(doc.id);
           const atual = doc.revisao_atual;
           return (
             <div className="folha" key={doc.id}>
