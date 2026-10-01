@@ -2,8 +2,8 @@
    Tema "painel" — em teste na branch design
 
    A linguagem dos painéis da treèle (treeledashboard), aplicada por cima do
-   estilos.css: papel creme no lugar da névoa azulada, Fraunces nos títulos
-   com uma palavra em itálico, Poppins no corpo, cartões com o "bisel" de
+   estilos.css: papel creme no lugar da névoa azulada, IBM Plex Sans nos
+   títulos (reta, de engenharia), Poppins no corpo, cartões com o "bisel" de
    sombras em camadas e, principalmente, cada obra com a SUA cor — a capa
    da obra é a identidade do empreendimento, não a da treèle.
 
@@ -54,7 +54,9 @@
   --obsoleto-marca: #c4553b;
   --cancelado-fundo: rgba(34, 49, 47, 0.06);
 
-  --fonte-titulo: "Fraunces", Georgia, serif;
+  /* Títulos retos, de engenharia: a serifa dos painéis (Fraunces) lia como
+     material de vendas. Plex Sans é da mesma família do mono dos códigos. */
+  --fonte-titulo: "IBM Plex Sans", "Poppins", system-ui, sans-serif;
   --fonte-ui: "Poppins", system-ui, -apple-system, "Segoe UI", sans-serif;
 
   --raio: 9px;
@@ -95,22 +97,21 @@ body {
 .cabecalho-area h1,
 .titulo-secao {
   font-family: var(--fonte-titulo);
-  font-weight: 400;
-  font-size: 34px;
-  line-height: 1.08;
-  letter-spacing: -0.022em;
-  font-variation-settings: "opsz" 96;
+  font-weight: 600;
+  font-size: 30px;
+  line-height: 1.1;
+  letter-spacing: -0.015em;
 }
 
 .cabecalho-area h1 em,
 .titulo-secao em {
-  font-style: italic;
-  font-weight: 300;
-  color: var(--petroleo);
+  font-style: normal;
+  font-weight: 400;
+  color: var(--tinta-3);
 }
 
 .titulo-secao {
-  font-size: 23px;
+  font-size: 21px;
   margin-top: 3px;
 }
 
@@ -131,9 +132,9 @@ body {
 
 .marca-nome {
   font-family: var(--fonte-titulo);
-  font-weight: 400;
-  font-size: 22px;
-  letter-spacing: -0.015em;
+  font-weight: 600;
+  font-size: 20px;
+  letter-spacing: -0.01em;
 }
 
 .marca-sub {
@@ -181,9 +182,9 @@ body {
 
 .folha-titulo strong {
   font-family: var(--fonte-titulo);
-  font-weight: 400;
-  font-size: 18px;
-  letter-spacing: -0.01em;
+  font-weight: 600;
+  font-size: 15.5px;
+  letter-spacing: -0.005em;
 }
 
 .folha-corpo {
@@ -435,10 +436,10 @@ body {
 .capa-obra .nome-obra {
   margin: 0;
   font-family: var(--fonte-titulo);
-  font-weight: 400;
-  font-size: 25px;
-  line-height: 1.08;
-  letter-spacing: -0.015em;
+  font-weight: 600;
+  font-size: 23px;
+  line-height: 1.1;
+  letter-spacing: -0.012em;
   color: #fff;
   overflow-wrap: anywhere;
 }
@@ -513,8 +514,8 @@ body {
 }
 
 .capa-acervo .nome-obra {
-  font-size: 38px;
-  letter-spacing: -0.025em;
+  font-size: 34px;
+  letter-spacing: -0.02em;
 }
 
 .capa-previa {
@@ -586,7 +587,7 @@ body {
 }
 
 .cartao-entrar .topo .marca-nome {
-  font-size: 30px;
+  font-size: 28px;
 }
 
 .tela-entrar .legenda {
