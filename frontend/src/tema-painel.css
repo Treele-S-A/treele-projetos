@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Tema "painel" — em teste na branch design
+   Tema "painel" — aprovado em 01/10/2026
 
    A linguagem dos painéis da treèle (treeledashboard), aplicada por cima do
    estilos.css: papel creme no lugar da névoa azulada, IBM Plex Sans nos
@@ -7,8 +7,8 @@
    sombras em camadas e, principalmente, cada obra com a SUA cor — a capa
    da obra é a identidade do empreendimento, não a da treèle.
 
-   Fica num arquivo separado de propósito: aprovado, vira o estilos.css;
-   recusado, sai inteiro apagando uma linha do main.tsx.
+   Fica num arquivo separado, por cima do estilos.css: o que está aqui
+   vence. Ao mexer no visual, comece por este arquivo.
 
    O que não muda: código de documento, prancha e revisão continuam em mono,
    e o vermelho de obsoleto continua sendo o único tom de alerta.

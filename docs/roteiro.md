@@ -195,6 +195,7 @@ justamente como o BCF já funciona.
 | Arquivos em produção | **Supabase Storage** (R2 dispensado): envio direto do navegador testado, sem configurar CORS | 30/09/2026 |
 | Em produção | `projetos.treele.com.br` desde 30/09/2026. **Provisório:** Vercel no plano Hobby, que não permite uso comercial — passar para Pro antes do uso pela equipe | 30/09/2026 |
 | Identidade visual | Cores, símbolo e site da treèle; carimbo de liberação redondo | 25/09/2026 |
+| Visual dos painéis | Linguagem dos painéis da treèle (creme, cartões com bisel); títulos em IBM Plex Sans — reta, de engenharia; cada obra com a cor da sua identidade na capa | 01/10/2026 |
 | Logo por obra | Enviado em Configurações; passa pela API, conferido pelos bytes, sem SVG | 25/09/2026 |
 | Interface e API | Mesma imagem, mesmo processo: API sob `/api`, telas sob `/` | 22/09/2026 |
 
