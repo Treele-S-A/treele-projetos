@@ -209,10 +209,10 @@ function Responsavel({
     }
   }
 
-  // Quem responde pela obra vem da equipe de projetos, não do campo.
-  const candidatos = membros.filter(
-    (m) => m.papel === "coordenador" || m.papel === "projetista",
-  );
+  // Qualquer pessoa da equipe, em qualquer papel: o responsável costuma ser o
+  // engenheiro da obra, não alguém da equipe de projetos. A API só exige que
+  // seja da equipe — de fora, a pessoa não enxergaria a obra.
+  const candidatos = membros;
 
   return (
     <div className="folha">
@@ -258,8 +258,8 @@ function Responsavel({
 
         {candidatos.length === 0 && (
           <p className="silencioso" style={{ fontSize: 12, marginBottom: 0 }}>
-            Inclua alguém como coordenador ou projetista na equipe abaixo para
-            poder marcá-lo como responsável.
+            Inclua a pessoa na equipe abaixo, em qualquer papel, para poder
+            marcá-la como responsável.
           </p>
         )}
       </div>

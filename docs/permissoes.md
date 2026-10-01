@@ -20,7 +20,8 @@ Obra A e projetista na Obra B. Além disso existe o perfil global de
 | Alterar nomenclatura da obra | ✓ | | | |
 | Ver registro de atividades | ✓ | | | |
 
-O administrador tem todas as permissões em todas as obras.
+O administrador tem todas as permissões em todas as obras — e uma a mais,
+que nenhum papel de obra tem: **excluir arquivos e revisões**.
 
 ## As escolhas por trás disso
 
@@ -57,6 +58,20 @@ alterar não — que mantém o histórico confiável.
 
 Revisão obsoleta ou cancelada não aceita nada.
 
+**Excluir é só do administrador, e vale para qualquer status.** Cancelar deixa
+a revisão no histórico dizendo que não vale; excluir apaga de vez, banco e
+arquivo. É a saída para o que nunca deveria ter entrado — obra errada, arquivo
+trocado — e por ser definitiva não fica com papel nenhum da obra. Duas regras
+evitam que a exclusão bagunce o acervo:
+
+- Excluir a revisão **liberada** devolve a validade à anterior. Sem isso, a
+  obra ficaria sem nenhuma revisão válida do documento.
+- Excluir a **única** revisão tira o documento do acervo, e o código pode ser
+  enviado de novo do zero.
+
+O registro de atividades guarda o que saiu: documento, revisão, arquivos e o
+que voltou a valer.
+
 **Não dá para liberar uma revisão antiga depois de uma mais nova.** Publicar a
 R00 depois da R01 já estar liberada deixaria a obra com projeto velho marcado
 como válido. O sistema recusa e explica.
@@ -67,15 +82,16 @@ Cada obra tem um **engenheiro responsável**, definido em Configurações da obr
 Não é o mesmo que coordenador: coordenador é permissão e pode haver vários;
 responsável é quem responde pela obra, e é um só.
 
-O responsável precisa fazer parte da equipe da obra — alguém de fora não
-enxergaria a obra e receberia notificação sobre o que não pode abrir.
+O responsável pode ter **qualquer papel** na equipe — inclusive *Obra*, que é o
+caso comum do engenheiro de campo. Só precisa fazer parte da equipe: alguém de
+fora não enxergaria a obra e receberia notificação sobre o que não pode abrir.
 
 Quando as notificações entrarem (Fase 1.5), é para ele que elas vão primeiro.
 
 ## Registro de atividades
 
 Todo evento relevante fica gravado, com usuário, IP e horário: login, envio,
-conclusão de envio, download, liberação, cancelamento, mudança de equipe,
+conclusão de envio, download, liberação, cancelamento, exclusão, mudança de equipe,
 alteração de nomenclatura e exportação da lista mestra.
 
 O registro de **download** é o que responde à pergunta que aparece em toda

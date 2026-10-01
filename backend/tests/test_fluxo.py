@@ -617,3 +617,18 @@ def test_projetista_nao_ve_auditoria(cliente, projetista, obra):
         cliente.get(f"/obras/{obra['id']}/eventos", headers=projetista).status_code
         == 403
     )
+
+
+def test_responsavel_pode_ter_qualquer_papel(cliente, admin, obra, pessoal_da_obra):
+    """O engenheiro responsável costuma estar na obra, não na equipe de
+    projetos: o papel dele na equipe não restringe quem pode ser escolhido."""
+    membros = cliente.get(f"/obras/{obra['id']}/membros", headers=admin).json()
+    da_obra = next(m for m in membros if m["papel"] == "obra")
+
+    r = cliente.patch(
+        f"/obras/{obra['id']}", json={"responsavel_id": da_obra["usuario_id"]}, headers=admin
+    )
+
+    assert r.status_code == 200, r.text
+    assert r.json()["responsavel"]["id"] == da_obra["usuario_id"]
+    cliente.patch(f"/obras/{obra['id']}", json={"responsavel_id": 0}, headers=admin)

@@ -7,6 +7,7 @@ from ..enums import StatusArquivo, StatusRevisao
 from ..models import Arquivo, Usuario
 from ..schemas import ArquivoOut, DownloadSaida, RevisaoOut, UploadConfirmarSaida
 from ..services import auditoria
+from ..services.revisoes import remover_do_armazenamento
 from ..services.storage import armazenamento
 
 router = APIRouter(prefix="/arquivos", tags=["arquivos"])
@@ -109,7 +110,7 @@ def download(
             "arquivo": arquivo.nome_original,
             "documento": revisao.documento.codigo,
             "revisao": revisao.numero,
-            "status_revisao": revisao.status.value,
+            "situacao_revisao": revisao.status.value,
         },
         request=request,
     )
@@ -125,24 +126,32 @@ def remover(
     usuario: Usuario = Depends(usuario_atual),
     db: Session = Depends(get_db),
 ):
-    arquivo, ctx = _carregar(db, usuario, arquivo_id)
-    ctx.exigir("enviar")
+    """Exclui o arquivo de vez — banco e armazenamento. Só administrador.
 
-    if arquivo.revisao.status != StatusRevisao.em_revisao:
+    Vale para qualquer revisão, inclusive a liberada: é a saída para arquivo
+    enviado na obra errada ou com conteúdo que não podia estar ali. Por isso
+    mesmo fica restrito, e o registro de atividades guarda o que saiu.
+    """
+    arquivo, ctx = _carregar(db, usuario, arquivo_id)
+    if not usuario.admin:
         raise HTTPException(
-            status.HTTP_409_CONFLICT,
-            "Só é possível remover arquivo de revisão que ainda está em revisão. "
-            "O que já foi liberado para obra fica no histórico.",
+            status.HTTP_403_FORBIDDEN, "Somente um administrador pode excluir arquivos."
         )
 
+    revisao = arquivo.revisao
     chave = arquivo.storage_key
-    nome = arquivo.nome_original
-    obra_id = ctx.obra.id
 
     db.delete(arquivo)
     auditoria.registrar(
         db, acao="arquivo_removido", entidade="arquivo", entidade_id=arquivo_id,
-        usuario=usuario, obra_id=obra_id, detalhes={"arquivo": nome}, request=request,
+        usuario=usuario, obra_id=ctx.obra.id,
+        detalhes={
+            "documento": revisao.documento.codigo,
+            "revisao": revisao.numero,
+            "arquivo": arquivo.nome_original,
+            "situacao_revisao": revisao.status.value,
+        },
+        request=request,
     )
     db.commit()
-    armazenamento.remover(chave)
+    remover_do_armazenamento(db, [chave])

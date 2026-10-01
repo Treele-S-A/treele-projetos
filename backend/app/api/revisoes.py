@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from ..db import get_db
 from ..deps import montar_contexto, usuario_atual
 from ..models import Revisao, Usuario
-from ..schemas import PublicarEntrada, RevisaoAtualizar, RevisaoOut
+from ..schemas import ExclusaoRevisaoSaida, PublicarEntrada, RevisaoAtualizar, RevisaoOut
 from ..services import auditoria
 from ..services import revisoes as servico
 
@@ -117,6 +117,52 @@ def publicar(
     db.commit()
     db.refresh(revisao)
     return revisao
+
+
+@router.delete("/{revisao_id}", response_model=ExclusaoRevisaoSaida)
+def excluir(
+    revisao_id: int,
+    request: Request,
+    usuario: Usuario = Depends(usuario_atual),
+    db: Session = Depends(get_db),
+):
+    """Exclui a revisão e os arquivos dela, em qualquer status. Só administrador.
+
+    Diferente de cancelar: cancelada, a revisão continua no histórico dizendo
+    que não vale. Excluída, ela some — é para o que nunca deveria ter entrado
+    (obra errada, arquivo trocado). O registro de atividades guarda o que saiu.
+    """
+    revisao, ctx = _carregar(db, usuario, revisao_id)
+    if not usuario.admin:
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN, "Somente um administrador pode excluir revisões."
+        )
+
+    codigo = revisao.documento.codigo
+    numero = revisao.numero
+    situacao = revisao.status.value
+
+    resultado = servico.excluir_revisao(db, revisao)
+    auditoria.registrar(
+        db, acao="revisao_excluida", entidade="revisao", entidade_id=revisao_id,
+        usuario=usuario, obra_id=ctx.obra.id,
+        detalhes={
+            "documento": codigo,
+            "revisao": numero,
+            "situacao_revisao": situacao,
+            "arquivos": resultado.arquivos,
+            "restaurada": resultado.restaurada.numero if resultado.restaurada else None,
+            "documento_excluido": resultado.documento_excluido,
+        },
+        request=request,
+    )
+    db.commit()
+    servico.remover_do_armazenamento(db, resultado.chaves)
+
+    return ExclusaoRevisaoSaida(
+        restaurada=resultado.restaurada.numero if resultado.restaurada else None,
+        documento_excluido=resultado.documento_excluido,
+    )
 
 
 @router.post("/{revisao_id}/cancelar", response_model=RevisaoOut)

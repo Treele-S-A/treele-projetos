@@ -16,6 +16,7 @@ import {
   type Verificacao,
 } from "./api";
 import { Aviso, Estado } from "./componentes";
+import { useSessao } from "./sessao";
 
 /** Pede a URL assinada e baixa. Revisão não vigente exige confirmação. */
 export async function baixarArquivo(
@@ -45,12 +46,16 @@ export function HistoricoRevisoes({
   podeCancelar,
   aoMudar,
   aoBaixar,
+  aoExcluirDocumento,
 }: {
   revisoes: Revisao[];
   podePublicar: boolean;
   podeCancelar: boolean;
   aoMudar: () => Promise<void>;
   aoBaixar: (a: Arquivo) => void;
+  /** Excluir a única revisão tira o documento do acervo; quem mostra só ele
+   *  precisa sair da tela em vez de recarregar algo que não existe mais. */
+  aoExcluirDocumento?: () => void;
 }) {
   return (
     <>
@@ -58,10 +63,12 @@ export function HistoricoRevisoes({
         <LinhaRevisao
           key={r.id}
           revisao={r}
+          unica={revisoes.length === 1}
           podePublicar={podePublicar}
           podeCancelar={podeCancelar}
           aoMudar={aoMudar}
           aoBaixar={aoBaixar}
+          aoExcluirDocumento={aoExcluirDocumento}
         />
       ))}
     </>
@@ -70,17 +77,23 @@ export function HistoricoRevisoes({
 
 function LinhaRevisao({
   revisao,
+  unica,
   podePublicar,
   podeCancelar,
   aoMudar,
   aoBaixar,
+  aoExcluirDocumento,
 }: {
   revisao: Revisao;
+  unica: boolean;
   podePublicar: boolean;
   podeCancelar: boolean;
   aoMudar: () => Promise<void>;
   aoBaixar: (a: Arquivo) => void;
+  aoExcluirDocumento?: () => void;
 }) {
+  // Excluir é definitivo e vale para qualquer status: só administrador.
+  const admin = useSessao().usuario?.admin ?? false;
   const [verificacao, setVerificacao] = useState<Verificacao | null>(null);
   const [descricao, setDescricao] = useState(revisao.descricao ?? "");
   const [ocupado, setOcupado] = useState(false);
@@ -122,6 +135,52 @@ function LinhaRevisao({
     }
   }
 
+  async function excluirRevisao() {
+    const qtd = revisao.arquivos.length;
+    const avisos = [
+      `Excluir a revisão R${revisao.numero} de vez, com ${
+        qtd === 1 ? "o arquivo dela" : `os ${qtd} arquivos dela`
+      }?`,
+      "Isto não pode ser desfeito.",
+    ];
+    if (revisao.status === "liberado_para_obra" && !unica) {
+      avisos.push("A revisão liberada anterior volta a valer para a obra.");
+    }
+    if (unica) avisos.push("É a única revisão: o documento sai do acervo.");
+    if (!window.confirm(avisos.join("\n\n"))) return;
+
+    setOcupado(true);
+    setErro(null);
+    try {
+      const r = await api.delete<{ restaurada: string | null; documento_excluido: boolean }>(
+        `/revisoes/${revisao.id}`,
+      );
+      if (r.documento_excluido && aoExcluirDocumento) aoExcluirDocumento();
+      else await aoMudar();
+    } catch (ex) {
+      setErro(ex instanceof ErroApi ? ex : new ErroApi(0, "Não foi possível excluir."));
+      setOcupado(false);
+    }
+  }
+
+  async function excluirArquivo(a: Arquivo) {
+    if (!window.confirm(`Excluir o arquivo ${a.nome_original} de vez?
+
+Isto não pode ser desfeito.`)) {
+      return;
+    }
+    setOcupado(true);
+    setErro(null);
+    try {
+      await api.delete(`/arquivos/${a.id}`);
+      await aoMudar();
+    } catch (ex) {
+      setErro(ex instanceof ErroApi ? ex : new ErroApi(0, "Não foi possível excluir."));
+    } finally {
+      setOcupado(false);
+    }
+  }
+
   return (
     <div className={`revisao ${revisao.status === "obsoleto" ? "obsoleta" : ""}`}>
       <div className="revisao-topo">
@@ -155,6 +214,17 @@ function LinhaRevisao({
             </div>
           )}
         </div>
+
+        {admin && (
+          <button
+            className="botao perigo pequeno"
+            disabled={ocupado}
+            onClick={excluirRevisao}
+            title="Somente administradores veem esta opção"
+          >
+            Excluir revisão
+          </button>
+        )}
       </div>
 
       {erro && (
@@ -187,6 +257,15 @@ function LinhaRevisao({
                 >
                   Baixar
                 </button>
+                {admin && (
+                  <button
+                    className="botao perigo pequeno"
+                    disabled={ocupado}
+                    onClick={() => excluirArquivo(a)}
+                  >
+                    Excluir
+                  </button>
+                )}
               </div>
             </div>
           ))}

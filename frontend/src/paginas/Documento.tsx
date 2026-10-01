@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import {
   api,
   ErroApi,
@@ -14,6 +14,7 @@ import { useSessao } from "../sessao";
 export default function Documento() {
   const { documentoId } = useParams();
   const { obras } = useSessao();
+  const navegar = useNavigate();
 
   const [doc, setDoc] = useState<DocumentoDetalhe | null>(null);
   const [carregando, setCarregando] = useState(true);
@@ -182,6 +183,7 @@ export default function Documento() {
           podeCancelar={podeCancelar}
           aoMudar={carregar}
           aoBaixar={baixar}
+          aoExcluirDocumento={() => navegar(obra ? `/obras/${obra.id}/acervo` : "/obras")}
         />
       </div>
     </>

@@ -8,7 +8,8 @@ const ROTULO_ACAO: Record<string, string> = {
   download: "Baixou arquivo",
   upload_iniciado: "Começou envio",
   upload_concluido: "Concluiu envio",
-  arquivo_removido: "Removeu arquivo",
+  arquivo_removido: "Excluiu arquivo",
+  revisao_excluida: "Excluiu revisão",
   revisao_publicada: "Liberou para obra",
   revisao_cancelada: "Cancelou revisão",
   revisao_atualizada: "Editou descrição",
@@ -33,6 +34,14 @@ function descrever(e: Evento): string {
     partes.push(`tornou obsoleta ${d.obsoletadas.map((r) => `R${r}`).join(", ")}`);
   }
   if (d.status_revisao === "obsoleto") partes.push("⚠ revisão obsoleta");
+  if (e.acao === "revisao_excluida") {
+    const arquivos = Array.isArray(d.arquivos) ? d.arquivos : [];
+    if (arquivos.length > 0) partes.push(arquivos.join(", "));
+    if (d.restaurada) partes.push(`R${d.restaurada} voltou a valer`);
+    if ((e.detalhes as Record<string, unknown>).documento_excluido === true) {
+      partes.push("documento saiu do acervo");
+    }
+  }
   if ((e.detalhes as Record<string, unknown>).apos_liberacao === true) {
     partes.push("acrescentado após a liberação");
   }

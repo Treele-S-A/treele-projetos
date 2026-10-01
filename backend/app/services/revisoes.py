@@ -12,13 +12,15 @@ Duas regras concentram quase todo o valor do sistema:
    parecendo válida até alguém imprimir e executar errado.
 """
 
+from dataclasses import dataclass
 from datetime import datetime, timezone
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..enums import StatusArquivo, StatusRevisao, TipoArquivo
-from ..models import Revisao
+from ..models import Arquivo, Revisao
+from .storage import armazenamento
 
 
 def tipos_disponiveis(revisao: Revisao) -> set[str]:
@@ -127,6 +129,76 @@ def cancelar(db: Session, revisao: Revisao) -> None:
     revisao.status = StatusRevisao.cancelado
     revisao.obsoleta_em = datetime.now(timezone.utc)
     db.flush()
+
+
+@dataclass
+class Exclusao:
+    chaves: list[str]
+    arquivos: list[str]
+    restaurada: Revisao | None
+    documento_excluido: bool
+
+
+def excluir_revisao(db: Session, revisao: Revisao) -> Exclusao:
+    """Apaga a revisão e os arquivos dela. Não faz commit nem mexe no storage.
+
+    Se ela era a liberada, a anterior que ela tinha tornado obsoleta volta a
+    valer — senão a obra ficaria sem nenhuma revisão válida do documento,
+    justamente quando a que saiu foi excluída por estar errada. Se era a única
+    revisão, o documento sai junto: documento sem revisão é um código vazio no
+    acervo.
+    """
+    documento = revisao.documento
+    chaves = [a.storage_key for a in revisao.arquivos]
+    nomes = [a.nome_original for a in revisao.arquivos]
+
+    restaurada = None
+    if revisao.status == StatusRevisao.liberado_para_obra:
+        restaurada = db.scalar(
+            select(Revisao)
+            .where(
+                Revisao.documento_id == documento.id,
+                Revisao.id != revisao.id,
+                Revisao.status == StatusRevisao.obsoleto,
+                Revisao.ordem < revisao.ordem,
+            )
+            .order_by(Revisao.ordem.desc())
+            .limit(1)
+        )
+        if restaurada is not None:
+            restaurada.status = StatusRevisao.liberado_para_obra
+            restaurada.obsoleta_em = None
+
+    restantes = [r for r in documento.revisoes if r.id != revisao.id]
+    if restantes:
+        documento.revisoes.remove(revisao)
+        db.delete(revisao)
+    else:
+        db.delete(documento)
+    db.flush()
+
+    return Exclusao(
+        chaves=chaves,
+        arquivos=nomes,
+        restaurada=restaurada,
+        documento_excluido=not restantes,
+    )
+
+
+def remover_do_armazenamento(db: Session, chaves: list[str]) -> None:
+    """Apaga os objetos depois do commit — o banco já não aponta para eles.
+
+    Chave que outro arquivo ainda usa fica. Falha aqui não volta atrás: o
+    registro já saiu do banco, e um objeto órfão no storage é só espaço, não
+    inconsistência. Fica o aviso no log para limpar depois.
+    """
+    for chave in chaves:
+        if db.scalar(select(Arquivo.id).where(Arquivo.storage_key == chave).limit(1)):
+            continue
+        try:
+            armazenamento.remover(chave)
+        except Exception as erro:  # noqa: BLE001 - storage externo, qualquer falha
+            print(f"aviso: objeto '{chave}' ficou no armazenamento ({erro})", flush=True)
 
 
 def proxima_revisao(db: Session, documento_id: int, formato: str = "numerico") -> str:

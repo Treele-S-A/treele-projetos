@@ -359,6 +359,13 @@ class UploadIniciarSaida(BaseModel):
     documento_novo: bool
 
 
+class ExclusaoRevisaoSaida(BaseModel):
+    # Revisão anterior que voltou a valer, quando a excluída era a liberada.
+    restaurada: str | None
+    # A excluída era a única revisão: o documento saiu do acervo junto.
+    documento_excluido: bool
+
+
 class UploadConfirmarSaida(BaseModel):
     arquivo: ArquivoOut
     revisao: RevisaoOut
