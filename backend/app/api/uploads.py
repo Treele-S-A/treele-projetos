@@ -28,7 +28,12 @@ from ..schemas import UploadIniciarEntrada, UploadIniciarSaida
 from ..services import auditoria
 from ..services.nomenclatura import analisar
 from ..services.storage import armazenamento, montar_chave
-from ..services.titulos import limpar_titulo, problema_no_titulo
+from ..services.titulos import (
+    limpar_descricao,
+    limpar_titulo,
+    problema_na_descricao,
+    problema_no_titulo,
+)
 
 router = APIRouter(tags=["envio"])
 
@@ -121,6 +126,35 @@ def iniciar(
                 },
             )
 
+    # --- o que mudou -------------------------------------------------------
+    # Obrigatório para quem abre a revisão, isto é, sobe o primeiro arquivo
+    # dela; os seguintes da mesma revisão não pedem. Conferido aqui, antes de
+    # criar o documento, pelo mesmo motivo do título.
+    revisao_existente = (
+        db.scalar(
+            select(Revisao).where(
+                Revisao.documento_id == documento.id,
+                Revisao.numero == r.revisao_numero,
+            )
+        )
+        if documento is not None
+        else None
+    )
+    descricao = limpar_descricao(dados.descricao)
+    if revisao_existente is None:
+        problema = problema_na_descricao(descricao)
+        if problema:
+            raise HTTPException(
+                status.HTTP_422_UNPROCESSABLE_ENTITY,
+                {
+                    "mensagem": f"{r.codigo_documento} R{r.revisao_numero} é uma revisão nova.",
+                    "erros": [
+                        f"{problema} Quem abre a revisão conta o que mudou — é o que a "
+                        "obra lê antes de executar."
+                    ],
+                },
+            )
+
     if documento is None:
         documento = Documento(
             obra_id=ctx.obra.id,
@@ -136,11 +170,7 @@ def iniciar(
         documento.titulo = titulo
 
     # --- revisão ----------------------------------------------------------
-    revisao = db.scalar(
-        select(Revisao).where(
-            Revisao.documento_id == documento.id, Revisao.numero == r.revisao_numero
-        )
-    )
+    revisao = revisao_existente
     revisao_nova = revisao is None
     if revisao is None:
         revisao = Revisao(
@@ -148,7 +178,7 @@ def iniciar(
             numero=r.revisao_numero,
             ordem=r.revisao_ordem,
             status=StatusRevisao.em_revisao,
-            descricao=dados.descricao,
+            descricao=descricao,
             criada_por_id=ctx.usuario.id,
         )
         db.add(revisao)
@@ -170,8 +200,9 @@ def iniciar(
             f"{revisao.status.rotulo.lower()} e não aceita mais arquivos. "
             "Envie uma revisão nova.",
         )
-    elif dados.descricao and not revisao.descricao:
-        revisao.descricao = dados.descricao
+    elif descricao and not revisao.descricao:
+        # Revisão antiga, de antes da regra, que ficou sem descrição.
+        revisao.descricao = descricao
 
     # --- arquivo ----------------------------------------------------------
     tipo = TipoArquivo.da_extensao(dados.nome_arquivo)

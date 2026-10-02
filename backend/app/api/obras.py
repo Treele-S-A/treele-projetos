@@ -514,6 +514,7 @@ def validar_nomes(
                     and not limpar_titulo(r.titulo)
                 ),
                 revisao_existe=revisao is not None,
+                precisa_descricao=bool(r.valido and revisao is None),
                 revisao_status=revisao.status if revisao is not None else None,
             )
         )

@@ -33,3 +33,33 @@ def problema_no_titulo(titulo: str | None) -> str | None:
     if len(titulo) > TITULO_MAX:
         return f"O título pode ter no máximo {TITULO_MAX} caracteres."
     return None
+
+
+# --------------------------------------------------------------------------
+# O que mudou na revisão
+# --------------------------------------------------------------------------
+#
+# Quem sobe o primeiro arquivo de uma revisão diz o que mudou nela (TREELE,
+# 02/10/2026) — projetista ou coordenador, tanto faz. Antes isso era pedido
+# na liberação, a quem libera; mas quem sabe o que mudou é quem desenhou. Os
+# arquivos seguintes da mesma revisão (o DWG depois do PDF) não pedem de novo.
+
+DESCRICAO_MIN = 5
+DESCRICAO_MAX = 2000
+
+
+def limpar_descricao(valor: str | None) -> str | None:
+    """Espaços nas pontas saem; quebras de linha ficam (é texto corrido)."""
+    if valor is None:
+        return None
+    return valor.strip() or None
+
+
+def problema_na_descricao(descricao: str | None) -> str | None:
+    if not descricao:
+        return "Diga o que mudou nesta revisão."
+    if len(descricao) < DESCRICAO_MIN:
+        return f"A descrição precisa ter ao menos {DESCRICAO_MIN} caracteres."
+    if len(descricao) > DESCRICAO_MAX:
+        return f"A descrição pode ter no máximo {DESCRICAO_MAX} caracteres."
+    return None

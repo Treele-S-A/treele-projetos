@@ -183,6 +183,7 @@ justamente como o BCF já funciona.
 | Revisão | Sempre `R` + 2 dígitos | 17/09/2026 |
 | Título | Fora do nome do arquivo; preenchido na tela do documento | 17/09/2026 |
 | Título obrigatório | Pedido no primeiro envio do documento; reaproveitado nas revisões seguintes | 25/09/2026 |
+| O que mudou na revisão | Obrigatório para quem sobe o primeiro arquivo da revisão (projetista ou coordenador); saiu do momento de liberar | 02/10/2026 |
 | Disciplinas | 25 códigos (9 confirmados pela TREELE) | 17/09/2026 |
 | Disciplina Comercial | `COM`, a pedido da TREELE | 02/10/2026 |
 | Perfil comercial | Todas as obras, só a disciplina COM liberada, só baixar — o acesso mais restrito do sistema | 02/10/2026 |

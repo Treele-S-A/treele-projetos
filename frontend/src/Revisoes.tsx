@@ -138,7 +138,6 @@ function LinhaRevisao({
   // Excluir é definitivo e vale para qualquer status: só administrador.
   const admin = useSessao().usuario?.admin ?? false;
   const [verificacao, setVerificacao] = useState<Verificacao | null>(null);
-  const [descricao, setDescricao] = useState(revisao.descricao ?? "");
   const [ocupado, setOcupado] = useState(false);
   const [erro, setErro] = useState<ErroApi | null>(null);
 
@@ -156,7 +155,7 @@ function LinhaRevisao({
     setOcupado(true);
     setErro(null);
     try {
-      await api.post(`/revisoes/${revisao.id}/publicar`, { descricao: descricao.trim() || null });
+      await api.post(`/revisoes/${revisao.id}/publicar`, {});
       await aoMudar();
     } catch (ex) {
       setErro(ex instanceof ErroApi ? ex : new ErroApi(0, "Não foi possível liberar."));
@@ -250,9 +249,10 @@ Isto não pode ser desfeito.`)) {
             </div>
           )}
 
-          {revisao.descricao && !emRevisao && (
+          {/* Dito por quem abriu a revisão, no envio do primeiro arquivo. */}
+          {revisao.descricao && (
             <div style={{ marginTop: 10 }}>
-              <span className="rotulo">Descrição</span>
+              <span className="rotulo">O que mudou nesta revisão</span>
               <div style={{ marginTop: 3 }}>{revisao.descricao}</div>
             </div>
           )}
@@ -339,14 +339,6 @@ Isto não pode ser desfeito.`)) {
 
           {podePublicar ? (
             <>
-              <label className="campo">
-                <span className="rotulo">O que mudou nesta revisão</span>
-                <textarea
-                  value={descricao}
-                  onChange={(e) => setDescricao(e.target.value)}
-                  placeholder="Ex.: Ajuste de armadura da viga V12 e revisão das cotas do eixo 4."
-                />
-              </label>
               <div className="linha" style={{ marginTop: 10 }}>
                 <button
                   className="botao"

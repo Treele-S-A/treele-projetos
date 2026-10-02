@@ -13,6 +13,8 @@ type Estado = "pronto" | "invalido" | "enviando" | "concluido" | "erro";
 
 /** Mesmo mínimo do servidor (app/services/titulos.py). */
 const TITULO_MIN = 3;
+/** Mesmo mínimo do servidor (app/services/titulos.py). */
+const DESCRICAO_MIN = 5;
 
 interface Item {
   arquivo: File;
@@ -57,6 +59,10 @@ function enviarBytes(
   });
 }
 
+function chaveRevisao(item: Item): string {
+  return `${item.analise.codigo_documento}|${item.analise.revisao}`;
+}
+
 export default function Enviar() {
   const { obraId } = useParams();
   const { obras } = useSessao();
@@ -71,6 +77,9 @@ export default function Enviar() {
   // Um título por documento novo, não por arquivo: PDF e DWG da mesma prancha
   // nova dividem o mesmo campo.
   const [titulos, setTitulos] = useState<Record<string, string>>({});
+  // "O que mudou" é por revisão nova, não por arquivo: PDF e DWG da mesma
+  // revisão dividem o campo. Chave: "CÓDIGO|REVISÃO".
+  const [descricoes, setDescricoes] = useState<Record<string, string>>({});
   const entradaRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -125,6 +134,7 @@ export default function Enviar() {
           content_type: item.arquivo.type || "application/octet-stream",
           substituir: true,
           titulo: tituloDe(item),
+          descricao: descricaoDe(item),
         });
 
         await enviarBytes(inicio.url, inicio.metodo, inicio.headers, item.arquivo, (f) =>
@@ -168,6 +178,25 @@ export default function Enviar() {
   const faltam = semTitulo.filter(
     ([codigo]) => (titulos[codigo] ?? "").trim().length < TITULO_MIN,
   ).length;
+
+  // Revisões novas desta remessa: quem sobe o primeiro arquivo diz o que mudou.
+  const semDescricao = [
+    ...pendentes
+      .filter((i) => i.analise.precisa_descricao && i.analise.codigo_documento)
+      .reduce((mapa, i) => {
+        const chave = chaveRevisao(i);
+        mapa.set(chave, [...(mapa.get(chave) ?? []), i.arquivo.name]);
+        return mapa;
+      }, new Map<string, string[]>()),
+  ];
+  const faltamDescricoes = semDescricao.filter(
+    ([chave]) => (descricoes[chave] ?? "").trim().length < DESCRICAO_MIN,
+  ).length;
+
+  function descricaoDe(item: Item): string | undefined {
+    if (!item.analise.precisa_descricao) return undefined;
+    return descricoes[chaveRevisao(item)]?.trim() || undefined;
+  }
 
   function tituloDe(item: Item): string | undefined {
     const codigo = item.analise.codigo_documento;
@@ -299,10 +328,52 @@ export default function Enviar() {
                 </div>
               )}
 
+              {semDescricao.length > 0 && (
+                <div className="titulos-novos">
+                  <span className="rotulo">
+                    {semDescricao.length === 1
+                      ? "Revisão nova — conte o que mudou"
+                      : `${semDescricao.length} revisões novas — conte o que mudou em cada uma`}
+                  </span>
+                  <p className="silencioso">
+                    É o que a obra lê antes de executar. Só o primeiro arquivo de cada revisão
+                    pede isto; os seguintes da mesma revisão aproveitam.
+                  </p>
+                  {semDescricao.map(([chave, arquivos]) => {
+                    const [codigo, revisao] = chave.split("|");
+                    return (
+                      <label className="campo-titulo campo-descricao" key={chave}>
+                        <span className="codigo">
+                          {codigo} · R{revisao}
+                        </span>
+                        <textarea
+                          value={descricoes[chave] ?? ""}
+                          onChange={(e) =>
+                            setDescricoes((d) => ({ ...d, [chave]: e.target.value }))
+                          }
+                          placeholder={
+                            Number(revisao) === 0 || revisao === "A"
+                              ? "Ex.: Emissão inicial."
+                              : "Ex.: Ajuste de armadura da viga V12 e revisão das cotas do eixo 4."
+                          }
+                          maxLength={2000}
+                          rows={2}
+                          disabled={enviando}
+                          aria-label={`O que mudou em ${codigo} R${revisao}`}
+                        />
+                        <span className="silencioso">
+                          {arquivos.length === 1 ? "1 arquivo" : `${arquivos.length} arquivos`}
+                        </span>
+                      </label>
+                    );
+                  })}
+                </div>
+              )}
+
               <div className="linha" style={{ marginTop: 14 }}>
                 <button
                   className="botao"
-                  disabled={enviando || prontos === 0 || faltam > 0}
+                  disabled={enviando || prontos === 0 || faltam > 0 || faltamDescricoes > 0}
                   onClick={enviarTudo}
                 >
                   {enviando
@@ -316,11 +387,22 @@ export default function Enviar() {
                 >
                   Limpar lista
                 </button>
-                {faltam > 0 && !enviando && (
+                {(faltam > 0 || faltamDescricoes > 0) && !enviando && (
                   <span className="silencioso" style={{ fontSize: 12.5 }}>
-                    {faltam === 1
-                      ? "Falta o título de 1 documento."
-                      : `Falta o título de ${faltam} documentos.`}
+                    {[
+                      faltam === 1
+                        ? "Falta o título de 1 documento."
+                        : faltam > 1
+                          ? `Falta o título de ${faltam} documentos.`
+                          : "",
+                      faltamDescricoes === 1
+                        ? "Falta dizer o que mudou em 1 revisão."
+                        : faltamDescricoes > 1
+                          ? `Falta dizer o que mudou em ${faltamDescricoes} revisões.`
+                          : "",
+                    ]
+                      .filter(Boolean)
+                      .join(" ")}
                   </span>
                 )}
                 <div className="espaco" />

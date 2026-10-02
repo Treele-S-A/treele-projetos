@@ -53,20 +53,25 @@ def admin(cliente):
 
 
 SEM_TITULO = object()
+SEM_DESCRICAO = object()
 
 
 def enviar_arquivo(cliente, cabecalhos, obra_id: int, nome: str, conteudo: bytes,
-                   substituir: bool = False, titulo="Prancha de teste"):
+                   substituir: bool = False, titulo="Prancha de teste",
+                   descricao="Emissão para teste"):
     """Executa os três passos do envio e devolve a resposta da confirmação.
 
-    Manda um título por padrão, porque documento novo exige um. Passe
-    ``titulo=SEM_TITULO`` para testar justamente a falta dele.
+    Manda um título e uma descrição por padrão, porque documento novo exige
+    título e revisão nova exige "o que mudou". Passe ``titulo=SEM_TITULO`` ou
+    ``descricao=SEM_DESCRICAO`` para testar justamente a falta deles.
     """
     from urllib.parse import urlsplit
 
     corpo = {"nome_arquivo": nome, "tamanho": len(conteudo), "substituir": substituir}
     if titulo is not SEM_TITULO:
         corpo["titulo"] = titulo
+    if descricao is not SEM_DESCRICAO:
+        corpo["descricao"] = descricao
     inicio = cliente.post(
         f"/obras/{obra_id}/uploads/iniciar", json=corpo, headers=cabecalhos
     )

@@ -196,6 +196,8 @@ class NomeAnalisado(BaseModel):
     # regra do envio; a tela só pergunta.
     precisa_titulo: bool = False
     revisao_existe: bool = False
+    # Se o envio vai exigir "o que mudou": é o primeiro arquivo da revisão.
+    precisa_descricao: bool = False
     # Status da revisão de destino, quando ela já existe. A tela de envio usa
     # isto para avisar que o arquivo será acrescentado a algo já liberado.
     revisao_status: StatusRevisao | None = None

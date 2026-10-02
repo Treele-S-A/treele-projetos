@@ -668,3 +668,31 @@ body {
   font-size: 12px;
   line-height: 1.4;
 }
+
+/* "O que mudou" no envio: mesmo bloco do título, com texto corrido. */
+.campo-descricao {
+  align-items: start;
+}
+
+.campo-descricao .codigo,
+.campo-descricao .silencioso {
+  padding-top: 9px;
+}
+
+.campo-descricao textarea {
+  width: 100%;
+  min-height: 52px;
+  padding: 8px 11px;
+  font: inherit;
+  font-size: 13.5px;
+  border: 1px solid var(--traco-medio);
+  border-radius: var(--raio);
+  background: rgba(255, 255, 255, 0.9);
+  resize: vertical;
+}
+
+.campo-descricao textarea:focus {
+  outline: none;
+  border-color: var(--petroleo);
+  box-shadow: 0 0 0 3px rgba(47, 76, 82, 0.14);
+}

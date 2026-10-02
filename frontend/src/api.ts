@@ -228,6 +228,8 @@ export interface NomeAnalisado {
   /** O envio vai exigir título (documento novo, ou antigo que ficou sem). */
   precisa_titulo: boolean;
   revisao_existe: boolean;
+  /** O envio vai exigir "o que mudou": é o primeiro arquivo da revisão. */
+  precisa_descricao: boolean;
   revisao_status: StatusRevisao | null;
 }
 
