@@ -93,7 +93,7 @@ def test_responsavel_nao_nomeia_coordenador(cliente, admin, cenario):
 def test_responsavel_nao_troca_papel_de_quem_ja_esta(cliente, admin, cenario):
     novo, _ = _usuario(cliente, admin, "ja-na-equipe")
     obra = cenario["obra"]["id"]
-    cliente.post(f"/obras/{obra}/membros", json={"usuario_id": novo, "papel": "cliente"}, headers=admin)
+    cliente.post(f"/obras/{obra}/membros", json={"usuario_id": novo, "papel": "obra"}, headers=admin)
 
     r = cliente.post(
         f"/obras/{obra}/membros",
@@ -102,7 +102,7 @@ def test_responsavel_nao_troca_papel_de_quem_ja_esta(cliente, admin, cenario):
     )
 
     assert r.status_code == 409
-    assert _membros(cliente, admin, cenario["obra"])[novo] == "cliente"
+    assert _membros(cliente, admin, cenario["obra"])[novo] == "obra"
 
 
 def _id_do_membro(cliente, admin, obra, usuario_id):
@@ -199,3 +199,14 @@ def test_deixou_de_ser_responsavel_perde_a_permissao(cliente, admin, cenario):
     )
 
     assert r.status_code == 403
+
+
+def test_papel_cliente_nao_existe_mais(cliente, admin, cenario):
+    """Saiu em 02/10/2026: a TREELE não usa esse papel."""
+    novo, _ = _usuario(cliente, admin, "ex-cliente")
+    r = cliente.post(
+        f"/obras/{cenario['obra']['id']}/membros",
+        json={"usuario_id": novo, "papel": "cliente"},
+        headers=admin,
+    )
+    assert r.status_code == 422

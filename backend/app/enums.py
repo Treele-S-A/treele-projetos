@@ -51,7 +51,8 @@ class PapelObra(str, enum.Enum):
     coordenador = "coordenador"
     projetista = "projetista"
     obra = "obra"
-    cliente = "cliente"
+    # Existiu "cliente" até 02/10/2026; a TREELE não usa esse papel. Quem só
+    # precisa baixar o liberado de todas as obras é o perfil comercial.
 
     @property
     def rotulo(self) -> str:
@@ -59,7 +60,6 @@ class PapelObra(str, enum.Enum):
             "coordenador": "Coordenador",
             "projetista": "Projetista",
             "obra": "Obra",
-            "cliente": "Cliente",
         }[self.value]
 
 
@@ -89,6 +89,4 @@ PERMISSOES: dict[PapelObra, set[str]] = {
     # A obra vê o histórico — precisa dele para conferir o que executou semana
     # passada (TREELE, 22/09/2026) — mas não vê o que ainda está em elaboração.
     PapelObra.obra: {"ver_obsoletos"},
-    # Para o cliente, revisão antiga é ruído.
-    PapelObra.cliente: set(),
 }

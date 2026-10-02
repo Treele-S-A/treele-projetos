@@ -107,7 +107,7 @@ export type StatusRevisao =
   | "cancelado";
 
 export type TipoArquivo = "dwg" | "rvt" | "pdf" | "ifc" | "outro";
-export type PapelObra = "coordenador" | "projetista" | "obra" | "cliente";
+export type PapelObra = "coordenador" | "projetista" | "obra";
 
 export interface Usuario {
   id: number;
@@ -270,7 +270,6 @@ export const ROTULO_PAPEL: Record<PapelObra, string> = {
   coordenador: "Coordenador",
   projetista: "Projetista",
   obra: "Obra",
-  cliente: "Cliente",
 };
 
 export function formatarTamanho(bytes: number): string {

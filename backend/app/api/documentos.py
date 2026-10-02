@@ -49,7 +49,7 @@ def _subconsulta_atual(visiveis: list[StatusRevisao]):
     """(documento_id, ordem da revisão atual) — atual PARA QUEM PERGUNTA.
 
     A revisão atual é a mais nova que a pessoa pode ver. Antes era a mais nova
-    de todas, e quem não vê trabalho em andamento (obra, cliente, comercial)
+    de todas, e quem não vê trabalho em andamento (obra, comercial)
     perdia o documento inteiro da lista assim que alguém subia a R01 — com a
     R00 ainda liberada e valendo em campo.
     """

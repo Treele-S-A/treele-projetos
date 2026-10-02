@@ -14,13 +14,12 @@ import { Aviso, CapaObra, Carregando, LogoObra } from "../componentes";
 import { prepararLogo } from "../imagem";
 import { useSessao } from "../sessao";
 
-const PAPEIS: PapelObra[] = ["coordenador", "projetista", "obra", "cliente"];
+const PAPEIS: PapelObra[] = ["coordenador", "projetista", "obra"];
 
 const O_QUE_O_PAPEL_FAZ: Record<PapelObra, string> = {
   coordenador: "Envia, libera para obra, cancela e gerencia a equipe.",
   projetista: "Envia arquivos e vê tudo, mas não libera para obra.",
   obra: "Baixa o que está liberado e consulta o histórico.",
-  cliente: "Baixa somente o que está liberado para obra.",
 };
 
 const TIPOS_TOKEN: Array<[string, string]> = [

@@ -6,18 +6,18 @@ Obra A e projetista na Obra B. Além disso existe o perfil global de
 
 ## Matriz
 
-| | Coordenador | Projetista | Obra | Cliente |
-|---|:--:|:--:|:--:|:--:|
-| Ver documentos liberados | ✓ | ✓ | ✓ | ✓ |
-| Baixar documentos liberados | ✓ | ✓ | ✓ | ✓ |
-| Ver e baixar revisões obsoletas | ✓ | ✓ | ✓ | |
-| Ver revisões ainda em revisão | ✓ | ✓ | | |
-| Enviar arquivos | ✓ | ✓ | | |
-| Editar título e descrição | ✓ | ✓ | | |
-| **Liberar para obra** | ✓ | | | |
-| Cancelar revisão | ✓ | | | |
-| Gerenciar equipe da obra | ✓ | | | |
-| Alterar nomenclatura da obra | ✓ | | | |
+| | Coordenador | Projetista | Obra |
+|---|:--:|:--:|:--:|
+| Ver documentos liberados | ✓ | ✓ | ✓ |
+| Baixar documentos liberados | ✓ | ✓ | ✓ |
+| Ver e baixar revisões obsoletas | ✓ | ✓ | ✓ |
+| Ver revisões ainda em revisão | ✓ | ✓ | |
+| Enviar arquivos | ✓ | ✓ | |
+| Editar título e descrição | ✓ | ✓ | |
+| **Liberar para obra** | ✓ | | |
+| Cancelar revisão | ✓ | | |
+| Gerenciar equipe da obra | ✓ | | |
+| Alterar nomenclatura da obra | ✓ | | |
 | Ver registro de atividades | ✓ | | | |
 
 O administrador tem todas as permissões em todas as obras — e uma a mais,
@@ -66,10 +66,8 @@ diferentes, e por isso são duas permissões separadas:
   mostrá-lo em campo convida alguém a executar o que ainda vai mudar. Isso a
   obra não vê — nem na lista, nem na árvore, nem no histórico do documento.
 
-O cliente só enxerga o que está liberado: para ele, revisão antiga é ruído.
-
-A diferença entre obra e cliente cresce na Fase 1.5: **a obra poderá solicitar
-revisão, o cliente não.**
+Existia também um papel *Cliente*, só com o liberado. Saiu em 02/10/2026: a
+TREELE não o usa. Quem precisa só baixar o liberado é o perfil comercial.
 
 **Revisão liberada aceita arquivo novo, mas nunca substituição.** É comum
 liberar o PDF para a obra não ficar esperando e mandar o DWG depois — isso é
