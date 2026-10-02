@@ -1,7 +1,7 @@
-"""O engenheiro responsável inclui pessoas na equipe da própria obra.
+"""O engenheiro responsável inclui e remove pessoas da equipe da própria obra.
 
-Só inclui: não nomeia coordenador, não troca papel de quem já está e não
-remove ninguém. E vale só para a obra de que ele é o responsável.
+Não nomeia nem remove coordenador, não troca papel de quem já está e não tira
+a si mesmo. E vale só para a obra de que ele é o responsável.
 """
 
 import pytest
@@ -73,6 +73,7 @@ def test_responsavel_inclui_pessoa_na_equipe(cliente, admin, cenario):
 def test_a_tela_sabe_que_ele_pode_incluir(cliente, cenario):
     obra = cliente.get(f"/obras/{cenario['obra']['id']}", headers=cenario["eng"]).json()
     assert "adicionar_membro" in obra["permissoes"]
+    assert "remover_membro" in obra["permissoes"]
     assert "gerenciar" not in obra["permissoes"]
     outra = cliente.get(f"/obras/{cenario['outra']['id']}", headers=cenario["eng"]).json()
     assert "adicionar_membro" not in outra["permissoes"]
@@ -104,11 +105,68 @@ def test_responsavel_nao_troca_papel_de_quem_ja_esta(cliente, admin, cenario):
     assert _membros(cliente, admin, cenario["obra"])[novo] == "cliente"
 
 
-def test_responsavel_nao_remove_ninguem(cliente, admin, cenario):
-    obra = cenario["obra"]["id"]
-    membro = cliente.get(f"/obras/{obra}/membros", headers=admin).json()[0]
-    r = cliente.delete(f"/obras/{obra}/membros/{membro['id']}", headers=cenario["eng"])
+def _id_do_membro(cliente, admin, obra, usuario_id):
+    membros = cliente.get(f"/obras/{obra['id']}/membros", headers=admin).json()
+    return next(m["id"] for m in membros if m["usuario_id"] == usuario_id)
+
+
+def test_responsavel_remove_pessoa_da_equipe(cliente, admin, cenario):
+    obra = cenario["obra"]
+    novo, _ = _usuario(cliente, admin, "de-saida")
+    cliente.post(
+        f"/obras/{obra['id']}/membros", json={"usuario_id": novo, "papel": "obra"}, headers=admin
+    )
+
+    r = cliente.delete(
+        f"/obras/{obra['id']}/membros/{_id_do_membro(cliente, admin, obra, novo)}",
+        headers=cenario["eng"],
+    )
+
+    assert r.status_code == 204, r.text
+    assert novo not in _membros(cliente, admin, obra)
+    evento = cliente.get(f"/obras/{obra['id']}/eventos", headers=admin).json()["itens"][0]
+    assert evento["acao"] == "membro_removido"
+    assert evento["detalhes"]["usuario_id"] == novo
+
+
+def test_responsavel_nao_remove_coordenador(cliente, admin, cenario):
+    """O admin que criou a obra entrou nela como coordenador."""
+    obra = cenario["obra"]
+    eu = cliente.get("/auth/eu", headers=admin).json()
+    r = cliente.delete(
+        f"/obras/{obra['id']}/membros/{_id_do_membro(cliente, admin, obra, eu['id'])}",
+        headers=cenario["eng"],
+    )
     assert r.status_code == 403
+
+
+def test_responsavel_nao_tira_a_si_mesmo(cliente, admin, cenario):
+    obra = cenario["obra"]
+    eu = cliente.get("/auth/eu", headers=cenario["eng"]).json()
+    r = cliente.delete(
+        f"/obras/{obra['id']}/membros/{_id_do_membro(cliente, admin, obra, eu['id'])}",
+        headers=cenario["eng"],
+    )
+    assert r.status_code == 400
+
+
+def test_remover_o_responsavel_da_equipe_limpa_o_responsavel(cliente, admin):
+    """Responsável precisa ser da equipe. Antes, removê-lo deixava a obra
+    apontando para alguém de fora."""
+    obra = _obra(cliente, admin, "RSZ")
+    pessoa, _ = _usuario(cliente, admin, "responsavel-removido")
+    cliente.post(
+        f"/obras/{obra['id']}/membros", json={"usuario_id": pessoa, "papel": "obra"}, headers=admin
+    )
+    cliente.patch(f"/obras/{obra['id']}", json={"responsavel_id": pessoa}, headers=admin)
+
+    r = cliente.delete(
+        f"/obras/{obra['id']}/membros/{_id_do_membro(cliente, admin, obra, pessoa)}",
+        headers=admin,
+    )
+
+    assert r.status_code == 204, r.text
+    assert cliente.get(f"/obras/{obra['id']}", headers=admin).json()["responsavel"] is None
 
 
 def test_responsavel_nao_mexe_na_equipe_de_outra_obra(cliente, admin, cenario):

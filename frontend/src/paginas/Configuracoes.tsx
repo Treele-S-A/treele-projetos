@@ -374,9 +374,11 @@ function Responsavel({
 /* --------------------------------------------------------------------- equipe */
 
 /** `gerencia` = coordenador ou administrador. Sem isso é o engenheiro
- *  responsável: inclui pessoas, mas não nomeia coordenador, não troca papel
- *  e não remove — a API recusa as três coisas de qualquer forma. */
+ *  responsável: inclui e remove pessoas, mas não nomeia nem remove
+ *  coordenador, não troca papel e não tira a si mesmo — a API recusa tudo
+ *  isso de qualquer forma. */
 function Equipe({ obraId, gerencia }: { obraId: number; gerencia: boolean }) {
+  const { usuario } = useSessao();
   const papeis = gerencia ? PAPEIS : PAPEIS.filter((p) => p !== "coordenador");
   const [membros, setMembros] = useState<Membro[]>([]);
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
@@ -477,8 +479,8 @@ function Equipe({ obraId, gerencia }: { obraId: number; gerencia: boolean }) {
         </p>
         {!gerencia && (
           <p className="silencioso" style={{ fontSize: 12, marginBottom: 0 }}>
-            Como engenheiro responsável, você inclui pessoas já cadastradas. Nomear
-            coordenador, trocar papel ou remover alguém é com o coordenador da obra.
+            Como engenheiro responsável, você inclui e remove pessoas já cadastradas.
+            Nomear ou remover coordenador e trocar papel é com o coordenador da obra.
           </p>
         )}
       </div>
@@ -505,7 +507,8 @@ function Equipe({ obraId, gerencia }: { obraId: number; gerencia: boolean }) {
                   </td>
                   <td>{ROTULO_PAPEL[m.papel]}</td>
                   <td style={{ textAlign: "right" }}>
-                    {gerencia && (
+                    {(gerencia ||
+                      (m.papel !== "coordenador" && m.usuario_id !== usuario?.id)) && (
                       <button className="botao secundario pequeno" onClick={() => remover(m)}>
                         Remover
                       </button>

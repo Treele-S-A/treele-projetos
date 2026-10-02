@@ -87,12 +87,12 @@ class ContextoObra:
 
 
 def permissoes_do_responsavel(obra: Obra, usuario: Usuario) -> set[str]:
-    """O engenheiro responsável inclui gente na equipe da própria obra
-    (TREELE, 02/10/2026), seja qual for o papel dele nela. Só inclui: não
-    remove, não troca papel e não nomeia coordenador — isso continua com quem
-    gerencia a obra."""
+    """O engenheiro responsável inclui e remove gente da equipe da própria obra
+    (TREELE, 02/10/2026), seja qual for o papel dele nela. Não nomeia nem
+    remove coordenador e não troca papel — isso continua com quem gerencia a
+    obra (api/obras.py)."""
     if obra.responsavel_id == usuario.id and not usuario.comercial:
-        return {"adicionar_membro"}
+        return {"adicionar_membro", "remover_membro"}
     return set()
 
 

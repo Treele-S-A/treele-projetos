@@ -45,7 +45,7 @@ router = APIRouter(prefix="/obras", tags=["obras"])
 
 # O administrador global ignora a matriz de papéis. A lista existe só para a
 # interface saber o que desenhar para ele.
-TUDO = sorted(set().union(*PERMISSOES.values()) | {"adicionar_membro"})
+TUDO = sorted(set().union(*PERMISSOES.values()) | {"adicionar_membro", "remover_membro"})
 
 
 def _com_papel(obra: Obra, papel, usuario: Usuario) -> ObraComPapel:
@@ -347,10 +347,28 @@ def remover_membro(
     request: Request,
     ctx: ContextoObra = Depends(contexto_obra),
 ):
-    ctx.exigir("gerenciar")
+    gerencia = ctx.pode("gerenciar")
+    if not gerencia:
+        ctx.exigir(
+            "remover_membro",
+            "Somente o coordenador ou o engenheiro responsável removem pessoas da equipe.",
+        )
     membro = ctx.db.get(ObraMembro, membro_id)
     if membro is None or membro.obra_id != ctx.obra.id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Membro não encontrado.")
+    if not gerencia:
+        if membro.papel == PapelObra.coordenador:
+            raise HTTPException(
+                status.HTTP_403_FORBIDDEN,
+                "O engenheiro responsável não remove coordenador — isso é com o "
+                "coordenador da obra.",
+            )
+        if membro.usuario_id == ctx.usuario.id:
+            raise HTTPException(
+                status.HTTP_400_BAD_REQUEST,
+                "Você é o engenheiro responsável desta obra e precisa continuar na "
+                "equipe. Peça ao coordenador para trocar o responsável antes.",
+            )
 
     restantes = ctx.db.scalars(
         select(ObraMembro).where(
@@ -365,10 +383,15 @@ def remover_membro(
             "A obra ficaria sem coordenador. Promova outra pessoa antes de remover.",
         )
 
+    # Responsável precisa ser da equipe (ver atualizar): quem sai deixa de ser.
+    if ctx.obra.responsavel_id == membro.usuario_id:
+        ctx.obra.responsavel_id = None
+
+    detalhes = {"usuario_id": membro.usuario_id, "papel": membro.papel.value}
     ctx.db.delete(membro)
     auditoria.registrar(
         ctx.db, acao="membro_removido", entidade="obra_membro", entidade_id=membro_id,
-        usuario=ctx.usuario, obra_id=ctx.obra.id, request=request,
+        usuario=ctx.usuario, obra_id=ctx.obra.id, detalhes=detalhes, request=request,
     )
     ctx.db.commit()
 
