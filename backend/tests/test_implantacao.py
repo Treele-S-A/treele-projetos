@@ -60,3 +60,21 @@ def test_pagina_inicial_nunca_fica_guardada_no_navegador(tmp_path):
     assert "etag" not in r.headers
     assert "last-modified" not in r.headers
     assert b"index-abc.js" in r.body
+
+
+def test_toda_resposta_leva_a_versao_no_ar(cliente, monkeypatch):
+    """A tela aberta antes de uma atualização compara com a sua e avisa
+    (caso real, 02/10/2026: envio pedindo um campo que a tela antiga não tinha)."""
+    import app.main
+
+    monkeypatch.setattr(app.main, "VERSAO", "abc123def456")
+    r = cliente.get("/saude")
+    assert r.headers["x-versao"] == "abc123def456"
+    assert r.json()["versao"] == "abc123def456"
+
+
+def test_sem_versao_fora_da_vercel_nao_carimba(cliente, monkeypatch):
+    import app.main
+
+    monkeypatch.setattr(app.main, "VERSAO", "")
+    assert "x-versao" not in cliente.get("/saude").headers

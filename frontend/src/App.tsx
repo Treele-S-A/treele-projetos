@@ -40,6 +40,25 @@ function useObraAtiva(caminho: string): number | null {
   return daUrl ?? lembrada;
 }
 
+/** Faixa no topo quando a tela ficou para trás de uma atualização. */
+function AvisoVersaoNova() {
+  const [nova, setNova] = useState(false);
+  useEffect(() => {
+    const aoDetectar = () => setNova(true);
+    window.addEventListener("treele:versao-nova", aoDetectar);
+    return () => window.removeEventListener("treele:versao-nova", aoDetectar);
+  }, []);
+  if (!nova) return null;
+  return (
+    <div className="aviso-versao" role="status">
+      <span>Saiu uma versão nova do sistema. Recarregue para usar a mais recente.</span>
+      <button className="botao pequeno" onClick={() => window.location.reload()}>
+        Recarregar
+      </button>
+    </div>
+  );
+}
+
 function Moldura() {
   const { usuario, obras, sair } = useSessao();
   const local = useLocation();
@@ -161,6 +180,7 @@ function Moldura() {
       </nav>
 
       <main className="area">
+        <AvisoVersaoNova />
         <Outlet />
       </main>
     </div>

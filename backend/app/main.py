@@ -3,6 +3,7 @@
     uvicorn app.main:app --reload
 """
 
+import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException, status
@@ -51,13 +52,26 @@ app = FastAPI(
     openapi_url=settings.api_prefix + "/openapi.json",
 )
 
+# Versão no ar: o commit que a Vercel publicou. Vai em toda resposta, para a
+# tela aberta antes de uma atualização perceber que ficou velha (ver api.ts).
+VERSAO = os.environ.get("VERCEL_GIT_COMMIT_SHA", "")[:12]
+
+
+@app.middleware("http")
+async def _carimbar_versao(request, chamar):
+    resposta = await chamar(request)
+    if VERSAO:
+        resposta.headers["X-Versao"] = VERSAO
+    return resposta
+
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.lista_cors,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
-    expose_headers=["Content-Disposition", "ETag"],
+    expose_headers=["Content-Disposition", "ETag", "X-Versao"],
 )
 
 for modulo in (
@@ -81,6 +95,7 @@ def saude():
         "ok": True,
         "ambiente": settings.ambiente,
         "storage": settings.storage_backend,
+        "versao": VERSAO or None,
     }
 
 

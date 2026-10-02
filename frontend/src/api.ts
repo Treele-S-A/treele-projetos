@@ -63,6 +63,14 @@ async function pedir<T>(caminho: string, opcoes: RequestInit = {}): Promise<T> {
     throw new ErroApi(0, "Sem conexão com o servidor. Verifique se a API está no ar.");
   }
 
+  // Tela aberta antes de uma atualização continua rodando o código antigo
+  // contra o servidor novo — foi assim que o envio pediu "o que mudou" numa
+  // tela que nem tinha o campo. O servidor carimba a versão; diferindo, avisa.
+  const versaoServidor = resposta.headers.get("X-Versao");
+  if (__VERSAO__ && versaoServidor && versaoServidor !== __VERSAO__) {
+    window.dispatchEvent(new Event("treele:versao-nova"));
+  }
+
   if (resposta.status === 401) {
     gravarToken(null);
     window.dispatchEvent(new Event("treele:sessao-expirada"));

@@ -148,6 +148,21 @@ export default function Enviar() {
           documentoId: inicio.documento_id,
         });
       } catch (ex) {
+        // O servidor pediu "o que mudou" que a tela não sabia que faltava
+        // (análise feita antes de outra pessoa mexer, ou tela antiga): em vez
+        // de só falhar, abre o campo para esta revisão e espera o preenchimento.
+        if (
+          ex instanceof ErroApi &&
+          ex.status === 422 &&
+          ex.message.includes("revisão nova") &&
+          !item.analise.precisa_descricao
+        ) {
+          atualizar(i, {
+            estado: "pronto",
+            analise: { ...item.analise, precisa_descricao: true },
+          });
+          continue;
+        }
         const mensagem =
           ex instanceof ErroApi
             ? [ex.message, ...ex.erros].join(" ")
