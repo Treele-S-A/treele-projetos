@@ -248,7 +248,17 @@ def test_email_que_falha_nao_derruba_o_pedido(cliente, admin, obra, p, smtp):
     assert _nao_lidas(cliente, p["coord"]) == 1
 
 
+def test_endereco_do_site_na_vercel_vem_do_dominio_de_producao(monkeypatch):
+    """Caso real: BASE_URL não existe na Vercel e o link saiu localhost:8000."""
+    monkeypatch.setattr(settings, "base_url", "http://localhost:8000")
+    monkeypatch.setenv("VERCEL_PROJECT_PRODUCTION_URL", "projetos.treele.com.br")
+    assert settings.endereco_site == "https://projetos.treele.com.br"
+    monkeypatch.setattr(settings, "site_url", "https://outro.treele.com.br/")
+    assert settings.endereco_site == "https://outro.treele.com.br"
+
+
 def test_endereco_do_site_tira_o_prefixo_da_api(monkeypatch):
+    monkeypatch.delenv("VERCEL_PROJECT_PRODUCTION_URL", raising=False)
     monkeypatch.setattr(settings, "base_url", "https://projetos.treele.com.br/api")
     monkeypatch.setattr(settings, "api_prefix", "/api")
     assert settings.endereco_site == "https://projetos.treele.com.br"

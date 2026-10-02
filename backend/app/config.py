@@ -1,5 +1,6 @@
 """Configuração da aplicação, lida de variáveis de ambiente ou do arquivo .env."""
 
+import os
 import re
 from functools import lru_cache
 from pathlib import Path
@@ -91,6 +92,9 @@ class Settings(BaseSettings):
     email_smtp_senha: str = ""
     # Quem aparece como remetente: "Treèle Projetos <projetos@treele.com.br>".
     email_remetente: str = ""
+    # Endereço das telas, para os links dos e-mails. Vazio = descobre sozinho
+    # (ver endereco_site).
+    site_url: str = ""
 
     @field_validator("db_schema")
     @classmethod
@@ -144,8 +148,18 @@ class Settings(BaseSettings):
 
     @property
     def endereco_site(self) -> str:
-        """Endereço das telas, para os links dos e-mails. A API mora no mesmo
-        endereço com o prefixo /api (produção) ou em endereço próprio (dev)."""
+        """Endereço das telas, para os links dos e-mails.
+
+        Na Vercel, o domínio de produção vem dela mesma
+        (VERCEL_PROJECT_PRODUCTION_URL): a BASE_URL nunca foi definida lá, e o
+        primeiro e-mail de teste saiu com link para localhost. Fora dela, a API
+        mora no mesmo endereço com o prefixo /api ou em endereço próprio (dev).
+        """
+        if self.site_url.strip():
+            return self.site_url.strip().rstrip("/")
+        vercel = os.environ.get("VERCEL_PROJECT_PRODUCTION_URL", "").strip()
+        if vercel:
+            return f"https://{vercel}"
         base = self.base_url.rstrip("/")
         if self.api_prefix and base.endswith(self.api_prefix):
             base = base[: -len(self.api_prefix)]

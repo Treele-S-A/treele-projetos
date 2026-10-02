@@ -46,7 +46,8 @@ sistema. Se o servidor de e-mail falhar, o aviso continua no sistema e a ação
 
 Basta `EMAIL_SMTP_HOST` para ligar. Com ela definida e alguma das outras
 faltando, o sistema não sobe e diz qual falta. Os links dos e-mails usam o
-endereço do próprio sistema (`BASE_URL` sem o `/api`).
+domínio de produção que a própria Vercel informa (`projetos.treele.com.br`);
+para forçar outro endereço, defina `SITE_URL`.
 
 ### Opção 1: Microsoft 365 (conta da empresa)
 
