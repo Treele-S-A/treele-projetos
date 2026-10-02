@@ -38,6 +38,7 @@ from ..schemas import (
 )
 from ..services import auditoria
 from ..services.nomenclatura import analisar, validar_definicao
+from ..services.equipe import garantir_admins_coordenadores
 from ..services.storage import armazenamento, chave_logo, detectar_imagem
 from ..services.titulos import limpar_titulo
 
@@ -107,12 +108,8 @@ def criar(
     db.add(obra)
     db.flush()
 
-    # Quem cria a obra entra como coordenador, senão ninguém consegue operá-la.
-    db.add(
-        ObraMembro(
-            obra_id=obra.id, usuario_id=admin.id, papel=PapelObra.coordenador
-        )
-    )
+    # Todo administrador — inclusive quem cria — entra como coordenador.
+    garantir_admins_coordenadores(db, obra=obra)
     auditoria.registrar(
         db, acao="obra_criada", entidade="obra", entidade_id=obra.id,
         usuario=admin, obra_id=obra.id, detalhes={"codigo": codigo}, request=request,
@@ -317,6 +314,12 @@ def adicionar_membro(
             ObraMembro.usuario_id == dados.usuario_id,
         )
     )
+    if existente is not None and novo.admin:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            f"{novo.nome} é administrador, e administradores são coordenadores de "
+            "todas as obras.",
+        )
     if existente is not None:
         if not gerencia:
             raise HTTPException(
@@ -356,6 +359,12 @@ def remover_membro(
     membro = ctx.db.get(ObraMembro, membro_id)
     if membro is None or membro.obra_id != ctx.obra.id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Membro não encontrado.")
+    if membro.usuario.admin:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            f"{membro.usuario.nome} é administrador, e administradores são "
+            "coordenadores de todas as obras.",
+        )
     if not gerencia:
         if membro.papel == PapelObra.coordenador:
             raise HTTPException(

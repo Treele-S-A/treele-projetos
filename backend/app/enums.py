@@ -47,6 +47,13 @@ class StatusArquivo(str, enum.Enum):
     erro = "erro"
 
 
+class StatusSolicitacao(str, enum.Enum):
+    """A solicitação de revisão fica aberta até sair a revisão nova liberada."""
+
+    aberta = "aberta"
+    atendida = "atendida"
+
+
 class PapelObra(str, enum.Enum):
     coordenador = "coordenador"
     projetista = "projetista"
@@ -76,6 +83,8 @@ class PapelObra(str, enum.Enum):
 #   publicar .......... libera para obra e torna a anterior obsoleta
 #   cancelar .......... cancela uma revisão que não deve mais existir
 #   gerenciar ......... membros da obra e padrão de nomenclatura
+#   solicitar_revisao . pede alteração num projeto liberado, com descrição
+#                       obrigatória e anexos opcionais (TREELE, 02/10/2026)
 PERMISSOES: dict[PapelObra, set[str]] = {
     PapelObra.coordenador: {
         "ver_obsoletos",
@@ -84,9 +93,10 @@ PERMISSOES: dict[PapelObra, set[str]] = {
         "publicar",
         "cancelar",
         "gerenciar",
+        "solicitar_revisao",
     },
     PapelObra.projetista: {"ver_obsoletos", "ver_em_revisao", "enviar"},
     # A obra vê o histórico — precisa dele para conferir o que executou semana
     # passada (TREELE, 22/09/2026) — mas não vê o que ainda está em elaboração.
-    PapelObra.obra: {"ver_obsoletos"},
+    PapelObra.obra: {"ver_obsoletos", "solicitar_revisao"},
 }

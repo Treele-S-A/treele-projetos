@@ -71,6 +71,23 @@ def chave_logo(obra_codigo: str, extensao: str) -> str:
     )
 
 
+def chave_anexo(obra_codigo: str, codigo_documento: str, solicitacao_id: int, nome: str) -> str:
+    """Chave do anexo de uma solicitação de revisão. O sufixo aleatório deixa
+    dois anexos de mesmo nome (duas fotos "IMG_0001.jpg") conviverem."""
+    import secrets
+
+    return "/".join(
+        [
+            "obras",
+            _ascii_seguro(obra_codigo),
+            _ascii_seguro(codigo_documento),
+            "_solicitacoes",
+            str(solicitacao_id),
+            f"{secrets.token_hex(4)}-{_ascii_seguro(nome)}",
+        ]
+    )
+
+
 def montar_chave(
     obra_codigo: str, codigo_documento: str, revisao: str, nome_arquivo: str
 ) -> str:
@@ -144,6 +161,10 @@ class ArmazenamentoLocal:
     def url_visualizar(self, chave: str, nome_arquivo: str) -> str:
         # Como na imagem: o tipo não vai na URL, o endpoint confere os bytes.
         return self._url(chave, "pdf", {"nome": nome_arquivo})
+
+    def url_anexo(self, chave: str, nome_arquivo: str, tipo: str) -> str:
+        # Foto ou PDF; o endpoint descobre qual pelos bytes.
+        return self._url(chave, "anexo", {"nome": nome_arquivo})
 
     def url_imagem(self, chave: str, tipo: str) -> str:
         # O tipo não vai na URL: ela é assinada só sobre chave, ação e prazo, e
@@ -284,6 +305,21 @@ class ArmazenamentoS3:
                 "Bucket": self.bucket,
                 "Key": chave,
                 "ResponseContentType": "application/pdf",
+                "ResponseContentDisposition": disposicao,
+            },
+            ExpiresIn=settings.url_expira_segundos,
+        )
+
+    def url_anexo(self, chave: str, nome_arquivo: str, tipo: str) -> str:
+        # Abrir no navegador, com o tipo decidido no cadastro do anexo (só
+        # imagem ou PDF passam), fixado na assinatura.
+        disposicao = f"inline; filename*=UTF-8''{quote(nome_arquivo)}"
+        return self.assinador.generate_presigned_url(
+            "get_object",
+            Params={
+                "Bucket": self.bucket,
+                "Key": chave,
+                "ResponseContentType": tipo,
                 "ResponseContentDisposition": disposicao,
             },
             ExpiresIn=settings.url_expira_segundos,

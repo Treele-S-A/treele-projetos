@@ -11,6 +11,7 @@ import {
   type TipoArquivo,
 } from "../api";
 import Arvore from "../Arvore";
+import { MarcaSolicitada } from "../Solicitacoes";
 import { Aviso, CapaObra, Carregando, Estado, Vazio } from "../componentes";
 import { useSessao } from "../sessao";
 
@@ -278,7 +279,12 @@ export default function Acervo() {
                       <td className="mono">
                         {d.revisao_atual ? `R${d.revisao_atual.numero}` : "—"}
                       </td>
-                      <td>{d.revisao_atual && <Estado status={d.revisao_atual.status} />}</td>
+                      <td>
+                        <span className="linha" style={{ gap: 6, flexWrap: "nowrap" }}>
+                          {d.revisao_atual && <Estado status={d.revisao_atual.status} />}
+                          <MarcaSolicitada quantidade={d.solicitacoes_abertas} />
+                        </span>
+                      </td>
                       <td className="mono silencioso" style={{ fontSize: 12 }}>
                         {formatarData(d.revisao_atual?.publicada_em ?? null, false)}
                       </td>

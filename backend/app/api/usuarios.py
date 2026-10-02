@@ -8,6 +8,7 @@ from ..models import Usuario
 from ..schemas import SenhaRedefinir, UsuarioCriar, UsuarioOut
 from ..security import gerar_hash_senha
 from ..services import auditoria
+from ..services.equipe import garantir_admins_coordenadores
 
 router = APIRouter(prefix="/usuarios", tags=["usuários"])
 
@@ -60,6 +61,8 @@ def criar(
     )
     db.add(usuario)
     db.flush()
+    if usuario.admin:
+        garantir_admins_coordenadores(db, usuario=usuario)
 
     auditoria.registrar(
         db, acao="usuario_criado", entidade="usuario", entidade_id=usuario.id,

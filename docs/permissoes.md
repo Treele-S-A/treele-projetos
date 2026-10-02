@@ -9,6 +9,7 @@ Obra A e projetista na Obra B. Além disso existe o perfil global de
 | | Coordenador | Projetista | Obra |
 |---|:--:|:--:|:--:|
 | Ver documentos liberados | ✓ | ✓ | ✓ |
+| **Solicitar revisão** de projeto liberado | ✓ | | ✓ |
 | Baixar documentos liberados | ✓ | ✓ | ✓ |
 | Ver e baixar revisões obsoletas | ✓ | ✓ | ✓ |
 | Ver revisões ainda em revisão | ✓ | ✓ | |
@@ -21,7 +22,31 @@ Obra A e projetista na Obra B. Além disso existe o perfil global de
 | Ver registro de atividades | ✓ | | | |
 
 O administrador tem todas as permissões em todas as obras — e uma a mais,
-que nenhum papel de obra tem: **excluir arquivos e revisões**.
+que nenhum papel de obra tem: **excluir arquivos e revisões**. Além disso,
+**todo administrador é coordenador de todas as obras** (02/10/2026),
+inclusive as criadas depois, e todo administrador criado depois também passa
+a ser. Por isso ele aparece na equipe de cada obra e não pode ser removido
+dela nem trocar de papel.
+
+## Solicitação de revisão
+
+Quem está em campo encontra o problema; quem desenha precisa saber dele
+(02/10/2026):
+
+- **Quem pede:** o coordenador e a obra. Projetista não pede (é quem atende);
+  o comercial não vê pedidos.
+- **Sobre o quê:** o projeto **liberado para obra** — é o que está sendo
+  executado. Documento sem revisão liberada não aceita pedido.
+- **Como:** com descrição **obrigatória** do que deve mudar. Fotos e PDFs
+  marcados são opcionais (até 25 MB cada, até 10 por pedido); só quem fez o
+  pedido anexa, e só enquanto ele está aberto.
+- **Onde aparece:** uma marca *Revisão solicitada* ao lado do status, na lista
+  e na pasta, e a lista dos pedidos na tela do documento. O status continua
+  *Liberado para obra*: o projeto vale até sair o novo.
+- **Quando fecha:** sozinho, quando a revisão nova é liberada para obra —
+  todos os pedidos abertos daquele documento.
+- **Quem vai ser avisado** (quando as notificações entrarem): o coordenador e o
+  projetista que subiu a última revisão.
 
 ## Perfil comercial
 

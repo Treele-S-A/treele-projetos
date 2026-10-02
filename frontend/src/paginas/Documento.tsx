@@ -9,6 +9,7 @@ import {
 } from "../api";
 import { Aviso, CampoCarimbo, Carregando, Selo } from "../componentes";
 import { HistoricoRevisoes, baixarArquivo } from "../Revisoes";
+import { MarcaSolicitada, SolicitacoesDoDocumento } from "../Solicitacoes";
 import { useSessao } from "../sessao";
 
 export default function Documento() {
@@ -30,6 +31,7 @@ export default function Documento() {
   // O título não vem no nome do arquivo (decisão da TREELE, 17/09/2026), então
   // é aqui que ele é preenchido — por quem tem permissão de enviar.
   const podeEditarTitulo = obra?.permissoes.includes("enviar") ?? false;
+  const podeSolicitar = obra?.permissoes.includes("solicitar_revisao") ?? false;
 
   const carregar = useCallback(async () => {
     setCarregando(true);
@@ -135,6 +137,7 @@ export default function Documento() {
             </div>
           )}
         </div>
+        <MarcaSolicitada quantidade={doc.solicitacoes_abertas} />
         {atual && (
           <Selo
             status={atual.status}
@@ -169,6 +172,14 @@ export default function Documento() {
           />
         </div>
       </div>
+
+      <SolicitacoesDoDocumento
+        documentoId={doc.id}
+        solicitacoes={doc.solicitacoes}
+        podeSolicitar={podeSolicitar}
+        temLiberada={doc.revisoes.some((r) => r.status === "liberado_para_obra")}
+        aoMudar={carregar}
+      />
 
       <div className="folha">
         <div className="folha-titulo">

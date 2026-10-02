@@ -121,6 +121,11 @@ def publicar(db: Session, revisao: Revisao, usuario_id: int) -> list[Revisao]:
     revisao.publicada_em = agora
     revisao.publicada_por_id = usuario_id
 
+    # A revisão nova saiu: os pedidos de alteração do documento estão atendidos.
+    from .solicitacoes import atender_ao_liberar
+
+    atender_ao_liberar(db, revisao)
+
     db.flush()
     return anteriores
 
@@ -170,6 +175,9 @@ def excluir_revisao(db: Session, revisao: Revisao) -> Exclusao:
             restaurada.obsoleta_em = None
 
     restantes = [r for r in documento.revisoes if r.id != revisao.id]
+    if not restantes:
+        # O documento sai inteiro, e com ele os pedidos de revisão e os anexos.
+        chaves += [a.storage_key for s in documento.solicitacoes for a in s.anexos]
     if restantes:
         documento.revisoes.remove(revisao)
         db.delete(revisao)

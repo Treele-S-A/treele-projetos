@@ -186,6 +186,26 @@ export interface RevisaoResumo {
   criada_em: string;
 }
 
+export interface Anexo {
+  id: number;
+  nome_original: string;
+  content_type: string;
+  tamanho: number;
+}
+
+/** Pedido de alteração num projeto liberado. Fecha quando a revisão nova é liberada. */
+export interface Solicitacao {
+  id: number;
+  descricao: string;
+  status: "aberta" | "atendida";
+  criada_em: string;
+  criada_por: Usuario | null;
+  revisao_numero: string | null;
+  atendida_em: string | null;
+  atendida_por_numero: string | null;
+  anexos: Anexo[];
+}
+
 export interface Documento {
   id: number;
   codigo: string;
@@ -196,10 +216,13 @@ export interface Documento {
   criado_em: string;
   total_revisoes: number;
   revisao_atual: RevisaoResumo | null;
+  /** Pedidos de revisão ainda abertos — a marca ao lado do status. */
+  solicitacoes_abertas: number;
 }
 
 export interface DocumentoDetalhe extends Documento {
   revisoes: Revisao[];
+  solicitacoes: Solicitacao[];
 }
 
 export interface Pagina<T> {

@@ -40,6 +40,7 @@ from ..schemas import (
     RevisaoResumo,
 )
 from ..services import auditoria
+from ..services import solicitacoes as servico_solicitacoes
 from ..services.titulos import limpar_titulo, problema_no_titulo
 
 router = APIRouter(tags=["documentos"])
@@ -113,10 +114,14 @@ def _aplicar_filtros(
     return consulta
 
 
-def _montar_saida(db: Session, linhas) -> list[DocumentoOut]:
+def _montar_saida(db: Session, linhas, ctx: ContextoObra) -> list[DocumentoOut]:
     if not linhas:
         return []
     ids = [d.id for d, _ in linhas]
+    # O comercial não vê pedidos de revisão: para ele, nenhuma marca.
+    abertas = (
+        {} if ctx.usuario.comercial else servico_solicitacoes.abertas_por_documento(db, ids)
+    )
     contagens = dict(
         db.execute(
             select(Revisao.documento_id, func.count(Revisao.id))
@@ -129,6 +134,7 @@ def _montar_saida(db: Session, linhas) -> list[DocumentoOut]:
         item = DocumentoOut.model_validate(documento)
         item.total_revisoes = contagens.get(documento.id, 0)
         item.revisao_atual = RevisaoResumo.model_validate(atual)
+        item.solicitacoes_abertas = abertas.get(documento.id, 0)
         saida.append(item)
     return saida
 
@@ -164,7 +170,7 @@ def listar(
     ).all()
 
     return Pagina[DocumentoOut](
-        itens=_montar_saida(ctx.db, linhas),
+        itens=_montar_saida(ctx.db, linhas, ctx),
         total=total or 0,
         pagina=pagina,
         por_pagina=por_pagina,
@@ -398,6 +404,11 @@ def pasta(
         )
     )
 
+    abertas = (
+        {}
+        if ctx.usuario.comercial
+        else servico_solicitacoes.abertas_por_documento(ctx.db, [d.id for d in documentos])
+    )
     saida: list[DocumentoDetalhe] = []
     for documento in documentos:
         revisoes = sorted(documento.revisoes, key=lambda r: r.ordem, reverse=True)
@@ -413,6 +424,7 @@ def pasta(
             (r for r in revisoes if r.status != StatusRevisao.cancelado), None
         )
         item.revisao_atual = RevisaoResumo.model_validate(atual) if atual else None
+        item.solicitacoes_abertas = abertas.get(documento.id, 0)
         saida.append(item)
 
     return PastaSaida(
@@ -454,6 +466,11 @@ def detalhe(
         (r for r in revisoes if r.status != StatusRevisao.cancelado), None
     )
     saida.revisao_atual = RevisaoResumo.model_validate(atual) if atual else None
+    if not usuario.comercial:
+        saida.solicitacoes = [servico_solicitacoes.saida(s) for s in documento.solicitacoes]
+        saida.solicitacoes_abertas = sum(
+            1 for s in saida.solicitacoes if s.status.value == "aberta"
+        )
     return saida
 
 

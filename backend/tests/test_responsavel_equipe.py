@@ -130,11 +130,14 @@ def test_responsavel_remove_pessoa_da_equipe(cliente, admin, cenario):
 
 
 def test_responsavel_nao_remove_coordenador(cliente, admin, cenario):
-    """O admin que criou a obra entrou nela como coordenador."""
     obra = cenario["obra"]
-    eu = cliente.get("/auth/eu", headers=admin).json()
+    coord, _ = _usuario(cliente, admin, "coordenador-comum")
+    cliente.post(
+        f"/obras/{obra['id']}/membros", json={"usuario_id": coord, "papel": "coordenador"},
+        headers=admin,
+    )
     r = cliente.delete(
-        f"/obras/{obra['id']}/membros/{_id_do_membro(cliente, admin, obra, eu['id'])}",
+        f"/obras/{obra['id']}/membros/{_id_do_membro(cliente, admin, obra, coord)}",
         headers=cenario["eng"],
     )
     assert r.status_code == 403

@@ -11,6 +11,7 @@ const ROTULO_ACAO: Record<string, string> = {
   upload_concluido: "Concluiu envio",
   arquivo_removido: "Excluiu arquivo",
   revisao_excluida: "Excluiu revisão",
+  revisao_solicitada: "Pediu revisão",
   revisao_publicada: "Liberou para obra",
   revisao_cancelada: "Cancelou revisão",
   revisao_atualizada: "Editou descrição",

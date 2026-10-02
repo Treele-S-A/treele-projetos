@@ -5,7 +5,7 @@ from typing import Generic, TypeVar
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
-from .enums import PapelObra, StatusArquivo, StatusRevisao, TipoArquivo
+from .enums import PapelObra, StatusArquivo, StatusRevisao, StatusSolicitacao, TipoArquivo
 
 T = TypeVar("T")
 
@@ -248,6 +248,42 @@ class RevisaoResumo(Modelo):
     criada_em: datetime
 
 
+class AnexoOut(Modelo):
+    id: int
+    nome_original: str
+    content_type: str
+    tamanho: int
+
+
+class SolicitacaoOut(BaseModel):
+    id: int
+    descricao: str
+    status: StatusSolicitacao
+    criada_em: datetime
+    criada_por: UsuarioOut | None = None
+    # Revisão liberada sobre a qual o pedido foi feito, e a que o atendeu.
+    revisao_numero: str | None = None
+    atendida_em: datetime | None = None
+    atendida_por_numero: str | None = None
+    anexos: list[AnexoOut] = []
+
+
+class SolicitacaoCriar(BaseModel):
+    descricao: str
+
+
+class AnexoIniciar(BaseModel):
+    nome_arquivo: str = Field(min_length=1, max_length=300)
+    tamanho: int = Field(ge=1)
+
+
+class AnexoIniciarSaida(BaseModel):
+    anexo_id: int
+    url: str
+    metodo: str
+    headers: dict[str, str]
+
+
 class DocumentoOut(Modelo):
     id: int
     codigo: str
@@ -258,10 +294,18 @@ class DocumentoOut(Modelo):
     criado_em: datetime
     total_revisoes: int = 0
     revisao_atual: RevisaoResumo | None = None
+    # Pedidos de alteração ainda não atendidos — a marca ao lado do status.
+    solicitacoes_abertas: int = 0
 
 
 class DocumentoDetalhe(DocumentoOut):
     revisoes: list[RevisaoOut] = []
+    # Montado à mão (services/solicitacoes.saida), nunca lido direto da relação
+    # do documento: lá estão anexos ainda pendentes, e o comercial não vê
+    # pedido nenhum. O alias aponta para um atributo que o modelo não tem.
+    solicitacoes: list[SolicitacaoOut] = Field(
+        default_factory=list, validation_alias="solicitacoes_montadas"
+    )
 
 
 class DocumentoAtualizar(BaseModel):

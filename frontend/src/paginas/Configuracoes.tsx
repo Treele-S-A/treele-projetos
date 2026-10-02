@@ -506,8 +506,10 @@ function Equipe({ obraId, gerencia }: { obraId: number; gerencia: boolean }) {
                   </td>
                   <td>{ROTULO_PAPEL[m.papel]}</td>
                   <td style={{ textAlign: "right" }}>
-                    {(gerencia ||
-                      (m.papel !== "coordenador" && m.usuario_id !== usuario?.id)) && (
+                    {/* Administrador é coordenador de todas as obras: não sai. */}
+                    {!m.usuario.admin &&
+                      (gerencia ||
+                        (m.papel !== "coordenador" && m.usuario_id !== usuario?.id)) && (
                       <button className="botao secundario pequeno" onClick={() => remover(m)}>
                         Remover
                       </button>

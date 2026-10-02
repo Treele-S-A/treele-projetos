@@ -19,6 +19,7 @@ from .api import (
     eventos,
     obras,
     revisoes,
+    solicitacoes,
     storage_local,
     uploads,
     usuarios,
@@ -84,6 +85,7 @@ for modulo in (
     revisoes,
     arquivos,
     eventos,
+    solicitacoes,
     storage_local,
 ):
     app.include_router(modulo.router, prefix=settings.api_prefix)

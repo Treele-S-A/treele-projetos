@@ -31,7 +31,7 @@ from sqlalchemy import (
 from sqlalchemy import Enum as SAEnum
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
-from .enums import PapelObra, StatusArquivo, StatusRevisao, TipoArquivo
+from .enums import PapelObra, StatusArquivo, StatusRevisao, StatusSolicitacao, TipoArquivo
 
 
 def agora() -> datetime:
@@ -215,6 +215,11 @@ class Documento(Base):
         cascade="all, delete-orphan",
         order_by="Revisao.ordem",
     )
+    solicitacoes: Mapped[list["SolicitacaoRevisao"]] = relationship(
+        back_populates="documento",
+        cascade="all, delete-orphan",
+        order_by="SolicitacaoRevisao.criada_em.desc()",
+    )
 
 
 class Revisao(Base):
@@ -294,6 +299,76 @@ class Arquivo(Base):
 
     revisao: Mapped["Revisao"] = relationship(back_populates="arquivos")
     enviado_por: Mapped["Usuario | None"] = relationship()
+
+
+class SolicitacaoRevisao(Base):
+    """Pedido de alteração num projeto liberado (TREELE, 02/10/2026).
+
+    Quem pede é o coordenador ou a obra, sempre dizendo o que deve mudar; fotos
+    e PDFs marcados são opcionais. Fica presa ao documento — e à revisão
+    liberada sobre a qual foi feita — e fecha sozinha quando a revisão nova é
+    liberada para obra (services/revisoes.publicar).
+    """
+
+    __tablename__ = "solicitacoes_revisao"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    documento_id: Mapped[int] = mapped_column(
+        ForeignKey("documentos.id", ondelete="CASCADE"), index=True
+    )
+    # A revisão liberada que estava valendo quando o pedido foi feito.
+    revisao_id: Mapped[int | None] = mapped_column(
+        ForeignKey("revisoes.id", ondelete="SET NULL"), nullable=True
+    )
+    descricao: Mapped[str] = mapped_column(Text)
+    status: Mapped[StatusSolicitacao] = mapped_column(
+        _enum(StatusSolicitacao, 16), default=StatusSolicitacao.aberta, index=True
+    )
+    criada_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=agora)
+    criada_por_id: Mapped[int | None] = mapped_column(
+        ForeignKey("usuarios.id"), nullable=True
+    )
+    atendida_em: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    atendida_por_revisao_id: Mapped[int | None] = mapped_column(
+        ForeignKey("revisoes.id", ondelete="SET NULL"), nullable=True
+    )
+
+    documento: Mapped["Documento"] = relationship(back_populates="solicitacoes")
+    revisao: Mapped["Revisao | None"] = relationship(foreign_keys=[revisao_id])
+    atendida_por_revisao: Mapped["Revisao | None"] = relationship(
+        foreign_keys=[atendida_por_revisao_id]
+    )
+    criada_por: Mapped["Usuario | None"] = relationship()
+    anexos: Mapped[list["AnexoSolicitacao"]] = relationship(
+        back_populates="solicitacao",
+        cascade="all, delete-orphan",
+        order_by="AnexoSolicitacao.id",
+    )
+
+
+class AnexoSolicitacao(Base):
+    """Foto ou PDF marcado que acompanha a solicitação. Sobe direto do
+    navegador para o armazenamento, como os arquivos de projeto: foto de
+    celular passa fácil do limite de corpo de requisição da hospedagem."""
+
+    __tablename__ = "anexos_solicitacao"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    solicitacao_id: Mapped[int] = mapped_column(
+        ForeignKey("solicitacoes_revisao.id", ondelete="CASCADE"), index=True
+    )
+    nome_original: Mapped[str] = mapped_column(String(300))
+    storage_key: Mapped[str] = mapped_column(String(500), unique=True)
+    content_type: Mapped[str] = mapped_column(String(120))
+    tamanho: Mapped[int] = mapped_column(BigInteger, default=0)
+    status: Mapped[StatusArquivo] = mapped_column(
+        _enum(StatusArquivo, 16), default=StatusArquivo.pendente
+    )
+    enviado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=agora)
+
+    solicitacao: Mapped["SolicitacaoRevisao"] = relationship(back_populates="anexos")
 
 
 class Evento(Base):

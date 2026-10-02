@@ -9,6 +9,7 @@ import {
 } from "../api";
 import { Aviso, Carregando, Estado, Vazio } from "../componentes";
 import { HistoricoRevisoes, baixarArquivo } from "../Revisoes";
+import { MarcaSolicitada } from "../Solicitacoes";
 import { useSessao } from "../sessao";
 
 interface PastaDados {
@@ -166,6 +167,7 @@ export default function Pasta() {
                         R{atual.numero}
                       </span>
                       <Estado status={atual.status} />
+                      <MarcaSolicitada quantidade={doc.solicitacoes_abertas} />
                     </>
                   )}
                   <span className="silencioso mono" style={{ fontSize: 11 }}>

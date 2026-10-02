@@ -71,7 +71,7 @@ async def enviar(request: Request, chave: str, acao: str, exp: int, assinatura: 
 
 @router.get("/local")
 def baixar(chave: str, acao: str, exp: int, assinatura: str, nome: str | None = None):
-    if acao not in ("get", "img", "pdf"):
+    if acao not in ("get", "img", "pdf", "anexo"):
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Ação inválida para este link.")
     local = _validar(chave, acao, exp, assinatura)
 
@@ -94,6 +94,23 @@ def baixar(chave: str, acao: str, exp: int, assinatura: str, nome: str | None = 
             caminho,
             media_type=imagem[0],
             headers={"Content-Disposition": "inline", "X-Content-Type-Options": "nosniff"},
+        )
+
+    if acao == "anexo":
+        # Anexo de solicitação: foto ou PDF, decidido pelos bytes.
+        with open(caminho, "rb") as fh:
+            inicio = fh.read(16)
+        imagem = detectar_imagem(inicio)
+        tipo = "application/pdf" if inicio.startswith(b"%PDF") else (imagem[0] if imagem else None)
+        if tipo is None:
+            raise HTTPException(status.HTTP_415_UNSUPPORTED_MEDIA_TYPE, "Nem imagem nem PDF.")
+        return FileResponse(
+            caminho,
+            media_type=tipo,
+            headers={
+                "Content-Disposition": f"inline; filename*=UTF-8''{quote(nome or caminho.name)}",
+                "X-Content-Type-Options": "nosniff",
+            },
         )
 
     if acao == "pdf":

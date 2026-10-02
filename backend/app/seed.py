@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 from .config import settings
 from .models import Disciplina, Fase, PadraoNomenclatura, Usuario
 from .security import gerar_hash_senha
+from .services.equipe import garantir_admins_coordenadores
 from .services.nomenclatura import PADRAO_INICIAL
 
 # Templates que este projeto já distribuiu como padrão global. Serve para
@@ -163,5 +164,10 @@ def semear(db: Session) -> None:
             print(f"  E-mail: {settings.admin_email}")
             print(f"  Senha:  {senha}")
             print("=" * 68 + "\n", flush=True)
+
+    db.flush()
+    ajustes = garantir_admins_coordenadores(db)
+    if ajustes:
+        print(f"equipes: {ajustes} administrador(es) posto(s) como coordenador", flush=True)
 
     db.commit()
