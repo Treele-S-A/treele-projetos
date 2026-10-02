@@ -41,6 +41,23 @@ export default function Configuracoes() {
 
   if (!obra) return <Carregando />;
 
+  // O engenheiro responsável que não é coordenador só inclui gente na equipe.
+  if (!obra.permissoes.includes("gerenciar")) {
+    return (
+      <>
+        <div className="cabecalho-area">
+          <div>
+            <span className="rotulo">
+              {obra.codigo} · {obra.nome}
+            </span>
+            <h1>Equipe da obra</h1>
+          </div>
+        </div>
+        <Equipe obraId={obra.id} gerencia={false} />
+      </>
+    );
+  }
+
   return (
     <>
       <div className="cabecalho-area">
@@ -55,7 +72,7 @@ export default function Configuracoes() {
       <Logo obra={obra} aoSalvar={recarregarObras} />
       <Identidade obra={obra} aoSalvar={recarregarObras} />
       <Responsavel obra={obra} aoSalvar={recarregarObras} />
-      <Equipe obraId={obra.id} />
+      <Equipe obraId={obra.id} gerencia />
       <Nomenclatura obraId={obra.id} />
       <Companheiros
         obraId={obra.id}
@@ -356,7 +373,11 @@ function Responsavel({
 
 /* --------------------------------------------------------------------- equipe */
 
-function Equipe({ obraId }: { obraId: number }) {
+/** `gerencia` = coordenador ou administrador. Sem isso é o engenheiro
+ *  responsável: inclui pessoas, mas não nomeia coordenador, não troca papel
+ *  e não remove — a API recusa as três coisas de qualquer forma. */
+function Equipe({ obraId, gerencia }: { obraId: number; gerencia: boolean }) {
+  const papeis = gerencia ? PAPEIS : PAPEIS.filter((p) => p !== "coordenador");
   const [membros, setMembros] = useState<Membro[]>([]);
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [novoUsuario, setNovoUsuario] = useState("");
@@ -437,7 +458,7 @@ function Equipe({ obraId }: { obraId: number }) {
           <label className="campo">
             <span className="rotulo">Papel</span>
             <select value={novoPapel} onChange={(e) => setNovoPapel(e.target.value as PapelObra)}>
-              {PAPEIS.map((p) => (
+              {papeis.map((p) => (
                 <option key={p} value={p}>
                   {ROTULO_PAPEL[p]}
                 </option>
@@ -454,6 +475,12 @@ function Equipe({ obraId }: { obraId: number }) {
         <p className="silencioso" style={{ fontSize: 12, marginBottom: 0 }}>
           {O_QUE_O_PAPEL_FAZ[novoPapel]}
         </p>
+        {!gerencia && (
+          <p className="silencioso" style={{ fontSize: 12, marginBottom: 0 }}>
+            Como engenheiro responsável, você inclui pessoas já cadastradas. Nomear
+            coordenador, trocar papel ou remover alguém é com o coordenador da obra.
+          </p>
+        )}
       </div>
 
       {carregando ? (
@@ -478,9 +505,11 @@ function Equipe({ obraId }: { obraId: number }) {
                   </td>
                   <td>{ROTULO_PAPEL[m.papel]}</td>
                   <td style={{ textAlign: "right" }}>
-                    <button className="botao secundario pequeno" onClick={() => remover(m)}>
-                      Remover
-                    </button>
+                    {gerencia && (
+                      <button className="botao secundario pequeno" onClick={() => remover(m)}>
+                        Remover
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))}

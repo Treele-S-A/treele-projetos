@@ -117,6 +117,15 @@ function Moldura() {
                   </NavLink>
                 </>
               )}
+              {/* Engenheiro responsável sem papel de coordenador: só a equipe. */}
+              {!pode("gerenciar") && pode("adicionar_membro") && (
+                <NavLink
+                  to={`/obras/${obra.id}/configuracoes`}
+                  className={({ isActive }) => (isActive ? "ativo" : "")}
+                >
+                  Equipe da obra
+                </NavLink>
+              )}
               <div className="divisor" />
             </>
           ) : null}

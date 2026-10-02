@@ -86,6 +86,16 @@ class ContextoObra:
             )
 
 
+def permissoes_do_responsavel(obra: Obra, usuario: Usuario) -> set[str]:
+    """O engenheiro responsável inclui gente na equipe da própria obra
+    (TREELE, 02/10/2026), seja qual for o papel dele nela. Só inclui: não
+    remove, não troca papel e não nomeia coordenador — isso continua com quem
+    gerencia a obra."""
+    if obra.responsavel_id == usuario.id and not usuario.comercial:
+        return {"adicionar_membro"}
+    return set()
+
+
 def montar_contexto(db: Session, usuario: Usuario, obra_id: int) -> ContextoObra:
     """Resolve obra + papel. Usado pelas rotas que não têm obra_id no caminho
     (download de arquivo, publicação de revisão) e chegam à obra pelo objeto."""
@@ -113,6 +123,7 @@ def montar_contexto(db: Session, usuario: Usuario, obra_id: int) -> ContextoObra
 
     papel = membro.papel if membro else None
     permissoes = set(PERMISSOES.get(papel, set())) if papel else set()
+    permissoes |= permissoes_do_responsavel(obra, usuario)
     return ContextoObra(
         usuario=usuario, obra=obra, papel=papel, permissoes=permissoes, db=db
     )

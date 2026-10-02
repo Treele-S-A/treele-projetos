@@ -110,6 +110,12 @@ O responsável pode ter **qualquer papel** na equipe — inclusive *Obra*, que �
 caso comum do engenheiro de campo. Só precisa fazer parte da equipe: alguém de
 fora não enxergaria a obra e receberia notificação sobre o que não pode abrir.
 
+**O responsável inclui pessoas na equipe da própria obra** (02/10/2026), seja
+qual for o papel dele nela — aparece para ele o item *Equipe da obra* no menu.
+Só inclui pessoas já cadastradas. Não nomeia coordenador (quem libera para
+obra continua sendo decisão de quem gerencia), não troca o papel de quem já
+está e não remove ninguém. Deixou de ser o responsável, perde a permissão.
+
 Quando as notificações entrarem (Fase 1.5), é para ele que elas vão primeiro.
 
 ## Registro de atividades

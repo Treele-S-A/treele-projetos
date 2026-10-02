@@ -9,6 +9,7 @@ from ..deps import (
     codigos_disciplinas,
     codigos_fases,
     contexto_obra,
+    permissoes_do_responsavel,
     padrao_da_obra,
     usuario_admin,
     usuario_atual,
@@ -44,13 +45,14 @@ router = APIRouter(prefix="/obras", tags=["obras"])
 
 # O administrador global ignora a matriz de papéis. A lista existe só para a
 # interface saber o que desenhar para ele.
-TUDO = sorted(set().union(*PERMISSOES.values()))
+TUDO = sorted(set().union(*PERMISSOES.values()) | {"adicionar_membro"})
 
 
-def _com_papel(obra: Obra, papel) -> ObraComPapel:
+def _com_papel(obra: Obra, papel, usuario: Usuario) -> ObraComPapel:
     saida = ObraComPapel.model_validate(obra)
     saida.papel = papel
-    saida.permissoes = sorted(PERMISSOES.get(papel, set())) if papel else []
+    permissoes = set(PERMISSOES.get(papel, set())) if papel else set()
+    saida.permissoes = sorted(permissoes | permissoes_do_responsavel(obra, usuario))
     return saida
 
 
@@ -77,7 +79,7 @@ def listar(
         consulta = consulta.where(Obra.ativa.is_(True))
 
     obras = list(db.scalars(consulta))
-    saida = [_com_papel(o, papeis.get(o.id)) for o in obras]
+    saida = [_com_papel(o, papeis.get(o.id), usuario) for o in obras]
     if usuario.admin:
         for item in saida:
             item.permissoes = TUDO
@@ -121,7 +123,7 @@ def criar(
 
 @router.get("/{obra_id}", response_model=ObraComPapel)
 def detalhe(ctx: ContextoObra = Depends(contexto_obra)):
-    saida = _com_papel(ctx.obra, ctx.papel)
+    saida = _com_papel(ctx.obra, ctx.papel, ctx.usuario)
     if ctx.usuario.admin:
         saida.permissoes = TUDO
     return saida
@@ -287,7 +289,18 @@ def adicionar_membro(
     request: Request,
     ctx: ContextoObra = Depends(contexto_obra),
 ):
-    ctx.exigir("gerenciar")
+    gerencia = ctx.pode("gerenciar")
+    if not gerencia:
+        ctx.exigir(
+            "adicionar_membro",
+            "Somente o coordenador ou o engenheiro responsável incluem pessoas na equipe.",
+        )
+        if dados.papel == PapelObra.coordenador:
+            raise HTTPException(
+                status.HTTP_403_FORBIDDEN,
+                "O engenheiro responsável inclui pessoas na equipe, mas não nomeia "
+                "coordenador — isso é com o coordenador da obra.",
+            )
     novo = ctx.db.get(Usuario, dados.usuario_id)
     if novo is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Usuário não encontrado.")
@@ -305,6 +318,11 @@ def adicionar_membro(
         )
     )
     if existente is not None:
+        if not gerencia:
+            raise HTTPException(
+                status.HTTP_409_CONFLICT,
+                f"{novo.nome} já faz parte da equipe. Trocar o papel é com o coordenador.",
+            )
         existente.papel = dados.papel
         ctx.db.commit()
         return existente
