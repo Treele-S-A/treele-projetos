@@ -6,9 +6,10 @@ Regras da TREELE (02/10/2026):
 - Fotos e PDFs marcados podem ir junto; prazo e urgência, não.
 - O pedido é sobre o projeto LIBERADO para obra — é o que está sendo
   executado. Vários pedidos podem estar abertos ao mesmo tempo.
-- Fecha sozinho quando a revisão nova é liberada para obra: o status do
-  documento continua "liberado" até lá, com a marca de "revisão solicitada"
-  ao lado (decisão de 18/09/2026).
+- Quem libera a revisão nova para obra marca quais pedidos ela atende
+  (TREELE, 02/10/2026): os marcados fecham ali; os outros seguem abertos.
+  Até lá, o status do documento continua "liberado", com a marca de
+  "revisão solicitada" ao lado (decisão de 18/09/2026).
 """
 
 from datetime import datetime, timezone
@@ -88,19 +89,27 @@ def abertas_por_documento(db: Session, documento_ids: list[int]) -> dict[int, in
     )
 
 
-def atender_ao_liberar(db: Session, revisao: Revisao) -> list[SolicitacaoRevisao]:
-    """Fecha os pedidos abertos do documento: a revisão nova saiu. Não faz commit."""
-    abertas = list(
+def pedidos_marcados(db: Session, revisao: Revisao, ids: list[int]) -> list[SolicitacaoRevisao]:
+    """Os pedidos marcados na liberação — só abertos e do mesmo documento.
+    Devolve None se algum não for: a tela estava desatualizada."""
+    if not ids:
+        return []
+    pedidos = list(
         db.scalars(
             select(SolicitacaoRevisao).where(
+                SolicitacaoRevisao.id.in_(set(ids)),
                 SolicitacaoRevisao.documento_id == revisao.documento_id,
                 SolicitacaoRevisao.status == StatusSolicitacao.aberta,
             )
         )
     )
+    return pedidos if len(pedidos) == len(set(ids)) else None
+
+
+def atender(db: Session, revisao: Revisao, pedidos: list[SolicitacaoRevisao]) -> None:
+    """Fecha os pedidos marcados: atendidos por esta revisão. Não faz commit."""
     agora = datetime.now(timezone.utc)
-    for s in abertas:
+    for s in pedidos:
         s.status = StatusSolicitacao.atendida
         s.atendida_em = agora
         s.atendida_por_revisao_id = revisao.id
-    return abertas

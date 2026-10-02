@@ -425,6 +425,8 @@ def pasta(
         )
         item.revisao_atual = RevisaoResumo.model_validate(atual) if atual else None
         item.solicitacoes_abertas = abertas.get(documento.id, 0)
+        if not ctx.usuario.comercial:
+            item.solicitacoes = [servico_solicitacoes.saida(s) for s in documento.solicitacoes]
         saida.append(item)
 
     return PastaSaida(

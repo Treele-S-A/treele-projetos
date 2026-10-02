@@ -7,6 +7,7 @@ from ..models import Revisao, Usuario
 from ..schemas import ExclusaoRevisaoSaida, PublicarEntrada, RevisaoAtualizar, RevisaoOut
 from ..services import auditoria
 from ..services import revisoes as servico
+from ..services import solicitacoes as servico_solicitacoes
 
 router = APIRouter(prefix="/revisoes", tags=["revisões"])
 
@@ -105,10 +106,21 @@ def publicar(
             },
         )
 
+    # Pedidos de revisão que esta revisão atende, marcados por quem libera.
+    # Conferidos antes de liberar: um pedido inválido não libera nada.
+    atendidos = servico_solicitacoes.pedidos_marcados(db, revisao, dados.solicitacoes_atendidas)
+    if atendidos is None:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            "Alguma das solicitações marcadas não está aberta neste documento. "
+            "Recarregue a página e marque de novo.",
+        )
+
     if dados.descricao:
         revisao.descricao = dados.descricao.strip()
 
     obsoletas = servico.publicar(db, revisao, usuario.id)
+    servico_solicitacoes.atender(db, revisao, atendidos)
 
     auditoria.registrar(
         db, acao="revisao_publicada", entidade="revisao", entidade_id=revisao.id,
@@ -117,6 +129,7 @@ def publicar(
             "documento": revisao.documento.codigo,
             "revisao": revisao.numero,
             "obsoletadas": [r.numero for r in obsoletas],
+            "solicitacoes_atendidas": [s.id for s in atendidos],
         },
         request=request,
     )

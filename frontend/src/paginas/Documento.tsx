@@ -195,6 +195,7 @@ export default function Documento() {
           aoMudar={carregar}
           aoBaixar={baixar}
           aoExcluirDocumento={() => navegar(obra ? `/obras/${obra.id}/acervo` : "/obras")}
+          solicitacoes={doc.solicitacoes}
         />
       </div>
     </>

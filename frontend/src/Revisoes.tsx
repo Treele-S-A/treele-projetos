@@ -13,6 +13,7 @@ import {
   formatarTamanho,
   type Arquivo,
   type Revisao,
+  type Solicitacao,
   type Verificacao,
 } from "./api";
 import { Aviso, Estado } from "./componentes";
@@ -90,8 +91,11 @@ export function HistoricoRevisoes({
   aoMudar,
   aoBaixar,
   aoExcluirDocumento,
+  solicitacoes = [],
 }: {
   revisoes: Revisao[];
+  /** Pedidos de revisão do documento: quem libera marca os que a revisão atende. */
+  solicitacoes?: Solicitacao[];
   podePublicar: boolean;
   podeCancelar: boolean;
   aoMudar: () => Promise<void>;
@@ -112,6 +116,7 @@ export function HistoricoRevisoes({
           aoMudar={aoMudar}
           aoBaixar={aoBaixar}
           aoExcluirDocumento={aoExcluirDocumento}
+          pedidosAbertos={solicitacoes.filter((s) => s.status === "aberta")}
         />
       ))}
     </>
@@ -126,15 +131,20 @@ function LinhaRevisao({
   aoMudar,
   aoBaixar,
   aoExcluirDocumento,
+  pedidosAbertos,
 }: {
   revisao: Revisao;
   unica: boolean;
+  pedidosAbertos: Solicitacao[];
   podePublicar: boolean;
   podeCancelar: boolean;
   aoMudar: () => Promise<void>;
   aoBaixar: (a: Arquivo) => void;
   aoExcluirDocumento?: () => void;
 }) {
+  // Pedidos que esta revisão atende — marcados por quem libera. Fecham na
+  // liberação; os não marcados seguem abertos.
+  const [atendidos, setAtendidos] = useState<number[]>([]);
   // Excluir é definitivo e vale para qualquer status: só administrador.
   const admin = useSessao().usuario?.admin ?? false;
   const [verificacao, setVerificacao] = useState<Verificacao | null>(null);
@@ -155,7 +165,9 @@ function LinhaRevisao({
     setOcupado(true);
     setErro(null);
     try {
-      await api.post(`/revisoes/${revisao.id}/publicar`, {});
+      await api.post(`/revisoes/${revisao.id}/publicar`, {
+        solicitacoes_atendidas: atendidos,
+      });
       await aoMudar();
     } catch (ex) {
       setErro(ex instanceof ErroApi ? ex : new ErroApi(0, "Não foi possível liberar."));
@@ -339,6 +351,29 @@ Isto não pode ser desfeito.`)) {
 
           {podePublicar ? (
             <>
+              {pedidosAbertos.length > 0 && (
+                <fieldset className="pedidos-atendidos">
+                  <legend className="rotulo">Solicitações de revisão atendidas</legend>
+                  {pedidosAbertos.map((p) => (
+                    <label key={p.id} className="pedido-atendido">
+                      <input
+                        type="checkbox"
+                        checked={atendidos.includes(p.id)}
+                        onChange={() =>
+                          setAtendidos((a) =>
+                            a.includes(p.id) ? a.filter((x) => x !== p.id) : [...a, p.id],
+                          )
+                        }
+                        disabled={ocupado}
+                      />
+                      <span>{p.descricao}</span>
+                    </label>
+                  ))}
+                  <span className="silencioso" style={{ fontSize: 12 }}>
+                    As marcadas fecham ao liberar a R{revisao.numero}. As outras seguem abertas.
+                  </span>
+                </fieldset>
+              )}
               <div className="linha" style={{ marginTop: 10 }}>
                 <button
                   className="botao"

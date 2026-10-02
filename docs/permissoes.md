@@ -43,8 +43,9 @@ Quem está em campo encontra o problema; quem desenha precisa saber dele
 - **Onde aparece:** uma marca *Revisão solicitada* ao lado do status, na lista
   e na pasta, e a lista dos pedidos na tela do documento. O status continua
   *Liberado para obra*: o projeto vale até sair o novo.
-- **Quando fecha:** sozinho, quando a revisão nova é liberada para obra —
-  todos os pedidos abertos daquele documento.
+- **Quando fecha:** na liberação da revisão nova para obra, quem libera marca
+  numa lista quais pedidos ela atende. Os marcados fecham ali ("atendida pela
+  R01"); os não marcados seguem abertos para a próxima revisão.
 - **Quem vai ser avisado** (quando as notificações entrarem): o coordenador e o
   projetista que subiu a última revisão.
 

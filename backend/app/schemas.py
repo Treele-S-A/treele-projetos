@@ -380,6 +380,9 @@ class RevisaoAtualizar(BaseModel):
 
 class PublicarEntrada(BaseModel):
     descricao: str | None = None
+    # Pedidos de revisão abertos que esta revisão atende, marcados por quem
+    # libera. Fecham na liberação; os não marcados seguem abertos.
+    solicitacoes_atendidas: list[int] = []
 
 
 # --------------------------------------------------------------------------

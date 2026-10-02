@@ -186,6 +186,7 @@ export default function Pasta() {
                   podeCancelar={podeCancelar}
                   aoMudar={carregar}
                   aoBaixar={baixar}
+                  solicitacoes={doc.solicitacoes}
                 />
               )}
             </div>

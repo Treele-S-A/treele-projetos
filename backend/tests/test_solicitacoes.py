@@ -182,29 +182,88 @@ def test_so_quem_pediu_anexa(cliente, admin, obra, pessoas):
 # ------------------------------------------------------------ fechar
 
 
-def test_fecha_quando_a_revisao_nova_e_liberada(cliente, admin, obra, pessoas):
+def _liberar(cliente, admin, revisao_id, atendidas=()):
+    return cliente.post(
+        f"/revisoes/{revisao_id}/publicar",
+        json={"solicitacoes_atendidas": list(atendidas)},
+        headers=admin,
+    )
+
+
+def _por_id(cliente, admin, doc):
+    detalhe = cliente.get(f"/documentos/{doc}", headers=admin).json()
+    return {s["id"]: s for s in detalhe["solicitacoes"]}, detalhe
+
+
+def test_marcadas_na_liberacao_fecham_e_as_outras_seguem_abertas(cliente, admin, obra, pessoas):
+    """Quem libera marca quais pedidos a revisão nova atende (02/10/2026)."""
     doc = _liberado(cliente, admin, obra, "009")
-    _pedir(cliente, pessoas["campo"], doc)
-    _pedir(cliente, pessoas["coord"], doc, "Também ajustar a cota do peitoril.")
+    ralo = _pedir(cliente, pessoas["campo"], doc).json()["id"]
+    peitoril = _pedir(cliente, pessoas["coord"], doc, "Também ajustar a cota do peitoril.").json()["id"]
 
-    # Revisão nova enviada, mas ainda não liberada: o pedido continua aberto.
+    # Revisão nova enviada, ainda não liberada: tudo continua aberto.
     r01 = enviar_arquivo(cliente, admin, obra["id"], "SOL-ARQ-PE-009-R01.pdf", PDF)
-    detalhe = cliente.get(f"/documentos/{doc}", headers=admin).json()
-    assert detalhe["solicitacoes_abertas"] == 2
+    assert cliente.get(f"/documentos/{doc}", headers=admin).json()["solicitacoes_abertas"] == 2
 
-    cliente.post(f"/revisoes/{r01.json()['revisao']['id']}/publicar", json={}, headers=admin)
+    r = _liberar(cliente, admin, r01.json()["revisao"]["id"], atendidas=[ralo])
+    assert r.status_code == 200, r.text
 
-    detalhe = cliente.get(f"/documentos/{doc}", headers=admin).json()
-    assert detalhe["solicitacoes_abertas"] == 0
-    assert {s["status"] for s in detalhe["solicitacoes"]} == {"atendida"}
-    assert {s["atendida_por_numero"] for s in detalhe["solicitacoes"]} == {"01"}
+    pedidos, detalhe = _por_id(cliente, admin, doc)
+    assert pedidos[ralo]["status"] == "atendida"
+    assert pedidos[ralo]["atendida_por_numero"] == "01"
+    assert pedidos[peitoril]["status"] == "aberta"
+    assert detalhe["solicitacoes_abertas"] == 1
+
+    evento = cliente.get(f"/obras/{obra['id']}/eventos", headers=admin).json()["itens"][0]
+    assert evento["acao"] == "revisao_publicada"
+    assert evento["detalhes"]["solicitacoes_atendidas"] == [ralo]
+
+
+def test_liberar_sem_marcar_nada_deixa_tudo_aberto(cliente, admin, obra, pessoas):
+    doc = _liberado(cliente, admin, obra, "012")
+    _pedir(cliente, pessoas["campo"], doc)
+    r01 = enviar_arquivo(cliente, admin, obra["id"], "SOL-ARQ-PE-012-R01.pdf", PDF)
+    _liberar(cliente, admin, r01.json()["revisao"]["id"])
+    assert cliente.get(f"/documentos/{doc}", headers=admin).json()["solicitacoes_abertas"] == 1
+
+
+def test_pedido_de_outro_documento_nao_libera_nada(cliente, admin, obra, pessoas):
+    doc_a = _liberado(cliente, admin, obra, "014")
+    _liberado(cliente, admin, obra, "015")
+    de_outro = _pedir(cliente, pessoas["campo"], doc_a).json()["id"]
+    r01 = enviar_arquivo(cliente, admin, obra["id"], "SOL-ARQ-PE-015-R01.pdf", PDF)
+
+    r = _liberar(cliente, admin, r01.json()["revisao"]["id"], atendidas=[de_outro])
+
+    assert r.status_code == 422
+    revisao = cliente.get(f"/revisoes/{r01.json()['revisao']['id']}", headers=admin).json()
+    assert revisao["status"] == "em_revisao"
+    pedidos, _ = _por_id(cliente, admin, doc_a)
+    assert pedidos[de_outro]["status"] == "aberta"
+
+
+def test_pedido_ja_atendido_nao_e_marcado_de_novo(cliente, admin, obra, pessoas):
+    doc = _liberado(cliente, admin, obra, "016")
+    sol = _pedir(cliente, pessoas["campo"], doc).json()["id"]
+    r01 = enviar_arquivo(cliente, admin, obra["id"], "SOL-ARQ-PE-016-R01.pdf", PDF)
+    _liberar(cliente, admin, r01.json()["revisao"]["id"], atendidas=[sol])
+    r02 = enviar_arquivo(cliente, admin, obra["id"], "SOL-ARQ-PE-016-R02.pdf", PDF)
+    assert _liberar(cliente, admin, r02.json()["revisao"]["id"], atendidas=[sol]).status_code == 422
+
+
+def test_pasta_traz_os_pedidos_para_quem_libera_por_la(cliente, admin, obra, pessoas):
+    doc = _liberado(cliente, admin, obra, "017")
+    sol = _pedir(cliente, pessoas["campo"], doc).json()["id"]
+    pasta = cliente.get(f"/obras/{obra['id']}/pastas/ARQ/PE", headers=admin).json()
+    item = next(d for d in pasta["documentos"] if d["id"] == doc)
+    assert [s["id"] for s in item["solicitacoes"]] == [sol]
 
 
 def test_pedido_atendido_nao_aceita_anexo(cliente, admin, obra, pessoas):
     doc = _liberado(cliente, admin, obra, "010")
     sol = _pedir(cliente, pessoas["campo"], doc).json()["id"]
     r01 = enviar_arquivo(cliente, admin, obra["id"], "SOL-ARQ-PE-010-R01.pdf", PDF)
-    cliente.post(f"/revisoes/{r01.json()['revisao']['id']}/publicar", json={}, headers=admin)
+    _liberar(cliente, admin, r01.json()["revisao"]["id"], atendidas=[sol])
     assert _anexar(cliente, pessoas["campo"], sol, "tarde.png", PNG).status_code == 409
 
 

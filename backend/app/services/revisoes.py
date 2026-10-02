@@ -121,11 +121,6 @@ def publicar(db: Session, revisao: Revisao, usuario_id: int) -> list[Revisao]:
     revisao.publicada_em = agora
     revisao.publicada_por_id = usuario_id
 
-    # A revisão nova saiu: os pedidos de alteração do documento estão atendidos.
-    from .solicitacoes import atender_ao_liberar
-
-    atender_ao_liberar(db, revisao)
-
     db.flush()
     return anteriores
 
