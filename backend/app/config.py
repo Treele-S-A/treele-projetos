@@ -82,6 +82,16 @@ class Settings(BaseSettings):
     admin_email: str = "admin@treele.com.br"
     admin_senha: str | None = None
 
+    # E-mail das notificações, por SMTP — serve Resend, Microsoft 365, Google
+    # Workspace ou qualquer outro. Sem EMAIL_SMTP_HOST o e-mail fica desligado
+    # e o aviso aparece só no sistema.
+    email_smtp_host: str = ""
+    email_smtp_porta: int = 587
+    email_smtp_usuario: str = ""
+    email_smtp_senha: str = ""
+    # Quem aparece como remetente: "Treèle Projetos <projetos@treele.com.br>".
+    email_remetente: str = ""
+
     @field_validator("db_schema")
     @classmethod
     def _schema_seguro(cls, valor: str) -> str:
@@ -127,6 +137,19 @@ class Settings(BaseSettings):
     def s3_endpoint_servidor(self) -> str | None:
         """Endereço que a própria API usa. Cai no público quando não há rede interna."""
         return self.s3_endpoint_interno or self.s3_endpoint
+
+    @property
+    def email_ligado(self) -> bool:
+        return bool(self.email_smtp_host.strip())
+
+    @property
+    def endereco_site(self) -> str:
+        """Endereço das telas, para os links dos e-mails. A API mora no mesmo
+        endereço com o prefixo /api (produção) ou em endereço próprio (dev)."""
+        base = self.base_url.rstrip("/")
+        if self.api_prefix and base.endswith(self.api_prefix):
+            base = base[: -len(self.api_prefix)]
+        return base
 
     @property
     def lista_cors(self) -> list[str]:
@@ -220,6 +243,24 @@ def _conferir_producao(s: Settings) -> None:
             problemas.append(
                 "S3_ENDPOINT precisa começar com https:// "
                 "(Supabase: Project Settings → Storage → S3 Connection)."
+            )
+
+    # E-mail é opcional, mas pela metade é erro: sem remetente o servidor
+    # recusa tudo, e o problema só apareceria no primeiro aviso.
+    if s.email_ligado:
+        faltando = [
+            nome
+            for nome, valor in (
+                ("EMAIL_REMETENTE", s.email_remetente),
+                ("EMAIL_SMTP_USUARIO", s.email_smtp_usuario),
+                ("EMAIL_SMTP_SENHA", s.email_smtp_senha),
+            )
+            if not valor.strip()
+        ]
+        if faltando:
+            problemas.append(
+                f"EMAIL_SMTP_HOST está definida, mas falta: {', '.join(faltando)}. "
+                "Para desligar o e-mail, apague EMAIL_SMTP_HOST."
             )
 
     if problemas:

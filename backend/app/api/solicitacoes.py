@@ -21,6 +21,7 @@ from ..schemas import (
     SolicitacaoOut,
 )
 from ..services import auditoria
+from ..services import notificacoes
 from ..services import solicitacoes as servico
 from ..services.storage import armazenamento, chave_anexo
 from ..services.titulos import limpar_descricao
@@ -107,7 +108,9 @@ def solicitar(
         detalhes={"documento": documento.codigo, "revisao": liberada.numero},
         request=request,
     )
+    avisos = notificacoes.ao_solicitar(db, solicitacao, usuario)
     db.commit()
+    notificacoes.enviar_emails(db, avisos)
     db.refresh(solicitacao)
     return servico.saida(solicitacao)
 

@@ -46,8 +46,8 @@ Quem está em campo encontra o problema; quem desenha precisa saber dele
 - **Quando fecha:** na liberação da revisão nova para obra, quem libera marca
   numa lista quais pedidos ela atende. Os marcados fecham ali ("atendida pela
   R01"); os não marcados seguem abertos para a próxima revisão.
-- **Quem vai ser avisado** (quando as notificações entrarem): o coordenador e o
-  projetista que subiu a última revisão.
+- **Quem é avisado:** os coordenadores da obra, sempre, e o projetista que
+  subiu a última revisão. Ver [notificacoes.md](notificacoes.md).
 
 ## Perfil comercial
 
@@ -144,7 +144,8 @@ está e não tira a si mesmo. Deixou de ser o responsável, perde a permissão.
 Se o próprio responsável sair da equipe (removido pelo coordenador), a obra
 fica sem responsável — ele precisa ser da equipe.
 
-Quando as notificações entrarem (Fase 1.5), é para ele que elas vão primeiro.
+Ser responsável, por si só, não faz receber notificação: quem recebe é
+definido pelo papel na equipe — ver [notificacoes.md](notificacoes.md).
 
 ## Registro de atividades
 

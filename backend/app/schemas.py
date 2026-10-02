@@ -5,7 +5,14 @@ from typing import Generic, TypeVar
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
-from .enums import PapelObra, StatusArquivo, StatusRevisao, StatusSolicitacao, TipoArquivo
+from .enums import (
+    PapelObra,
+    StatusArquivo,
+    StatusRevisao,
+    StatusSolicitacao,
+    TipoArquivo,
+    TipoNotificacao,
+)
 
 T = TypeVar("T")
 
@@ -266,6 +273,21 @@ class SolicitacaoOut(BaseModel):
     atendida_em: datetime | None = None
     atendida_por_numero: str | None = None
     anexos: list[AnexoOut] = []
+
+
+class NotificacaoOut(BaseModel):
+    id: int
+    tipo: TipoNotificacao
+    titulo: str
+    texto: str
+    criada_em: datetime
+    lida: bool
+    documento_id: int | None = None
+    obra_codigo: str
+
+
+class NotificacaoContagem(BaseModel):
+    nao_lidas: int
 
 
 class SolicitacaoCriar(BaseModel):

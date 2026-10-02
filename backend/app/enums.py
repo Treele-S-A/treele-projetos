@@ -54,6 +54,17 @@ class StatusSolicitacao(str, enum.Enum):
     atendida = "atendida"
 
 
+class TipoNotificacao(str, enum.Enum):
+    """O que gerou o aviso (TREELE, 02/10/2026)."""
+
+    # Pedido de revisão novo: coordenadores da obra e o projetista que subiu a
+    # última revisão do documento.
+    solicitacao_revisao = "solicitacao_revisao"
+    # Revisão liberada para obra: a equipe com papel "obra". Uma por revisão,
+    # nunca por arquivo.
+    revisao_liberada = "revisao_liberada"
+
+
 class PapelObra(str, enum.Enum):
     coordenador = "coordenador"
     projetista = "projetista"

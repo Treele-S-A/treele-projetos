@@ -194,6 +194,18 @@ export interface Anexo {
 }
 
 /** Pedido de alteração num projeto liberado. Fecha quando a revisão nova é liberada. */
+/** Aviso no sininho: pedido de revisão ou revisão liberada para obra. */
+export interface Notificacao {
+  id: number;
+  tipo: "solicitacao_revisao" | "revisao_liberada";
+  titulo: string;
+  texto: string;
+  criada_em: string;
+  lida: boolean;
+  documento_id: number | null;
+  obra_codigo: string;
+}
+
 export interface Solicitacao {
   id: number;
   descricao: string;

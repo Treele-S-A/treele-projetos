@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Navigate, NavLink, Outlet, Route, Routes, useLocation, useNavigate } from "react-router-dom";
+import { api } from "./api";
 import { Carregando, SIMBOLO } from "./componentes";
 import { useSessao } from "./sessao";
 import Acervo from "./paginas/Acervo";
@@ -8,6 +9,7 @@ import Conta from "./paginas/Conta";
 import Documento from "./paginas/Documento";
 import Entrar from "./paginas/Entrar";
 import Enviar from "./paginas/Enviar";
+import Notificacoes from "./paginas/Notificacoes";
 import Obras from "./paginas/Obras";
 import Pasta from "./paginas/Pasta";
 import Registro from "./paginas/Registro";
@@ -40,6 +42,31 @@ function useObraAtiva(caminho: string): number | null {
   return daUrl ?? lembrada;
 }
 
+/** Quantos avisos não lidos. Busca a cada troca de tela, a cada minuto e
+ *  quando a tela de notificações marca alguma como lida. */
+function useNaoLidas(caminho: string): number {
+  const [total, setTotal] = useState(0);
+
+  useEffect(() => {
+    let vivo = true;
+    const buscar = () =>
+      api
+        .get<{ nao_lidas: number }>("/notificacoes/contagem")
+        .then((r) => vivo && setTotal(r.nao_lidas))
+        .catch(() => {});
+    buscar();
+    const relogio = window.setInterval(buscar, 60_000);
+    window.addEventListener("treele:notificacoes", buscar);
+    return () => {
+      vivo = false;
+      window.clearInterval(relogio);
+      window.removeEventListener("treele:notificacoes", buscar);
+    };
+  }, [caminho]);
+
+  return total;
+}
+
 /** Faixa no topo quando a tela ficou para trás de uma atualização. */
 function AvisoVersaoNova() {
   const [nova, setNova] = useState(false);
@@ -65,6 +92,7 @@ function Moldura() {
   const navegar = useNavigate();
   const obraId = useObraAtiva(local.pathname);
   const obra = obras.find((o) => o.id === obraId) ?? null;
+  const naoLidas = useNaoLidas(local.pathname);
 
   const pode = (p: string) => obra?.permissoes.includes(p) ?? false;
 
@@ -152,6 +180,19 @@ function Moldura() {
           <NavLink to="/obras" className={({ isActive }) => (isActive ? "ativo" : "")} end>
             Todas as obras
           </NavLink>
+          {!usuario?.comercial && (
+            <NavLink
+              to="/notificacoes"
+              className={({ isActive }) => `com-contador ${isActive ? "ativo" : ""}`}
+            >
+              Notificações
+              {naoLidas > 0 && (
+                <span className="contador" aria-label={naoLidas === 1 ? "1 não lida" : `${naoLidas} não lidas`}>
+                  {naoLidas > 99 ? "99+" : naoLidas}
+                </span>
+              )}
+            </NavLink>
+          )}
           {usuario?.admin && (
             <NavLink to="/usuarios" className={({ isActive }) => (isActive ? "ativo" : "")}>
               Usuários
@@ -211,6 +252,7 @@ export default function App() {
         <Route path="/documentos/:documentoId" element={<Documento />} />
         <Route path="/usuarios" element={<Usuarios />} />
         <Route path="/conta" element={<Conta />} />
+        <Route path="/notificacoes" element={<Notificacoes />} />
         <Route path="*" element={<Navigate to={inicial} replace />} />
       </Route>
     </Routes>

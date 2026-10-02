@@ -1,0 +1,173 @@
+"""Quem é avisado de quê (TREELE, 02/10/2026).
+
+- Pedido de revisão novo: os coordenadores da obra, sempre — administradores
+  inclusive, porque são coordenadores de todas as obras —, e o projetista que
+  subiu a última revisão do documento, só ele.
+- Revisão liberada para obra: as pessoas com papel "obra". Uma vez por
+  revisão, nunca por arquivo; e na liberação, não no envio, porque antes de
+  liberada a revisão nem aparece para a obra.
+
+Quem fez a ação não é avisado dela. O aviso fica no sistema e vai por e-mail
+quando o e-mail está configurado (services/email.py).
+"""
+
+from collections.abc import Iterable
+from datetime import datetime, timezone
+
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
+from ..config import settings
+from ..enums import PapelObra, StatusRevisao, TipoNotificacao
+from ..models import Documento, Notificacao, ObraMembro, Revisao, SolicitacaoRevisao, Usuario
+from . import email
+
+TEXTO_MAX_NO_AVISO = 600
+
+
+def _membros(db: Session, obra_id: int, papel: PapelObra) -> list[Usuario]:
+    return list(
+        db.scalars(
+            select(Usuario)
+            .join(ObraMembro, ObraMembro.usuario_id == Usuario.id)
+            .where(
+                ObraMembro.obra_id == obra_id,
+                ObraMembro.papel == papel,
+                Usuario.ativo.is_(True),
+            )
+        )
+    )
+
+
+def projetista_da_ultima(db: Session, documento: Documento) -> list[Usuario]:
+    """Quem subiu a última revisão do documento, se tiver papel de projetista.
+
+    "Última" é a mais recente que não foi cancelada — pode ser uma ainda em
+    revisão: se o projetista já está mexendo na R02, é ele quem precisa saber
+    do pedido feito sobre a R01. "Subiu" é quem criou a revisão ou enviou
+    algum arquivo dela (PDF de um, DWG de outro).
+    """
+    validas = [r for r in documento.revisoes if r.status != StatusRevisao.cancelado]
+    if not validas:
+        return []
+    ultima = max(validas, key=lambda r: (r.ordem, r.id))
+    quem = {ultima.criada_por_id} | {a.enviado_por_id for a in ultima.arquivos}
+    quem.discard(None)
+    return [
+        u for u in _membros(db, documento.obra_id, PapelObra.projetista) if u.id in quem
+    ]
+
+
+def _criar(
+    db: Session,
+    destinatarios: Iterable[Usuario],
+    autor: Usuario,
+    *,
+    tipo: TipoNotificacao,
+    documento: Documento,
+    titulo: str,
+    texto: str,
+) -> list[Notificacao]:
+    vistos: set[int] = set()
+    criadas = []
+    for u in destinatarios:
+        if u.id == autor.id or u.id in vistos or u.comercial:
+            continue
+        vistos.add(u.id)
+        n = Notificacao(
+            usuario_id=u.id,
+            tipo=tipo,
+            obra_id=documento.obra_id,
+            documento_id=documento.id,
+            titulo=titulo[:300],
+            texto=texto,
+        )
+        db.add(n)
+        criadas.append(n)
+    db.flush()
+    return criadas
+
+
+def _nome_documento(documento: Documento) -> str:
+    return f"{documento.codigo} — {documento.titulo}" if documento.titulo else documento.codigo
+
+
+def _resumo(texto: str) -> str:
+    texto = texto.strip()
+    return texto if len(texto) <= TEXTO_MAX_NO_AVISO else texto[: TEXTO_MAX_NO_AVISO - 1] + "…"
+
+
+def ao_solicitar(db: Session, solicitacao: SolicitacaoRevisao, autor: Usuario) -> list[Notificacao]:
+    """Pedido de revisão novo. Não faz commit."""
+    documento = solicitacao.documento
+    obra = documento.obra
+    numero = solicitacao.revisao.numero if solicitacao.revisao else None
+    destinatarios = _membros(db, obra.id, PapelObra.coordenador) + projetista_da_ultima(
+        db, documento
+    )
+    return _criar(
+        db, destinatarios, autor,
+        tipo=TipoNotificacao.solicitacao_revisao,
+        documento=documento,
+        titulo=f"Revisão solicitada · {documento.codigo}",
+        texto=(
+            f"{autor.nome} pediu revisão "
+            + (f"da R{numero} de " if numero else "de ")
+            + f"{_nome_documento(documento)}, na obra {obra.codigo} · {obra.nome}.\n\n"
+            + f"O que deve mudar:\n{_resumo(solicitacao.descricao)}"
+        ),
+    )
+
+
+def ao_liberar(
+    db: Session, revisao: Revisao, autor: Usuario, substituidas: list[Revisao]
+) -> list[Notificacao]:
+    """Revisão liberada para obra. Não faz commit."""
+    documento = revisao.documento
+    obra = documento.obra
+    texto = (
+        f"A R{revisao.numero} de {_nome_documento(documento)} foi liberada para obra "
+        f"na {obra.codigo} · {obra.nome}."
+    )
+    if substituidas:
+        anteriores = ", ".join(f"R{r.numero}" for r in substituidas)
+        texto += f" A {anteriores} deixa de valer."
+    if revisao.descricao:
+        texto += f"\n\nO que mudou:\n{_resumo(revisao.descricao)}"
+    return _criar(
+        db, _membros(db, obra.id, PapelObra.obra), autor,
+        tipo=TipoNotificacao.revisao_liberada,
+        documento=documento,
+        titulo=f"R{revisao.numero} liberada para obra · {documento.codigo}",
+        texto=texto,
+    )
+
+
+def link(n: Notificacao) -> str:
+    return f"{settings.endereco_site}/documentos/{n.documento_id}"
+
+
+def enviar_emails(db: Session, notificacoes: list[Notificacao]) -> None:
+    """Depois do commit: o aviso já está salvo no sistema, saia o e-mail ou não.
+    Grava quando cada e-mail saiu."""
+    if not notificacoes or not settings.email_ligado:
+        return
+    mensagens = []
+    for n in notificacoes:
+        usuario = db.get(Usuario, n.usuario_id)
+        mensagens.append(
+            email.Mensagem(
+                para=usuario.email,
+                assunto=f"[{n.obra.codigo}] {n.titulo}",
+                texto=(
+                    f"Olá, {usuario.nome.split()[0]}.\n\n{n.texto}\n\n"
+                    f"Abrir no sistema: {link(n)}\n\n"
+                    "—\nTreèle Projetos · aviso automático, não responda este e-mail."
+                ),
+            )
+        )
+    agora = datetime.now(timezone.utc)
+    for n, saiu in zip(notificacoes, email.enviar(mensagens)):
+        if saiu:
+            n.email_enviado_em = agora
+    db.commit()

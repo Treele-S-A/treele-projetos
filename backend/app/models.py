@@ -31,7 +31,14 @@ from sqlalchemy import (
 from sqlalchemy import Enum as SAEnum
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
-from .enums import PapelObra, StatusArquivo, StatusRevisao, StatusSolicitacao, TipoArquivo
+from .enums import (
+    PapelObra,
+    StatusArquivo,
+    StatusRevisao,
+    StatusSolicitacao,
+    TipoArquivo,
+    TipoNotificacao,
+)
 
 
 def agora() -> datetime:
@@ -86,8 +93,8 @@ class Obra(Base):
         JSON, default=lambda: {"dwg": ["pdf"], "rvt": ["ifc"]}
     )
 
-    # Engenheiro responsável pela obra. É para ele que as notificações vão, e é
-    # quem responde pela obra perante a equipe — papel diferente de "coordenador",
+    # Engenheiro responsável pela obra. É quem responde pela obra perante a
+    # equipe — papel diferente de "coordenador",
     # que é permissão. Pode haver vários coordenadores; responsável é um só.
     responsavel_id: Mapped[int | None] = mapped_column(
         ForeignKey("usuarios.id"), nullable=True
@@ -306,8 +313,8 @@ class SolicitacaoRevisao(Base):
 
     Quem pede é o coordenador ou a obra, sempre dizendo o que deve mudar; fotos
     e PDFs marcados são opcionais. Fica presa ao documento — e à revisão
-    liberada sobre a qual foi feita — e fecha sozinha quando a revisão nova é
-    liberada para obra (services/revisoes.publicar).
+    liberada sobre a qual foi feita — e fecha quando quem libera a revisão nova
+    para obra a marca como atendida (api/revisoes.publicar).
     """
 
     __tablename__ = "solicitacoes_revisao"
@@ -396,3 +403,35 @@ class Evento(Base):
     criado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=agora)
 
     usuario: Mapped["Usuario | None"] = relationship()
+
+
+class Notificacao(Base):
+    """Aviso para uma pessoa: aparece no sininho do sistema e vai por e-mail.
+
+    Uma linha por destinatário, para cada um marcar como lida por conta
+    própria. O texto é gravado pronto — é o retrato do momento, como o
+    registro de atividades: se o documento mudar de título depois, o aviso
+    continua dizendo o que disse.
+    """
+
+    __tablename__ = "notificacoes"
+    __table_args__ = (Index("ix_notificacoes_usuario_lida", "usuario_id", "lida_em"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    usuario_id: Mapped[int] = mapped_column(ForeignKey("usuarios.id", ondelete="CASCADE"))
+    tipo: Mapped[TipoNotificacao] = mapped_column(_enum(TipoNotificacao))
+    obra_id: Mapped[int] = mapped_column(ForeignKey("obras.id", ondelete="CASCADE"))
+    documento_id: Mapped[int | None] = mapped_column(
+        ForeignKey("documentos.id", ondelete="CASCADE"), nullable=True
+    )
+    titulo: Mapped[str] = mapped_column(String(300))
+    texto: Mapped[str] = mapped_column(Text, default="")
+    criada_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=agora)
+    lida_em: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Quando o e-mail saiu. Vazio = e-mail desligado ou o envio falhou; o aviso
+    # no sistema vale do mesmo jeito.
+    email_enviado_em: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    obra: Mapped["Obra"] = relationship()

@@ -17,6 +17,7 @@ from .api import (
     catalogos,
     documentos,
     eventos,
+    notificacoes,
     obras,
     revisoes,
     solicitacoes,
@@ -86,6 +87,7 @@ for modulo in (
     arquivos,
     eventos,
     solicitacoes,
+    notificacoes,
     storage_local,
 ):
     app.include_router(modulo.router, prefix=settings.api_prefix)

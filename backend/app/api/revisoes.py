@@ -7,6 +7,7 @@ from ..models import Revisao, Usuario
 from ..schemas import ExclusaoRevisaoSaida, PublicarEntrada, RevisaoAtualizar, RevisaoOut
 from ..services import auditoria
 from ..services import revisoes as servico
+from ..services import notificacoes
 from ..services import solicitacoes as servico_solicitacoes
 
 router = APIRouter(prefix="/revisoes", tags=["revisões"])
@@ -133,7 +134,9 @@ def publicar(
         },
         request=request,
     )
+    avisos = notificacoes.ao_liberar(db, revisao, usuario, obsoletas)
     db.commit()
+    notificacoes.enviar_emails(db, avisos)
     db.refresh(revisao)
     return revisao
 

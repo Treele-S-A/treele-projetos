@@ -208,3 +208,15 @@ def test_schema_que_viraria_sql_solto_e_recusado(invalido):
 def test_estaticos_vazio_quer_dizer_sem_interface(vazio):
     """Sem isto, Path("") vira "." — e a subida cai procurando ./assets."""
     assert _settings(estaticos_dir=vazio).estaticos_dir is None
+
+
+def test_email_pela_metade_e_recusado_sem_mostrar_a_senha():
+    with pytest.raises(RuntimeError) as erro:
+        _conferir_producao(_settings(email_smtp_host="smtp.resend.com", email_smtp_senha="re_segredo"))
+    assert "EMAIL_REMETENTE" in str(erro.value)
+    assert "EMAIL_SMTP_USUARIO" in str(erro.value)
+    assert "re_segredo" not in str(erro.value)
+
+
+def test_email_desligado_nao_exige_nada():
+    _conferir_producao(_settings(email_smtp_host=""))

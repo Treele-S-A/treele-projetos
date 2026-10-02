@@ -827,3 +827,93 @@ body {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
+
+/* Notificações: contador no menu e lista de avisos. */
+.menu a.com-contador {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.contador {
+  min-width: 20px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: #a8412a;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 18px;
+  text-align: center;
+}
+
+.lista-avisos {
+  display: grid;
+  gap: 4px;
+  padding: 6px;
+}
+
+.aviso-item {
+  display: flex;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 14px;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.aviso-item:hover {
+  background: rgba(47, 76, 82, 0.06);
+}
+
+.aviso-item.nao-lida {
+  background: rgba(168, 65, 42, 0.05);
+}
+
+.aviso-ponto {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  margin-top: 6px;
+  border-radius: 50%;
+  background: transparent;
+}
+
+.aviso-item.nao-lida .aviso-ponto {
+  background: #a8412a;
+}
+
+.aviso-corpo {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.aviso-topo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  font-size: 13px;
+}
+
+.aviso-item.lida .aviso-topo strong {
+  font-weight: 500;
+}
+
+.aviso-texto {
+  font-size: 13px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  opacity: 0.85;
+  display: -webkit-box;
+  -webkit-line-clamp: 6;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
