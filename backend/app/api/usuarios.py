@@ -15,10 +15,17 @@ router = APIRouter(prefix="/usuarios", tags=["usuários"])
 @router.get("", response_model=list[UsuarioOut])
 def listar(
     incluir_inativos: bool = False,
-    _: Usuario = Depends(usuario_atual),
+    usuario: Usuario = Depends(usuario_atual),
     db: Session = Depends(get_db),
 ):
-    """Lista visível a qualquer autenticado — é preciso para montar equipe de obra."""
+    """Lista visível a qualquer autenticado — é preciso para montar equipe de obra.
+
+    Menos o comercial: ele não monta equipe, e a lista traz o e-mail de todos.
+    """
+    if usuario.comercial:
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN, "O perfil comercial só consulta e baixa arquivos."
+        )
     consulta = select(Usuario).order_by(Usuario.nome)
     if not incluir_inativos:
         consulta = consulta.where(Usuario.ativo.is_(True))
@@ -33,6 +40,12 @@ def criar(
     db: Session = Depends(get_db),
 ):
     email = dados.email.lower()
+    if dados.admin and dados.comercial:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            "Um usuário é administrador ou comercial, nunca os dois: o comercial "
+            "existe justamente para ter o mínimo de acesso.",
+        )
     if db.scalar(select(Usuario).where(Usuario.email == email)):
         raise HTTPException(
             status.HTTP_409_CONFLICT, f"Já existe um usuário com o e-mail {email}."
@@ -43,13 +56,15 @@ def criar(
         email=email,
         senha_hash=gerar_hash_senha(dados.senha),
         admin=dados.admin,
+        comercial=dados.comercial,
     )
     db.add(usuario)
     db.flush()
 
     auditoria.registrar(
         db, acao="usuario_criado", entidade="usuario", entidade_id=usuario.id,
-        usuario=admin, detalhes={"email": email}, request=request,
+        usuario=admin, detalhes={"email": email, "comercial": dados.comercial},
+        request=request,
     )
     db.commit()
     return usuario

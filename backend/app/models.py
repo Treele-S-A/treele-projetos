@@ -60,6 +60,9 @@ class Usuario(Base):
     email: Mapped[str] = mapped_column(String(190), unique=True, index=True)
     senha_hash: Mapped[str] = mapped_column(String(255))
     admin: Mapped[bool] = mapped_column(Boolean, default=False)
+    # Perfil comercial: vê todas as obras, mas só a disciplina COM liberada para
+    # obra, e só baixa. Nunca é administrador nem membro de equipe (deps.py).
+    comercial: Mapped[bool] = mapped_column(Boolean, default=False, server_default="0")
     ativo: Mapped[bool] = mapped_column(Boolean, default=True)
     criado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=agora)
 

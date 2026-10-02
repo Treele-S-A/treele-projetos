@@ -18,6 +18,8 @@ def _carregar(db: Session, usuario: Usuario, arquivo_id: int) -> tuple[Arquivo, 
     if arquivo is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Arquivo não encontrado.")
     ctx = montar_contexto(db, usuario, arquivo.revisao.documento.obra_id)
+    if not ctx.ve_disciplina(arquivo.revisao.documento.disciplina.codigo):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Arquivo não encontrado.")
     return arquivo, ctx
 
 

@@ -19,6 +19,7 @@ from ..deps import (
     ContextoObra,
     contexto_obra,
     montar_contexto,
+    restringir_disciplinas,
     status_visiveis,
     usuario_atual,
 )
@@ -44,21 +45,30 @@ from ..services.titulos import limpar_titulo, problema_no_titulo
 router = APIRouter(tags=["documentos"])
 
 
-def _subconsulta_atual():
-    """(documento_id, ordem da revisão atual)."""
+def _subconsulta_atual(visiveis: list[StatusRevisao]):
+    """(documento_id, ordem da revisão atual) — atual PARA QUEM PERGUNTA.
+
+    A revisão atual é a mais nova que a pessoa pode ver. Antes era a mais nova
+    de todas, e quem não vê trabalho em andamento (obra, cliente, comercial)
+    perdia o documento inteiro da lista assim que alguém subia a R01 — com a
+    R00 ainda liberada e valendo em campo.
+    """
     return (
         select(
             Revisao.documento_id.label("doc_id"),
             func.max(Revisao.ordem).label("max_ordem"),
         )
-        .where(Revisao.status != StatusRevisao.cancelado)
+        .where(
+            Revisao.status != StatusRevisao.cancelado,
+            Revisao.status.in_(visiveis),
+        )
         .group_by(Revisao.documento_id)
         .subquery()
     )
 
 
-def _consulta_base(obra_id: int):
-    sub = _subconsulta_atual()
+def _consulta_base(ctx: ContextoObra):
+    sub = _subconsulta_atual(status_visiveis(ctx))
     atual = aliased(Revisao)
     consulta = (
         select(Documento, atual)
@@ -67,9 +77,9 @@ def _consulta_base(obra_id: int):
             atual,
             and_(atual.documento_id == Documento.id, atual.ordem == sub.c.max_ordem),
         )
-        .where(Documento.obra_id == obra_id)
+        .where(Documento.obra_id == ctx.obra.id)
     )
-    return consulta, atual
+    return restringir_disciplinas(consulta, ctx), atual
 
 
 def _aplicar_filtros(
@@ -134,7 +144,7 @@ def listar(
     por_pagina: int = Query(50, ge=1, le=200),
     ctx: ContextoObra = Depends(contexto_obra),
 ):
-    consulta, atual = _consulta_base(ctx.obra.id)
+    consulta, atual = _consulta_base(ctx)
     consulta = _aplicar_filtros(
         consulta, atual,
         disciplina_id=disciplina_id, fase_id=fase_id,
@@ -170,7 +180,7 @@ def exportar(
     ctx: ContextoObra = Depends(contexto_obra),
 ):
     """Lista mestra em CSV — o relatório que sempre pedem em reunião."""
-    consulta, atual = _consulta_base(ctx.obra.id)
+    consulta, atual = _consulta_base(ctx)
     consulta = _aplicar_filtros(
         consulta, atual,
         disciplina_id=disciplina_id, fase_id=fase_id,
@@ -269,13 +279,14 @@ def arvore(
     if todas_revisoes:
         consulta = consulta.where(atual.status != StatusRevisao.cancelado)
     else:
-        sub = _subconsulta_atual()
+        sub = _subconsulta_atual(status_visiveis(ctx))
         consulta = consulta.join(
             sub,
             and_(sub.c.doc_id == Documento.id, atual.ordem == sub.c.max_ordem),
         )
 
     consulta = consulta.where(atual.status.in_(status_visiveis(ctx)))
+    consulta = restringir_disciplinas(consulta, ctx)
 
     linhas = ctx.db.execute(consulta).all()
 
@@ -366,7 +377,7 @@ def pasta(
         select(Disciplina).where(Disciplina.codigo == disciplina_codigo.upper())
     )
     fase = ctx.db.scalar(select(Fase).where(Fase.codigo == fase_codigo.upper()))
-    if disciplina is None or fase is None:
+    if disciplina is None or fase is None or not ctx.ve_disciplina(disciplina.codigo):
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Pasta não encontrada.")
 
     documentos = list(
@@ -424,10 +435,16 @@ def detalhe(
     if documento is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Documento não encontrado.")
     ctx = montar_contexto(db, usuario, documento.obra_id)
+    if not ctx.ve_disciplina(documento.disciplina.codigo):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Documento não encontrado.")
 
     visiveis = status_visiveis(ctx)
     revisoes = sorted(documento.revisoes, key=lambda r: r.ordem, reverse=True)
     revisoes = [r for r in revisoes if r.status in visiveis]
+    # Documento que nunca foi liberado não existe para quem só vê o liberado —
+    # nem pelo endereço direto, que entregaria título e código.
+    if not revisoes and not ctx.pode("ver_em_revisao"):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Documento não encontrado.")
 
     saida = DocumentoDetalhe.model_validate(documento)
     saida.total_revisoes = len(documento.revisoes)

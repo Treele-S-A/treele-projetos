@@ -114,6 +114,8 @@ export interface Usuario {
   nome: string;
   email: string;
   admin: boolean;
+  /** Perfil comercial: todas as obras, só a disciplina COM liberada, só baixa. */
+  comercial: boolean;
   ativo: boolean;
 }
 

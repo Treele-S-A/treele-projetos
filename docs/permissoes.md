@@ -23,6 +23,30 @@ Obra A e projetista na Obra B. Além disso existe o perfil global de
 O administrador tem todas as permissões em todas as obras — e uma a mais,
 que nenhum papel de obra tem: **excluir arquivos e revisões**.
 
+## Perfil comercial
+
+Um perfil global, como o de administrador, mas no extremo oposto — o acesso
+mais restrito do sistema (pedido da TREELE, 02/10/2026):
+
+| | Comercial |
+|---|:--:|
+| Quais obras | **Todas**, sem precisar estar em equipe |
+| Quais documentos | Só os da disciplina **COM** |
+| Quais revisões | Só as **liberadas para obra** — nem obsoletas, nem em andamento |
+| Baixar | ✓ |
+| Enviar, editar título ou descrição | |
+| Liberar, cancelar, excluir | |
+| Ver equipe, nomenclatura ou registro de atividades | |
+| Criar ou ver usuários, obras e catálogos | |
+
+A regra mora num lugar só (`deps.py`): o mesmo filtro vale para a lista, a
+árvore, as pastas, o documento, a lista mestra e o download. O que está fora
+do alcance responde "não encontrado" — nem o código do documento aparece.
+
+O comercial **nunca entra em equipe** de obra: um papel ali daria permissões
+que o perfil não pode ter. E um usuário é administrador ou comercial, nunca os
+dois.
+
 ## As escolhas por trás disso
 
 **Projetista envia mas não libera.** É a separação que faz o controle existir.

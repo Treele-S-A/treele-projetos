@@ -379,7 +379,8 @@ function Equipe({ obraId }: { obraId: number }) {
   }, [carregar]);
 
   const disponiveis = useMemo(
-    () => usuarios.filter((u) => !membros.some((m) => m.usuario_id === u.id)),
+    // Comercial fica de fora: já vê todas as obras e não pode ter papel.
+    () => usuarios.filter((u) => !u.comercial && !membros.some((m) => m.usuario_id === u.id)),
     [usuarios, membros],
   );
 

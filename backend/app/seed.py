@@ -49,6 +49,8 @@ DISCIPLINAS = [
     ("PAI", "Paisagismo"),
     ("INT", "Interiores"),
     ("COO", "Coordenação e Compatibilização"),
+    # Material comercial (01/10/2026): é o que o perfil comercial enxerga.
+    ("COM", "Comercial"),
 ]
 
 # Em ordem cronológica de projeto, não na ordem em que foram ditadas: é essa a

@@ -138,7 +138,9 @@ function Moldura() {
               ? `${obra.papel[0].toUpperCase()}${obra.papel.slice(1)} nesta obra`
               : usuario?.admin
                 ? "Administrador"
-                : ""}
+                : usuario?.comercial
+                  ? "Comercial"
+                  : ""}
           </div>
           <div className="acoes">
             <NavLink to="/conta" className={({ isActive }) => (isActive ? "ativo" : "")}>

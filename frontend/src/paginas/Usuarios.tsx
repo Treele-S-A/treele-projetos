@@ -11,7 +11,7 @@ export default function Usuarios() {
   const [nome, setNome] = useState("");
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
-  const [admin, setAdmin] = useState(false);
+  const [perfil, setPerfil] = useState<"usuario" | "admin" | "comercial">("usuario");
   const [salvando, setSalvando] = useState(false);
 
   const carregar = useCallback(async () => {
@@ -29,7 +29,13 @@ export default function Usuarios() {
     setOk(null);
     setSalvando(true);
     try {
-      await api.post("/usuarios", { nome: nome.trim(), email: email.trim(), senha, admin });
+      await api.post("/usuarios", {
+        nome: nome.trim(),
+        email: email.trim(),
+        senha,
+        admin: perfil === "admin",
+        comercial: perfil === "comercial",
+      });
       setOk(
         `${nome.trim()} já pode entrar. Passe a senha por um canal seguro e peça ` +
           "para trocá-la em Minha conta no primeiro acesso.",
@@ -37,7 +43,7 @@ export default function Usuarios() {
       setNome("");
       setEmail("");
       setSenha("");
-      setAdmin(false);
+      setPerfil("usuario");
       await carregar();
     } catch (ex) {
       setErro(ex instanceof ErroApi ? ex : null);
@@ -119,14 +125,29 @@ export default function Usuarios() {
             </label>
           </div>
 
-          <label className="linha" style={{ gap: 8, marginTop: 12 }}>
-            <input
-              type="checkbox"
-              checked={admin}
-              onChange={(e) => setAdmin(e.target.checked)}
-            />
-            <span>Administrador — cria obras, usuários e catálogos</span>
-          </label>
+          <fieldset className="perfis">
+            <legend className="rotulo">Perfil</legend>
+            {(
+              [
+                ["usuario", "Usuário", "Acessa as obras em que for incluído na equipe, conforme o papel."],
+                ["admin", "Administrador", "Cria obras, usuários e catálogos; vê e faz tudo."],
+                ["comercial", "Comercial", "Vê todas as obras, mas só baixa o que é da disciplina COM e está liberado. Não envia, não exclui, não configura."],
+              ] as const
+            ).map(([valor, rotulo, descricao]) => (
+              <label key={valor} className="perfil-opcao">
+                <input
+                  type="radio"
+                  name="perfil"
+                  checked={perfil === valor}
+                  onChange={() => setPerfil(valor)}
+                />
+                <span>
+                  <strong>{rotulo}</strong>
+                  <span className="silencioso">{descricao}</span>
+                </span>
+              </label>
+            ))}
+          </fieldset>
 
           <div style={{ marginTop: 14 }}>
             <button className="botao" disabled={salvando}>
@@ -158,7 +179,9 @@ export default function Usuarios() {
                     <td className="silencioso mono" style={{ fontSize: 12 }}>
                       {u.email}
                     </td>
-                    <td className="silencioso">{u.admin ? "Administrador" : "Usuário"}</td>
+                    <td className="silencioso">
+                      {u.admin ? "Administrador" : u.comercial ? "Comercial" : "Usuário"}
+                    </td>
                     <td>
                       <span className={`estado estado-${u.ativo ? "liberado_para_obra" : "cancelado"}`}>
                         {u.ativo ? "Ativo" : "Inativo"}

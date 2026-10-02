@@ -68,7 +68,8 @@ def listar(
     }
 
     consulta = select(Obra).order_by(Obra.codigo)
-    if not usuario.admin:
+    # Comercial vê todas as obras, sem papel: o contexto restringe o resto.
+    if not usuario.admin and not usuario.comercial:
         if not papeis:
             return []
         consulta = consulta.where(Obra.id.in_(papeis.keys()))
@@ -270,6 +271,7 @@ def _apagar_imagem(chave: str) -> None:
 
 @router.get("/{obra_id}/membros", response_model=list[MembroOut])
 def listar_membros(ctx: ContextoObra = Depends(contexto_obra)):
+    ctx.somente_equipe()
     return list(
         ctx.db.scalars(
             select(ObraMembro).where(ObraMembro.obra_id == ctx.obra.id)
@@ -286,8 +288,15 @@ def adicionar_membro(
     ctx: ContextoObra = Depends(contexto_obra),
 ):
     ctx.exigir("gerenciar")
-    if ctx.db.get(Usuario, dados.usuario_id) is None:
+    novo = ctx.db.get(Usuario, dados.usuario_id)
+    if novo is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Usuário não encontrado.")
+    if novo.comercial:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            "O perfil comercial já vê todas as obras e não entra em equipe — "
+            "um papel aqui daria permissões que ele não pode ter.",
+        )
 
     existente = ctx.db.scalar(
         select(ObraMembro).where(
@@ -353,6 +362,7 @@ def remover_membro(
 
 @router.get("/{obra_id}/padrao", response_model=PadraoOut)
 def ver_padrao(ctx: ContextoObra = Depends(contexto_obra)):
+    ctx.somente_equipe()
     return padrao_da_obra(ctx.db, ctx.obra.id)
 
 
@@ -410,6 +420,7 @@ def validar_nomes(
     A interface chama isto assim que a pessoa escolhe os arquivos, para que o
     erro de nomenclatura apareça antes de subir 700 MB.
     """
+    ctx.somente_equipe()
     padrao = padrao_da_obra(ctx.db, ctx.obra.id)
     disciplinas = codigos_disciplinas(ctx.db)
     fases = codigos_fases(ctx.db)

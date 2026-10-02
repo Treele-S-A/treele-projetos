@@ -9,7 +9,15 @@ from sqlalchemy.orm import Session
 
 from .db import get_db
 from .enums import PERMISSOES, PapelObra, StatusRevisao
-from .models import Disciplina, Fase, Obra, ObraMembro, PadraoNomenclatura, Usuario
+from .models import (
+    Disciplina,
+    Documento,
+    Fase,
+    Obra,
+    ObraMembro,
+    PadraoNomenclatura,
+    Usuario,
+)
 from .security import ler_token
 
 esquema = HTTPBearer(auto_error=False)
@@ -40,6 +48,10 @@ def usuario_admin(usuario: Usuario = Depends(usuario_atual)) -> Usuario:
     return usuario
 
 
+# O que o perfil comercial enxerga: só esta disciplina, só o liberado.
+DISCIPLINAS_COMERCIAL = frozenset({"COM"})
+
+
 @dataclass
 class ContextoObra:
     usuario: Usuario
@@ -47,6 +59,19 @@ class ContextoObra:
     papel: PapelObra | None
     permissoes: set[str]
     db: Session
+    # Disciplinas visíveis; None = todas. Só o perfil comercial tem restrição.
+    disciplinas: frozenset[str] | None = None
+
+    def ve_disciplina(self, codigo: str) -> bool:
+        return self.disciplinas is None or codigo.upper() in self.disciplinas
+
+    def somente_equipe(self) -> None:
+        """Barra o que é assunto de quem trabalha na obra — equipe, padrão de
+        nomenclatura, conferência de nomes. O comercial só baixa."""
+        if self.usuario.comercial:
+            raise HTTPException(
+                status.HTTP_403_FORBIDDEN, "O perfil comercial só consulta e baixa arquivos."
+            )
 
     def pode(self, permissao: str) -> bool:
         return self.usuario.admin or permissao in self.permissoes
@@ -67,6 +92,16 @@ def montar_contexto(db: Session, usuario: Usuario, obra_id: int) -> ContextoObra
     obra = db.get(Obra, obra_id)
     if obra is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Obra não encontrada.")
+
+    # Comercial: todas as obras, sem papel e sem permissão nenhuma — o que
+    # sobra é ver o liberado (status_visiveis) da disciplina COM. Uma
+    # participação em equipe, se existir por engano, é ignorada de propósito:
+    # ela daria permissões que o perfil não pode ter.
+    if usuario.comercial and not usuario.admin:
+        return ContextoObra(
+            usuario=usuario, obra=obra, papel=None, permissoes=set(), db=db,
+            disciplinas=DISCIPLINAS_COMERCIAL,
+        )
 
     membro = db.scalar(
         select(ObraMembro).where(
@@ -104,6 +139,17 @@ def status_visiveis(ctx: ContextoObra) -> list[StatusRevisao]:
         visiveis.append(StatusRevisao.em_revisao)
         visiveis.append(StatusRevisao.cancelado)
     return visiveis
+
+
+def restringir_disciplinas(consulta, ctx: ContextoObra):
+    """Aplica a restrição de disciplina numa consulta que já tem Documento."""
+    if ctx.disciplinas is None:
+        return consulta
+    return consulta.where(
+        Documento.disciplina_id.in_(
+            select(Disciplina.id).where(Disciplina.codigo.in_(ctx.disciplinas))
+        )
+    )
 
 
 # --------------------------------------------------------------------------

@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
 from ..db import get_db
-from ..deps import montar_contexto, usuario_atual
+from ..deps import montar_contexto, status_visiveis, usuario_atual
 from ..models import Revisao, Usuario
 from ..schemas import ExclusaoRevisaoSaida, PublicarEntrada, RevisaoAtualizar, RevisaoOut
 from ..services import auditoria
@@ -16,6 +16,12 @@ def _carregar(db: Session, usuario: Usuario, revisao_id: int):
     if revisao is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Revisão não encontrada.")
     ctx = montar_contexto(db, usuario, revisao.documento.obra_id)
+    # A mesma regra das listas: o que a pessoa não vê, não existe para ela —
+    # nem pelo número da revisão no endereço.
+    if revisao.status not in status_visiveis(ctx) or not ctx.ve_disciplina(
+        revisao.documento.disciplina.codigo
+    ):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Revisão não encontrada.")
     return revisao, ctx
 
 

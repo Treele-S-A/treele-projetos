@@ -119,7 +119,13 @@ export default function Obras() {
                 {/* Vazio sem cliente: o papel continua alinhado à direita. */}
                 <span>{o.cliente}</span>
                 <span>
-                  {o.papel ? ROTULO_PAPEL[o.papel] : usuario?.admin ? "Administrador" : ""}
+                  {o.papel
+                    ? ROTULO_PAPEL[o.papel]
+                    : usuario?.admin
+                      ? "Administrador"
+                      : usuario?.comercial
+                        ? "Comercial"
+                        : ""}
                 </span>
               </span>
             </Link>

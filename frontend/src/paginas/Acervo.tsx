@@ -21,7 +21,12 @@ type Visao = "lista" | "arvore";
 
 export default function Acervo() {
   const { obraId } = useParams();
-  const { obras, disciplinas, fases } = useSessao();
+  const { obras, disciplinas: todasDisciplinas, fases, usuario } = useSessao();
+  // O comercial só enxerga a disciplina COM: oferecer as outras no filtro
+  // seria oferecer listas sempre vazias.
+  const disciplinas = usuario?.comercial
+    ? todasDisciplinas.filter((d) => d.codigo === "COM")
+    : todasDisciplinas;
   const obra = obras.find((o) => o.id === Number(obraId));
 
   const [busca, setBusca] = useState("");

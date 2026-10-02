@@ -615,3 +615,56 @@ body {
     font-size: 28px;
   }
 }
+
+/* --------------------------------------------------------------- perfil do usuário */
+
+.perfis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px;
+  margin: 16px 0 0;
+  padding: 0;
+  border: none;
+}
+
+.perfis legend {
+  margin-bottom: 8px;
+  padding: 0;
+}
+
+.perfil-opcao {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.7);
+  box-shadow: inset 0 0 0 1px var(--traco-medio);
+  cursor: pointer;
+  transition: box-shadow 120ms ease, background 120ms ease;
+}
+
+.perfil-opcao:has(input:checked) {
+  background: #fff;
+  box-shadow: inset 0 0 0 2px var(--petroleo);
+}
+
+.perfil-opcao input {
+  margin-top: 3px;
+  accent-color: var(--petroleo);
+}
+
+.perfil-opcao > span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.perfil-opcao strong {
+  font-weight: 600;
+}
+
+.perfil-opcao .silencioso {
+  font-size: 12px;
+  line-height: 1.4;
+}

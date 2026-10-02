@@ -90,7 +90,7 @@ Na lista e na pasta, o título é a linha em destaque: ninguém procura
 
 ## Catálogos
 
-### Disciplinas (25)
+### Disciplinas (26)
 
 | | | |
 |---|---|---|
@@ -102,10 +102,11 @@ Na lista e na pasta, o título é a linha em destaque: ninguém procura
 | `TEL` Telecomunicações | `GAS` Gás | `AUT` Automação |
 | `TOP` Topografia | `TER` Terraplenagem | `PAV` Pavimentação |
 | `URB` Implantação e Urbanismo | `PAI` Paisagismo | `INT` Interiores |
-| `COO` Coordenação e Compatibilização | | |
+| `COO` Coordenação e Compatibilização | `COM` Comercial | |
 
 As nove confirmadas por vocês em 17/09/2026 — COB, CON, DRE, ESC, ESQ, FUN,
-IMP, MUR e PAT — já estão cadastradas.
+IMP, MUR e PAT — já estão cadastradas. `COM` (Comercial) entrou em 02/10/2026,
+a pedido da TREELE: é a única disciplina que o perfil comercial enxerga.
 
 > **Falta confirmar:** as outras 16 vieram da minha proposta inicial. Se alguma
 > tiver código diferente do que vocês usam (por exemplo, se vocês chamam

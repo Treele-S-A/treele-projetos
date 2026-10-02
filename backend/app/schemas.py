@@ -42,6 +42,7 @@ class UsuarioOut(Modelo):
     nome: str
     email: EmailStr
     admin: bool
+    comercial: bool = False
     ativo: bool
 
 
@@ -50,6 +51,7 @@ class UsuarioCriar(BaseModel):
     email: EmailStr
     senha: str = Field(min_length=8, max_length=128)
     admin: bool = False
+    comercial: bool = False
 
 
 class SenhaAlterar(BaseModel):
