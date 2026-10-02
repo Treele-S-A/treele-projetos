@@ -47,7 +47,8 @@ uso comercial.
 
 ## 1. Código no GitHub
 
-Já está: `viniciusbordini/treele-projetos`, privado. A Vercel lê de lá — cada
+Já está: `treele-construtora/treele-projetos`, privado, na organização da
+construtora (transferido da conta pessoal em 02/10/2026). A Vercel lê de lá — cada
 envio para a branch `main` vira um deploy novo, sozinho.
 
 ## 2. Armazenamento dos arquivos
