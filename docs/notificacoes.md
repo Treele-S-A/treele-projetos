@@ -67,16 +67,31 @@ diferente da conta que autentica.
 auth") no Exchange Online. Confirme com o TI se ainda está disponível no
 tenant da TREELE antes de contar com esta opção. Se não estiver, use a opção 2.
 
-### Opção 2: Resend (serviço de envio)
+### Opção 2: Resend (serviço de envio) — a escolhida em 02/10/2026
 
 Gratuito até 3.000 e-mails por mês e 100 por dia.
 
-1. Criar a conta em resend.com e adicionar o domínio `treele.com.br`.
-2. Cadastrar no DNS do domínio os registros que o Resend mostrar (SPF e DKIM).
-   É quem administra o domínio que faz isso.
-3. Criar uma API key.
+1. Criar a conta em resend.com.
+2. **Domains → Add Domain**: `treele.com.br`, região **São Paulo (sa-east-1)**.
+3. O Resend mostra os registros DNS (um DKIM em `resend._domainkey`, e um MX e
+   um SPF no subdomínio `send`). Quem administra o DNS do domínio cadastra
+   exatamente como aparecem. Eles ficam em `send.treele.com.br` e em
+   `resend._domainkey`, então **não mexem no e-mail da empresa** (Microsoft
+   365), que usa os registros da raiz.
+4. Esperar o domínio ficar **Verified** no Resend (minutos a algumas horas).
+5. **API Keys → Create API Key**: permissão *Sending access*, domínio
+   `treele.com.br`. A chave aparece uma vez só, e vai direto para a Vercel.
 
 Variáveis: host `smtp.resend.com`, porta `587`, usuário `resend`, senha = a API
-key, remetente com qualquer endereço `@treele.com.br`.
+key, remetente com qualquer endereço `@treele.com.br` — por exemplo
+`Treèle Projetos <projetos@treele.com.br>`. O endereço não precisa existir como
+caixa de e-mail.
 
 Sem os registros no DNS, nos dois casos, o e-mail sai mas cai no spam.
+
+### Conferir
+
+Depois do Redeploy, um administrador entra em **Minha conta → Enviar e-mail de
+teste**. O e-mail vai para ele mesmo, sem gerar aviso para a equipe. Se não
+sair, a tela diz o motivo (senha recusada, domínio não verificado, servidor
+inalcançável). `/api/saude` mostra `"email": true` quando o envio está ligado.

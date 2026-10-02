@@ -108,6 +108,62 @@ export default function Conta() {
           </div>
         </form>
       </div>
+
+      {usuario?.admin && <TesteEmail />}
     </>
+  );
+}
+
+/** Confere a configuração do e-mail mandando um para o próprio administrador —
+ *  sem gerar aviso falso para a equipe. */
+function TesteEmail() {
+  const [resultado, setResultado] = useState<{
+    enviado: boolean;
+    para: string;
+    remetente: string;
+    erro: string | null;
+  } | null>(null);
+  const [erro, setErro] = useState<string | null>(null);
+  const [enviando, setEnviando] = useState(false);
+
+  async function testar() {
+    setErro(null);
+    setResultado(null);
+    setEnviando(true);
+    try {
+      setResultado(await api.post("/notificacoes/email-teste"));
+    } catch (ex) {
+      setErro(ex instanceof ErroApi ? ex.message : "Não foi possível testar o e-mail.");
+    } finally {
+      setEnviando(false);
+    }
+  }
+
+  return (
+    <div className="folha">
+      <div className="folha-titulo">
+        <strong>E-mail das notificações</strong>
+      </div>
+      <div className="folha-corpo">
+        {erro && <Aviso tom="erro">{erro}</Aviso>}
+        {resultado?.enviado && (
+          <Aviso tom="ok">
+            Enviado de {resultado.remetente} para {resultado.para}. Se não chegar em alguns
+            minutos, olhe o spam: é sinal de que falta registro no DNS.
+          </Aviso>
+        )}
+        {resultado && !resultado.enviado && (
+          <Aviso tom="erro" titulo="O e-mail não saiu">
+            {resultado.erro}
+          </Aviso>
+        )}
+        <p className="silencioso" style={{ margin: "0 0 12px", fontSize: 13 }}>
+          Manda um e-mail de teste para você, com a configuração atual do servidor.
+        </p>
+        <button className="botao secundario" onClick={testar} disabled={enviando}>
+          {enviando ? "Enviando…" : "Enviar e-mail de teste"}
+        </button>
+      </div>
+    </div>
   );
 }

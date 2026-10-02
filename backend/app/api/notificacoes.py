@@ -6,10 +6,12 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
+from ..config import settings
 from ..db import get_db
 from ..deps import usuario_atual
 from ..models import Notificacao, Usuario
-from ..schemas import NotificacaoContagem, NotificacaoOut
+from ..schemas import EmailTesteSaida, NotificacaoContagem, NotificacaoOut
+from ..services import email
 
 router = APIRouter(prefix="/notificacoes", tags=["notificações"])
 
@@ -75,3 +77,27 @@ def marcar_todas(usuario: Usuario = Depends(usuario_atual), db: Session = Depend
         .values(lida_em=datetime.now(timezone.utc))
     )
     db.commit()
+
+
+@router.post("/email-teste", response_model=EmailTesteSaida)
+def email_teste(usuario: Usuario = Depends(usuario_atual)):
+    """Manda um e-mail para o próprio administrador, para conferir a configuração
+    sem gerar aviso falso para a equipe. Só administrador."""
+    if not usuario.admin:
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN, "Somente um administrador testa o envio de e-mail."
+        )
+    erro = email.diagnosticar(
+        email.Mensagem(
+            para=usuario.email,
+            assunto="Teste de e-mail · Treèle Projetos",
+            texto=(
+                f"Olá, {usuario.nome.split()[0]}.\n\n"
+                "Se este e-mail chegou, as notificações por e-mail estão funcionando.\n\n"
+                f"{settings.endereco_site}\n\n—\nTreèle Projetos · aviso automático."
+            ),
+        )
+    )
+    return EmailTesteSaida(
+        enviado=erro is None, para=usuario.email, erro=erro, remetente=settings.email_remetente
+    )

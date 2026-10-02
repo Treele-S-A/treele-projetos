@@ -290,6 +290,13 @@ class NotificacaoContagem(BaseModel):
     nao_lidas: int
 
 
+class EmailTesteSaida(BaseModel):
+    enviado: bool
+    para: str
+    remetente: str
+    erro: str | None = None
+
+
 class SolicitacaoCriar(BaseModel):
     descricao: str
 

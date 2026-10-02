@@ -59,20 +59,64 @@ def enviar(mensagens: list[Mensagem]) -> list[bool]:
         log.error("E-mail: não conectou em %s (%s).", settings.email_smtp_host, type(erro).__name__)
         return [False] * len(mensagens)
 
-    dominio = parseaddr(settings.email_remetente)[1].rpartition("@")[2] or None
     saiu = []
     with conexao:
         for m in mensagens:
-            msg = EmailMessage()
-            msg["From"] = settings.email_remetente
-            msg["To"] = m.para
-            msg["Subject"] = m.assunto
-            msg["Message-ID"] = make_msgid(domain=dominio)
-            msg.set_content(m.texto)
             try:
-                conexao.send_message(msg)
+                conexao.send_message(_montar(m))
                 saiu.append(True)
             except (OSError, smtplib.SMTPException) as erro:
                 log.error("E-mail: recusado (%s).", type(erro).__name__)
                 saiu.append(False)
     return saiu
+
+
+def _montar(m: Mensagem) -> EmailMessage:
+    msg = EmailMessage()
+    msg["From"] = settings.email_remetente
+    msg["To"] = m.para
+    msg["Subject"] = m.assunto
+    dominio = parseaddr(settings.email_remetente)[1].rpartition("@")[2] or None
+    msg["Message-ID"] = make_msgid(domain=dominio)
+    msg.set_content(m.texto)
+    return msg
+
+
+def _resposta_do_servidor(erro: smtplib.SMTPResponseException) -> str:
+    texto = erro.smtp_error
+    if isinstance(texto, bytes):
+        texto = texto.decode("utf-8", "replace")
+    return f"{erro.smtp_code} {texto}"[:300]
+
+
+def diagnosticar(m: Mensagem) -> str | None:
+    """Manda um e-mail de teste e diz, em português, o que deu errado.
+
+    None quando saiu. Só para a tela do administrador: diz o que o servidor
+    respondeu, mas nunca repete a senha (o servidor também não a ecoa).
+    """
+    if not settings.email_ligado:
+        return "E-mail desligado: EMAIL_SMTP_HOST não está definida."
+    servidor = f"{settings.email_smtp_host}:{settings.email_smtp_porta}"
+    try:
+        conexao = _conectar()
+    except smtplib.SMTPAuthenticationError:
+        return (
+            f"{servidor} recusou o usuário e a senha. No Resend, EMAIL_SMTP_USUARIO "
+            "é a palavra resend e EMAIL_SMTP_SENHA é a API key inteira (começa com re_)."
+        )
+    except (OSError, smtplib.SMTPException) as erro:
+        return f"Não conectou em {servidor} ({type(erro).__name__}). Confira host e porta."
+    with conexao:
+        try:
+            conexao.send_message(_montar(m))
+        except smtplib.SMTPSenderRefused as erro:
+            return (
+                f"Remetente recusado ({_resposta_do_servidor(erro)}). O domínio de "
+                "EMAIL_REMETENTE precisa estar verificado no Resend."
+            )
+        except smtplib.SMTPResponseException as erro:
+            return f"O servidor recusou a mensagem: {_resposta_do_servidor(erro)}"
+        except (OSError, smtplib.SMTPException) as erro:
+            return f"Falhou no envio ({type(erro).__name__})."
+    return None

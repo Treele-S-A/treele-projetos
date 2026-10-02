@@ -252,3 +252,42 @@ def test_endereco_do_site_tira_o_prefixo_da_api(monkeypatch):
     monkeypatch.setattr(settings, "base_url", "https://projetos.treele.com.br/api")
     monkeypatch.setattr(settings, "api_prefix", "/api")
     assert settings.endereco_site == "https://projetos.treele.com.br"
+
+
+def test_email_de_teste_so_para_administrador(cliente, admin, p, smtp):
+    assert cliente.post("/notificacoes/email-teste", headers=p["coord"]).status_code == 403
+    r = cliente.post("/notificacoes/email-teste", headers=admin)
+    assert r.status_code == 200, r.text
+    assert r.json()["enviado"] is True
+    assert [m["To"] for m in smtp.enviados] == ["admin@teste.com.br"]
+
+
+def test_email_de_teste_explica_a_senha_recusada(cliente, admin, smtp, monkeypatch):
+    import smtplib
+
+    def recusa(self, usuario, senha):
+        raise smtplib.SMTPAuthenticationError(535, b"Authentication failed")
+
+    monkeypatch.setattr(smtp, "login", recusa)
+    r = cliente.post("/notificacoes/email-teste", headers=admin).json()
+    assert r["enviado"] is False
+    assert "API key" in r["erro"]
+
+
+def test_email_de_teste_explica_dominio_nao_verificado(cliente, admin, smtp, monkeypatch):
+    import smtplib
+
+    def recusa(self, msg):
+        raise smtplib.SMTPSenderRefused(550, b"The treele.com.br domain is not verified", "x")
+
+    monkeypatch.setattr(smtp, "send_message", recusa)
+    r = cliente.post("/notificacoes/email-teste", headers=admin).json()
+    assert r["enviado"] is False
+    assert "verificado no Resend" in r["erro"]
+    assert "not verified" in r["erro"]
+
+
+def test_email_de_teste_com_email_desligado(cliente, admin):
+    r = cliente.post("/notificacoes/email-teste", headers=admin).json()
+    assert r["enviado"] is False
+    assert "EMAIL_SMTP_HOST" in r["erro"]

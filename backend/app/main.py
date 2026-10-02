@@ -100,6 +100,7 @@ def saude():
         "ambiente": settings.ambiente,
         "storage": settings.storage_backend,
         "versao": VERSAO or None,
+        "email": settings.email_ligado,
     }
 
 
