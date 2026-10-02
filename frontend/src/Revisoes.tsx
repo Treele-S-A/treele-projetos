@@ -40,6 +40,49 @@ Baixar mesmo assim?`)) return;
   }
 }
 
+/** Abre o PDF numa aba nova, no visualizador do próprio navegador.
+ *
+ *  A aba abre NO CLIQUE, ainda vazia, e recebe o endereço quando a API
+ *  responde. Abrir só depois da resposta parece igual, mas o navegador já não
+ *  considera aquilo um clique da pessoa e bloqueia como pop-up — foi o que o
+ *  teste mostrou. Por isso o aviso de revisão obsoleta ou em andamento vem
+ *  antes, pelo status que a tela já conhece: depois de a aba abrir, uma
+ *  pergunta na tela de trás passaria despercebida. */
+export function visualizarArquivo(
+  arquivo: Arquivo,
+  status: Revisao["status"],
+  aoErro: (mensagem: string) => void,
+) {
+  const aviso =
+    status === "obsoleto"
+      ? "ATENÇÃO: esta revisão está OBSOLETA. Não use este arquivo para execução."
+      : status === "em_revisao"
+        ? "Esta revisão ainda está EM REVISÃO e não foi liberada para obra."
+        : null;
+  if (aviso && !window.confirm(`${aviso}
+
+Abrir mesmo assim?`)) return;
+
+  const aba = window.open("", "_blank");
+  if (!aba) {
+    aoErro("O navegador bloqueou a nova aba. Permita pop-ups deste site e tente de novo.");
+    return;
+  }
+  aba.opener = null;
+  aba.document.title = arquivo.nome_original;
+  aba.document.body.textContent = "Abrindo o PDF…";
+
+  api
+    .get<{ url: string }>(`/arquivos/${arquivo.id}/visualizar`)
+    .then((r) => {
+      aba.location.href = r.url;
+    })
+    .catch((ex) => {
+      aba.close();
+      aoErro(ex instanceof ErroApi ? ex.message : "Não foi possível abrir o arquivo.");
+    });
+}
+
 export function HistoricoRevisoes({
   revisoes,
   podePublicar,
@@ -250,6 +293,18 @@ Isto não pode ser desfeito.`)) {
                 <span className="silencioso mono" style={{ fontSize: 11 }}>
                   {formatarTamanho(a.tamanho)}
                 </span>
+                {a.tipo === "pdf" && (
+                  <button
+                    className="botao secundario pequeno"
+                    disabled={a.status !== "disponivel"}
+                    onClick={() =>
+                      visualizarArquivo(a, revisao.status, (m) => setErro(new ErroApi(0, m)))
+                    }
+                    title="Abrir numa aba nova, sem baixar"
+                  >
+                    Visualizar
+                  </button>
+                )}
                 <button
                   className="botao secundario pequeno"
                   disabled={a.status !== "disponivel"}

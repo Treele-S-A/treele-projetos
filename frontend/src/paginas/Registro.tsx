@@ -6,6 +6,7 @@ import { Aviso, Carregando, Vazio } from "../componentes";
 const ROTULO_ACAO: Record<string, string> = {
   login: "Entrou no sistema",
   download: "Baixou arquivo",
+  visualizacao: "Visualizou arquivo",
   upload_iniciado: "Começou envio",
   upload_concluido: "Concluiu envio",
   arquivo_removido: "Excluiu arquivo",
@@ -33,7 +34,9 @@ function descrever(e: Evento): string {
   if (Array.isArray(d.obsoletadas) && d.obsoletadas.length > 0) {
     partes.push(`tornou obsoleta ${d.obsoletadas.map((r) => `R${r}`).join(", ")}`);
   }
-  if (d.status_revisao === "obsoleto") partes.push("⚠ revisão obsoleta");
+  // "situacao_revisao": nome que os downloads usaram por um dia (02/10/2026).
+  const situacao = d.status_revisao ?? (e.acao === "download" ? d.situacao_revisao : undefined);
+  if (situacao === "obsoleto") partes.push("⚠ revisão obsoleta");
   if (e.acao === "revisao_excluida") {
     const arquivos = Array.isArray(d.arquivos) ? d.arquivos : [];
     if (arquivos.length > 0) partes.push(arquivos.join(", "));

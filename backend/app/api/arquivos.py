@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 
 from ..db import get_db
 from ..deps import ContextoObra, montar_contexto, usuario_atual
-from ..enums import StatusArquivo, StatusRevisao
+from ..enums import StatusArquivo, StatusRevisao, TipoArquivo
 from ..models import Arquivo, Usuario
 from ..schemas import ArquivoOut, DownloadSaida, RevisaoOut, UploadConfirmarSaida
 from ..services import auditoria
@@ -61,15 +61,12 @@ def confirmar(
     )
 
 
-@router.get("/{arquivo_id}/download", response_model=DownloadSaida)
-def download(
-    arquivo_id: int,
-    request: Request,
-    usuario: Usuario = Depends(usuario_atual),
-    db: Session = Depends(get_db),
-):
-    """Devolve uma URL assinada de curta duração — e registra quem baixou."""
-    arquivo, ctx = _carregar(db, usuario, arquivo_id)
+def _conferir_leitura(arquivo: Arquivo, ctx: ContextoObra) -> str | None:
+    """Pode ler (baixar ou visualizar) este arquivo? Devolve o aviso, se houver.
+
+    Baixar e visualizar são a mesma leitura: a regra é uma só, e quem não
+    pode baixar uma revisão obsoleta também não pode abri-la no navegador.
+    """
     revisao = arquivo.revisao
 
     if arquivo.status != StatusArquivo.disponivel:
@@ -103,21 +100,61 @@ def download(
             "e não foi liberada para obra."
         )
 
-    url = armazenamento.url_download(arquivo.storage_key, arquivo.nome_original)
+    return aviso
 
+
+def _registrar_leitura(db, acao, arquivo, ctx, usuario, request) -> None:
+    revisao = arquivo.revisao
     auditoria.registrar(
-        db, acao="download", entidade="arquivo", entidade_id=arquivo.id,
+        db, acao=acao, entidade="arquivo", entidade_id=arquivo.id,
         usuario=usuario, obra_id=ctx.obra.id,
         detalhes={
             "arquivo": arquivo.nome_original,
             "documento": revisao.documento.codigo,
             "revisao": revisao.numero,
-            "situacao_revisao": revisao.status.value,
+            "status_revisao": revisao.status.value,
         },
         request=request,
     )
     db.commit()
 
+
+@router.get("/{arquivo_id}/download", response_model=DownloadSaida)
+def download(
+    arquivo_id: int,
+    request: Request,
+    usuario: Usuario = Depends(usuario_atual),
+    db: Session = Depends(get_db),
+):
+    """Devolve uma URL assinada de curta duração — e registra quem baixou."""
+    arquivo, ctx = _carregar(db, usuario, arquivo_id)
+    aviso = _conferir_leitura(arquivo, ctx)
+    url = armazenamento.url_download(arquivo.storage_key, arquivo.nome_original)
+    _registrar_leitura(db, "download", arquivo, ctx, usuario, request)
+    return DownloadSaida(url=url, nome_arquivo=arquivo.nome_original, aviso=aviso)
+
+
+@router.get("/{arquivo_id}/visualizar", response_model=DownloadSaida)
+def visualizar(
+    arquivo_id: int,
+    request: Request,
+    usuario: Usuario = Depends(usuario_atual),
+    db: Session = Depends(get_db),
+):
+    """URL assinada que ABRE o PDF no navegador, em vez de baixar.
+
+    Só PDF: é o formato que o navegador mostra sozinho. O tipo e o "inline"
+    vão dentro da assinatura — quem tem o link não troca nenhum dos dois.
+    """
+    arquivo, ctx = _carregar(db, usuario, arquivo_id)
+    if arquivo.tipo != TipoArquivo.pdf:
+        raise HTTPException(
+            status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+            "Só PDF abre no navegador. Para os outros formatos, baixe o arquivo.",
+        )
+    aviso = _conferir_leitura(arquivo, ctx)
+    url = armazenamento.url_visualizar(arquivo.storage_key, arquivo.nome_original)
+    _registrar_leitura(db, "visualizacao", arquivo, ctx, usuario, request)
     return DownloadSaida(url=url, nome_arquivo=arquivo.nome_original, aviso=aviso)
 
 

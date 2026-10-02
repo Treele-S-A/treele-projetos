@@ -141,6 +141,10 @@ class ArmazenamentoLocal:
     def url_download(self, chave: str, nome_arquivo: str) -> str:
         return self._url(chave, "get", {"nome": nome_arquivo})
 
+    def url_visualizar(self, chave: str, nome_arquivo: str) -> str:
+        # Como na imagem: o tipo não vai na URL, o endpoint confere os bytes.
+        return self._url(chave, "pdf", {"nome": nome_arquivo})
+
     def url_imagem(self, chave: str, tipo: str) -> str:
         # O tipo não vai na URL: ela é assinada só sobre chave, ação e prazo, e
         # um parâmetro solto deixaria quem tem o link escolher o Content-Type.
@@ -265,6 +269,21 @@ class ArmazenamentoS3:
             Params={
                 "Bucket": self.bucket,
                 "Key": chave,
+                "ResponseContentDisposition": disposicao,
+            },
+            ExpiresIn=settings.url_expira_segundos,
+        )
+
+    def url_visualizar(self, chave: str, nome_arquivo: str) -> str:
+        # Abrir no navegador: "inline" e PDF fixados na assinatura. O nome vai
+        # junto para o caso de a pessoa salvar a partir do visualizador.
+        disposicao = f"inline; filename*=UTF-8''{quote(nome_arquivo)}"
+        return self.assinador.generate_presigned_url(
+            "get_object",
+            Params={
+                "Bucket": self.bucket,
+                "Key": chave,
+                "ResponseContentType": "application/pdf",
                 "ResponseContentDisposition": disposicao,
             },
             ExpiresIn=settings.url_expira_segundos,

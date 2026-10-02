@@ -71,7 +71,7 @@ async def enviar(request: Request, chave: str, acao: str, exp: int, assinatura: 
 
 @router.get("/local")
 def baixar(chave: str, acao: str, exp: int, assinatura: str, nome: str | None = None):
-    if acao not in ("get", "img"):
+    if acao not in ("get", "img", "pdf"):
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Ação inválida para este link.")
     local = _validar(chave, acao, exp, assinatura)
 
@@ -94,6 +94,20 @@ def baixar(chave: str, acao: str, exp: int, assinatura: str, nome: str | None = 
             caminho,
             media_type=imagem[0],
             headers={"Content-Disposition": "inline", "X-Content-Type-Options": "nosniff"},
+        )
+
+    if acao == "pdf":
+        # Abrir no navegador — só se os bytes forem mesmo de um PDF.
+        with open(caminho, "rb") as fh:
+            if not fh.read(5).startswith(b"%PDF"):
+                raise HTTPException(status.HTTP_415_UNSUPPORTED_MEDIA_TYPE, "Não é PDF.")
+        return FileResponse(
+            caminho,
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": f"inline; filename*=UTF-8''{quote(nome or caminho.name)}",
+                "X-Content-Type-Options": "nosniff",
+            },
         )
 
     nome_final = nome or caminho.name
