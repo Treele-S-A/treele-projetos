@@ -287,6 +287,18 @@ def test_email_de_teste_explica_dominio_nao_verificado(cliente, admin, smtp, mon
     assert "not verified" in r["erro"]
 
 
+def test_email_de_teste_explica_dominio_recusado_na_entrega(cliente, admin, smtp, monkeypatch):
+    """Caso real: o Resend recusa no DATA, não no remetente."""
+    import smtplib
+
+    def recusa(self, msg):
+        raise smtplib.SMTPDataError(550, b"The treele.com.br domain is not verified.")
+
+    monkeypatch.setattr(smtp, "send_message", recusa)
+    r = cliente.post("/notificacoes/email-teste", headers=admin).json()
+    assert "ainda não está verificado no Resend" in r["erro"]
+
+
 def test_email_de_teste_com_email_desligado(cliente, admin):
     r = cliente.post("/notificacoes/email-teste", headers=admin).json()
     assert r["enviado"] is False

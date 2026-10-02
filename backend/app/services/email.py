@@ -116,7 +116,16 @@ def diagnosticar(m: Mensagem) -> str | None:
                 "EMAIL_REMETENTE precisa estar verificado no Resend."
             )
         except smtplib.SMTPResponseException as erro:
-            return f"O servidor recusou a mensagem: {_resposta_do_servidor(erro)}"
+            resposta = _resposta_do_servidor(erro)
+            # O Resend só reclama do domínio na entrega da mensagem, não no
+            # remetente — a dica tem de sair daqui também.
+            if "not verified" in resposta:
+                return (
+                    f"O domínio de EMAIL_REMETENTE ainda não está verificado no Resend "
+                    f"({resposta}). Os registros DNS que o Resend mostra precisam estar "
+                    "publicados no DNS do domínio e o domínio aparecer como Verified."
+                )
+            return f"O servidor recusou a mensagem: {resposta}"
         except (OSError, smtplib.SMTPException) as erro:
             return f"Falhou no envio ({type(erro).__name__})."
     return None

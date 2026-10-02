@@ -153,8 +153,8 @@ function TesteEmail() {
           </Aviso>
         )}
         {resultado && !resultado.enviado && (
-          <Aviso tom="erro" titulo="O e-mail não saiu">
-            {resultado.erro}
+          <Aviso tom="erro" titulo="O e-mail não saiu.">
+            <div style={{ marginTop: 4 }}>{resultado.erro}</div>
           </Aviso>
         )}
         <p className="silencioso" style={{ margin: "0 0 12px", fontSize: 13 }}>
