@@ -47,9 +47,9 @@ uso comercial.
 
 ## 1. Código no GitHub
 
-Já está: `viniciusbordini/treele-projetos`, privado, na conta pessoal. Foi
-transferido para a organização `treele-construtora` em 02/10/2026 e voltou em
-05/10/2026: no plano Hobby a Vercel recusa repositório privado de organização
+Já está: `sistemastreele/treele-projetos`, privado, numa conta de usuário (não
+organização) criada para os sistemas da TREELE. Esteve na organização
+`treele-construtora` de 02 a 05/10/2026 e saiu de lá porque no plano Hobby a Vercel recusa repositório privado de organização
 ("Cannot deploy from a private GitHub organization repository on the Hobby
 plan"). Só transferir de novo depois de passar a Vercel para o Pro. A Vercel lê de lá — cada
 envio para a branch `main` vira um deploy novo, sozinho.
