@@ -38,7 +38,9 @@ DISCIPLINAS = [
     ("HID", "Hidrossanitário"),
     ("DRE", "Drenagem"),
     ("ELE", "Elétrica"),
-    ("PCI", "Prevenção e Combate a Incêndio"),
+    # Incêndio (05/10/2026): é o código que a TREELE usa; substitui o PCI da
+    # proposta inicial (ver DISCIPLINAS_APOSENTADAS).
+    ("INC", "Incêndio"),
     ("CLI", "Climatização"),
     ("TEL", "Telecomunicações e Cabeamento"),
     ("GAS", "Gás"),
@@ -73,6 +75,10 @@ FASES = [
 # A lista é explícita de propósito. Desativar "tudo que não está em FASES"
 # derrubaria também qualquer fase que um administrador tenha criado pela tela.
 FASES_APOSENTADAS = {"LV", "EV"}
+
+# PCI ("Prevenção e Combate a Incêndio") veio da proposta inicial; a TREELE
+# usa INC (05/10/2026). Nenhum documento usava PCI quando saiu.
+DISCIPLINAS_APOSENTADAS = {"PCI"}
 
 
 def _completar_catalogo(db: Session, modelo, itens: list[tuple[str, str]]) -> int:
@@ -119,6 +125,7 @@ def semear(db: Session) -> None:
     novas_disciplinas = _completar_catalogo(db, Disciplina, DISCIPLINAS)
     novas_fases = _completar_catalogo(db, Fase, FASES)
     aposentadas = _aposentar(db, Fase, FASES_APOSENTADAS)
+    disciplinas_aposentadas = _aposentar(db, Disciplina, DISCIPLINAS_APOSENTADAS)
     if novas_disciplinas or novas_fases:
         print(
             f"catálogos: +{novas_disciplinas} disciplina(s), +{novas_fases} fase(s)",
@@ -126,6 +133,11 @@ def semear(db: Session) -> None:
         )
     if aposentadas:
         print(f"fases desativadas: {', '.join(sorted(aposentadas))}", flush=True)
+    if disciplinas_aposentadas:
+        print(
+            f"disciplinas desativadas: {', '.join(sorted(disciplinas_aposentadas))}",
+            flush=True,
+        )
 
     global_ = db.scalar(
         select(PadraoNomenclatura).where(PadraoNomenclatura.obra_id.is_(None))

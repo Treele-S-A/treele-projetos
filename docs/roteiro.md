@@ -189,6 +189,7 @@ justamente como o BCF já funciona.
 | O que mudou na revisão | Obrigatório para quem sobe o primeiro arquivo da revisão (projetista ou coordenador); saiu do momento de liberar | 02/10/2026 |
 | Disciplinas | 25 códigos (9 confirmados pela TREELE) | 17/09/2026 |
 | Disciplina Comercial | `COM`, a pedido da TREELE | 02/10/2026 |
+| Disciplina Incêndio | `INC`, a pedido da TREELE; substitui o `PCI` da proposta inicial, desativado | 05/10/2026 |
 | Perfil comercial | Todas as obras, só a disciplina COM liberada, só baixar — o acesso mais restrito do sistema | 02/10/2026 |
 | Fases | 7 códigos: EP, AP, PL, PA, PB, PE, AB | 17/09/2026 |
 | Revisão liberada | Aceita arquivo novo; substituição segue proibida | 17/09/2026 |

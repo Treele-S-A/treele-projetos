@@ -98,7 +98,7 @@ Na lista e na pasta, o título é a linha em destaque: ninguém procura
 | `CON` Contenção | `ESC` Escoramento | `MUR` Muros |
 | `PAT` Patamarização | `COB` Cobertura | `ESQ` Esquadria |
 | `IMP` Impermeabilização | `HID` Hidrossanitário | `DRE` Drenagem |
-| `ELE` Elétrica | `PCI` Prev. e Combate a Incêndio | `CLI` Climatização |
+| `ELE` Elétrica | `INC` Incêndio | `CLI` Climatização |
 | `TEL` Telecomunicações | `GAS` Gás | `AUT` Automação |
 | `TOP` Topografia | `TER` Terraplenagem | `PAV` Pavimentação |
 | `URB` Implantação e Urbanismo | `PAI` Paisagismo | `INT` Interiores |
@@ -107,8 +107,11 @@ Na lista e na pasta, o título é a linha em destaque: ninguém procura
 As nove confirmadas por vocês em 17/09/2026 — COB, CON, DRE, ESC, ESQ, FUN,
 IMP, MUR e PAT — já estão cadastradas. `COM` (Comercial) entrou em 02/10/2026,
 a pedido da TREELE: é a única disciplina que o perfil comercial enxerga.
+`INC` (Incêndio) entrou em 05/10/2026, também a pedido da TREELE, no lugar do
+`PCI` (Prevenção e Combate a Incêndio) da proposta inicial — que foi
+**desativado** e não aceita arquivo novo. Nenhum documento usava `PCI`.
 
-> **Falta confirmar:** as outras 16 vieram da minha proposta inicial. Se alguma
+> **Falta confirmar:** as outras 15 vieram da minha proposta inicial. Se alguma
 > tiver código diferente do que vocês usam (por exemplo, se vocês chamam
 > climatização de `AVA` em vez de `CLI`), me diga que eu ajusto. Disciplina
 > desativada não aceita envios novos, mas o acervo já existente continua válido.
