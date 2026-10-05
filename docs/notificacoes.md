@@ -73,20 +73,25 @@ tenant da TREELE antes de contar com esta opção. Se não estiver, use a opçã
 Gratuito até 3.000 e-mails por mês e 100 por dia.
 
 1. Criar a conta em resend.com.
-2. **Domains → Add Domain**: `treele.com.br`, região **São Paulo (sa-east-1)**.
-3. O Resend mostra os registros DNS (um DKIM em `resend._domainkey`, e um MX e
-   um SPF no subdomínio `send`). Quem administra o DNS do domínio cadastra
-   exatamente como aparecem. Eles ficam em `send.treele.com.br` e em
-   `resend._domainkey`, então **não mexem no e-mail da empresa** (Microsoft
-   365), que usa os registros da raiz.
-4. Esperar o domínio ficar **Verified** no Resend (minutos a algumas horas).
+2. **Domains → Add Domain**: `projetos.treele.com.br`, região **São Paulo (sa-east-1)**.
+3. O Resend mostra os registros DNS: um DKIM (TXT) e os do subdomínio
+   `send`. O DNS do `treele.com.br` fica na **SiteGround** (Site Tools →
+   Domain → DNS Zone Editor). Lá, o campo *Name* leva só o prefixo — por
+   exemplo `resend._domainkey.projetos` —, porque a SiteGround completa com
+   `.treele.com.br`. Ficam em `resend._domainkey.projetos.treele.com.br` e
+   `send.projetos.treele.com.br`, então **não mexem no e-mail da empresa**
+   (Microsoft 365), que usa os registros da raiz.
+4. Clicar em **Verify DNS Records** e esperar o domínio ficar **Verified**.
+   Antes disso, todo envio volta com "550 … domain is not verified".
 5. **API Keys → Create API Key**: permissão *Sending access*, domínio
-   `treele.com.br`. A chave aparece uma vez só, e vai direto para a Vercel.
+   `projetos.treele.com.br`. A chave aparece uma vez só, e vai direto para a
+   Vercel.
 
 Variáveis: host `smtp.resend.com`, porta `587`, usuário `resend`, senha = a API
-key, remetente com qualquer endereço `@treele.com.br` — por exemplo
-`Treèle Projetos <projetos@treele.com.br>`. O endereço não precisa existir como
-caixa de e-mail.
+key, remetente `Treèle Projetos <avisos@projetos.treele.com.br>`. O domínio do
+remetente tem de ser **exatamente** o verificado no Resend: com
+`@treele.com.br` ele recusa ("treele.com.br domain is not verified"). O endereço
+não precisa existir como caixa de e-mail.
 
 Sem os registros no DNS, nos dois casos, o e-mail sai mas cai no spam.
 
