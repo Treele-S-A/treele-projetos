@@ -309,12 +309,13 @@ class Arquivo(Base):
 
 
 class SolicitacaoRevisao(Base):
-    """Pedido de alteração num projeto liberado (TREELE, 02/10/2026).
+    """Pedido de alteração num projeto liberado (TREELE, 02/10 e 05/10/2026).
 
-    Quem pede é o coordenador ou a obra, sempre dizendo o que deve mudar; fotos
-    e PDFs marcados são opcionais. Fica presa ao documento — e à revisão
-    liberada sobre a qual foi feita — e fecha quando quem libera a revisão nova
-    para obra a marca como atendida (api/revisoes.publicar).
+    A obra pede, dizendo o que deve mudar (fotos e PDFs marcados são
+    opcionais), e o coordenador autoriza ou recusa. O coordenador também
+    autoriza direto, sem pedido — mudança que vem do escritório. Só com um
+    pedido autorizado o documento aceita revisão nova; ele fecha quando quem
+    libera a revisão nova para obra o marca como atendido (api/revisoes.publicar).
     """
 
     __tablename__ = "solicitacoes_revisao"
@@ -341,13 +342,22 @@ class SolicitacaoRevisao(Base):
     atendida_por_revisao_id: Mapped[int | None] = mapped_column(
         ForeignKey("revisoes.id", ondelete="SET NULL"), nullable=True
     )
+    # Decisão do coordenador: autorizou (e quando), ou recusou com o motivo.
+    decidida_em: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    decidida_por_id: Mapped[int | None] = mapped_column(
+        ForeignKey("usuarios.id"), nullable=True
+    )
+    motivo_recusa: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     documento: Mapped["Documento"] = relationship(back_populates="solicitacoes")
     revisao: Mapped["Revisao | None"] = relationship(foreign_keys=[revisao_id])
     atendida_por_revisao: Mapped["Revisao | None"] = relationship(
         foreign_keys=[atendida_por_revisao_id]
     )
-    criada_por: Mapped["Usuario | None"] = relationship()
+    criada_por: Mapped["Usuario | None"] = relationship(foreign_keys=[criada_por_id])
+    decidida_por: Mapped["Usuario | None"] = relationship(foreign_keys=[decidida_por_id])
     anexos: Mapped[list["AnexoSolicitacao"]] = relationship(
         back_populates="solicitacao",
         cascade="all, delete-orphan",
@@ -423,6 +433,11 @@ class Notificacao(Base):
     obra_id: Mapped[int] = mapped_column(ForeignKey("obras.id", ondelete="CASCADE"))
     documento_id: Mapped[int | None] = mapped_column(
         ForeignKey("documentos.id", ondelete="CASCADE"), nullable=True
+    )
+    # A revisão de que o aviso trata — evita avisar duas vezes da mesma
+    # revisão enviada (um arquivo substituído não é revisão nova).
+    revisao_id: Mapped[int | None] = mapped_column(
+        ForeignKey("revisoes.id", ondelete="SET NULL"), nullable=True
     )
     titulo: Mapped[str] = mapped_column(String(300))
     texto: Mapped[str] = mapped_column(Text, default="")

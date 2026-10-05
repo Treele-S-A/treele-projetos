@@ -10,6 +10,7 @@ Obra A e projetista na Obra B. Além disso existe o perfil global de
 |---|:--:|:--:|:--:|
 | Ver documentos liberados | ✓ | ✓ | ✓ |
 | **Solicitar revisão** de projeto liberado | ✓ | | ✓ |
+| **Autorizar ou recusar revisão** | ✓ | | |
 | Baixar documentos liberados | ✓ | ✓ | ✓ |
 | Ver e baixar revisões obsoletas | ✓ | ✓ | ✓ |
 | Ver revisões ainda em revisão | ✓ | ✓ | |
@@ -28,26 +29,39 @@ inclusive as criadas depois, e todo administrador criado depois também passa
 a ser. Por isso ele aparece na equipe de cada obra e não pode ser removido
 dela nem trocar de papel.
 
-## Solicitação de revisão
+## Solicitação e autorização de revisão
 
-Quem está em campo encontra o problema; quem desenha precisa saber dele
-(02/10/2026):
+Quem está em campo encontra o problema; o coordenador decide; quem desenha
+atende (02/10 e 05/10/2026):
 
-- **Quem pede:** o coordenador e a obra. Projetista não pede (é quem atende);
-  o comercial não vê pedidos.
+- **Quem pede:** a obra. Projetista não pede (é quem atende); o comercial não
+  vê pedidos.
+- **Quem decide:** o coordenador. Na tela do documento, cada pedido da obra
+  traz **Autorizar revisão** e **Recusar**. Recusar exige motivo, e quem pediu
+  é avisado com ele.
+- **Revisão sem pedido:** o coordenador autoriza direto, no mesmo lugar —
+  mudança que vem do cliente, do escritório ou da compatibilização. O pedido
+  dele já nasce autorizado.
+- **Sem autorização, não há revisão nova.** Documento já liberado para obra
+  só aceita a R01, R02… depois de uma revisão autorizada. Com a revisão
+  anterior ainda em revisão, também não: os arquivos vão para ela, ou o
+  coordenador a cancela. A tela de envio avisa antes de subir o arquivo.
+  Documento novo, e arquivo novo numa revisão já liberada (o DWG depois do
+  PDF), seguem como sempre.
 - **Sobre o quê:** o projeto **liberado para obra** — é o que está sendo
   executado. Documento sem revisão liberada não aceita pedido.
 - **Como:** com descrição **obrigatória** do que deve mudar. Fotos e PDFs
   marcados são opcionais (até 25 MB cada, até 10 por pedido); só quem fez o
-  pedido anexa, e só enquanto ele está aberto.
-- **Onde aparece:** uma marca *Revisão solicitada* ao lado do status, na lista
-  e na pasta, e a lista dos pedidos na tela do documento. O status continua
-  *Liberado para obra*: o projeto vale até sair o novo.
+  pedido anexa, e só enquanto ele está aberto ou autorizado.
+- **Onde aparece:** as marcas *Revisão solicitada* (esperando o coordenador)
+  e *Revisão autorizada* ao lado do status, na lista e na pasta, e a lista dos
+  pedidos na tela do documento. O status continua *Liberado para obra*: o
+  projeto vale até sair o novo.
 - **Quando fecha:** na liberação da revisão nova para obra, quem libera marca
-  numa lista quais pedidos ela atende. Os marcados fecham ali ("atendida pela
-  R01"); os não marcados seguem abertos para a próxima revisão.
-- **Quem é avisado:** os coordenadores da obra, sempre, e o projetista que
-  subiu a última revisão. Ver [notificacoes.md](notificacoes.md).
+  numa lista quais revisões autorizadas ela atende — vêm todas marcadas. As
+  marcadas fecham ali ("atendida pela R01"); as desmarcadas continuam
+  autorizadas.
+- **Quem é avisado:** ver [notificacoes.md](notificacoes.md).
 
 ## Perfil comercial
 

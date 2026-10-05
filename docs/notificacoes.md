@@ -3,23 +3,29 @@
 Avisos no sistema (item *Notificações* no menu, com contador de não lidas) e
 por e-mail, quando o e-mail está configurado.
 
-## Quem recebe o quê (02/10/2026)
+## Quem recebe o quê (05/10/2026)
 
 | Evento | Quem recebe |
 |---|---|
-| **Pedido de revisão novo** | Os **coordenadores** da obra, sempre. Os administradores entram, porque são coordenadores de todas as obras. O **projetista** só se foi ele quem subiu a última revisão do documento. |
-| **Revisão liberada para obra** | As pessoas com papel **obra**. Um aviso por revisão, nunca por arquivo. |
+| **Revisão nova enviada** (primeiro arquivo dela) | Os **coordenadores** da obra. Os administradores entram, porque são coordenadores de todas as obras. |
+| **Pedido de revisão da obra** | Os **coordenadores**, que autorizam ou recusam. |
+| **Revisão autorizada** (de um pedido ou direto pelo coordenador) | O **projetista que subiu a última revisão** do documento, só ele. É aqui — e não no pedido — que o projetista fica sabendo. |
+| **Pedido recusado** | Quem pediu, com o motivo. |
+| **Revisão liberada para obra** | As pessoas com papel **obra**. É o único aviso que a obra recebe. Um por revisão, nunca por arquivo. |
 
 Detalhes:
 
 - **"Última revisão"** é a mais recente que não foi cancelada, mesmo que ainda
   esteja em revisão. Se já há uma R02 subindo pela mão de outro projetista, é
-  ele quem precisa saber do pedido feito sobre a R01. Conta como "quem subiu"
-  quem criou a revisão ou enviou algum arquivo dela.
-- **A liberação avisa, o envio não.** Antes de liberada, a revisão nem aparece
-  para a obra, e o link levaria a algo que ela não pode abrir.
-- **Quem fez a ação não é avisado dela.** O coordenador que pede revisão não
-  recebe o próprio pedido.
+  ele quem precisa saber da autorização feita sobre a R01. Conta como "quem
+  subiu" quem criou a revisão ou enviou algum arquivo dela.
+- **Revisão enviada avisa uma vez.** O segundo arquivo da mesma revisão (o DWG
+  depois do PDF) ou um arquivo substituído não avisam de novo. Arquivo novo
+  numa revisão já liberada também não.
+- **A liberação avisa a obra, o envio não.** Antes de liberada, a revisão nem
+  aparece para a obra, e o link levaria a algo que ela não pode abrir.
+- **Quem fez a ação não é avisado dela.** O coordenador que autoriza não
+  recebe a própria autorização; quem envia não recebe o próprio envio.
 - O perfil comercial não recebe aviso nenhum.
 - Clicar no aviso abre o documento e marca o aviso como lido. Cada pessoa marca
   os seus.

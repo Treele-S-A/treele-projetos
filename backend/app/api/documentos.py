@@ -23,7 +23,7 @@ from ..deps import (
     status_visiveis,
     usuario_atual,
 )
-from ..enums import StatusArquivo, StatusRevisao, TipoArquivo
+from ..enums import StatusArquivo, StatusRevisao, StatusSolicitacao, TipoArquivo
 from ..models import Arquivo, Disciplina, Documento, Fase, Revisao, Usuario
 from ..schemas import (
     ArvoreSaida,
@@ -114,13 +114,18 @@ def _aplicar_filtros(
     return consulta
 
 
+def _marcar_pedidos(item: DocumentoOut, contagem: dict) -> None:
+    item.solicitacoes_abertas = contagem.get(StatusSolicitacao.aberta, 0)
+    item.solicitacoes_autorizadas = contagem.get(StatusSolicitacao.autorizada, 0)
+
+
 def _montar_saida(db: Session, linhas, ctx: ContextoObra) -> list[DocumentoOut]:
     if not linhas:
         return []
     ids = [d.id for d, _ in linhas]
     # O comercial não vê pedidos de revisão: para ele, nenhuma marca.
-    abertas = (
-        {} if ctx.usuario.comercial else servico_solicitacoes.abertas_por_documento(db, ids)
+    pedidos = (
+        {} if ctx.usuario.comercial else servico_solicitacoes.contagens_por_documento(db, ids)
     )
     contagens = dict(
         db.execute(
@@ -134,7 +139,7 @@ def _montar_saida(db: Session, linhas, ctx: ContextoObra) -> list[DocumentoOut]:
         item = DocumentoOut.model_validate(documento)
         item.total_revisoes = contagens.get(documento.id, 0)
         item.revisao_atual = RevisaoResumo.model_validate(atual)
-        item.solicitacoes_abertas = abertas.get(documento.id, 0)
+        _marcar_pedidos(item, pedidos.get(documento.id, {}))
         saida.append(item)
     return saida
 
@@ -404,10 +409,10 @@ def pasta(
         )
     )
 
-    abertas = (
+    pedidos = (
         {}
         if ctx.usuario.comercial
-        else servico_solicitacoes.abertas_por_documento(ctx.db, [d.id for d in documentos])
+        else servico_solicitacoes.contagens_por_documento(ctx.db, [d.id for d in documentos])
     )
     saida: list[DocumentoDetalhe] = []
     for documento in documentos:
@@ -424,7 +429,7 @@ def pasta(
             (r for r in revisoes if r.status != StatusRevisao.cancelado), None
         )
         item.revisao_atual = RevisaoResumo.model_validate(atual) if atual else None
-        item.solicitacoes_abertas = abertas.get(documento.id, 0)
+        _marcar_pedidos(item, pedidos.get(documento.id, {}))
         if not ctx.usuario.comercial:
             item.solicitacoes = [servico_solicitacoes.saida(s) for s in documento.solicitacoes]
         saida.append(item)
@@ -471,7 +476,10 @@ def detalhe(
     if not usuario.comercial:
         saida.solicitacoes = [servico_solicitacoes.saida(s) for s in documento.solicitacoes]
         saida.solicitacoes_abertas = sum(
-            1 for s in saida.solicitacoes if s.status.value == "aberta"
+            1 for s in saida.solicitacoes if s.status == StatusSolicitacao.aberta
+        )
+        saida.solicitacoes_autorizadas = sum(
+            1 for s in saida.solicitacoes if s.status == StatusSolicitacao.autorizada
         )
     return saida
 

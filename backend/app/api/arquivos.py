@@ -6,7 +6,7 @@ from ..deps import ContextoObra, montar_contexto, usuario_atual
 from ..enums import StatusArquivo, StatusRevisao, TipoArquivo
 from ..models import Arquivo, Usuario
 from ..schemas import ArquivoOut, DownloadSaida, RevisaoOut, UploadConfirmarSaida
-from ..services import auditoria
+from ..services import auditoria, notificacoes
 from ..services.revisoes import remover_do_armazenamento
 from ..services.storage import armazenamento
 
@@ -52,7 +52,14 @@ def confirmar(
         detalhes={"arquivo": arquivo.nome_original, "tamanho": tamanho},
         request=request,
     )
+    # Revisão em andamento recebeu arquivo: os coordenadores sabem da revisão
+    # nova — uma vez só, no primeiro arquivo (o serviço confere).
+    avisos = []
+    if arquivo.revisao.status == StatusRevisao.em_revisao:
+        db.flush()
+        avisos = notificacoes.ao_enviar_revisao(db, arquivo.revisao, usuario)
     db.commit()
+    notificacoes.enviar_emails(db, avisos)
     db.refresh(arquivo.revisao)
 
     return UploadConfirmarSaida(

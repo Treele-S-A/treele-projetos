@@ -167,7 +167,10 @@ export default function Pasta() {
                         R{atual.numero}
                       </span>
                       <Estado status={atual.status} />
-                      <MarcaSolicitada quantidade={doc.solicitacoes_abertas} />
+                      <MarcaSolicitada
+                        quantidade={doc.solicitacoes_abertas}
+                        autorizadas={doc.solicitacoes_autorizadas}
+                      />
                     </>
                   )}
                   <span className="silencioso mono" style={{ fontSize: 11 }}>

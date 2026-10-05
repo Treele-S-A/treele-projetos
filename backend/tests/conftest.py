@@ -56,16 +56,42 @@ SEM_TITULO = object()
 SEM_DESCRICAO = object()
 
 
+def autorizar(cliente, coordenador, obra_id: int, codigo: str,
+              motivo: str = "Revisão autorizada pelo escritório, para teste."):
+    """Autoriza revisão nova do documento, como o coordenador faz na tela.
+
+    Documento liberado só aceita revisão nova com revisão autorizada (TREELE,
+    05/10/2026). O pedido do coordenador já nasce autorizado.
+    """
+    itens = cliente.get(
+        f"/obras/{obra_id}/documentos?busca={codigo}", headers=coordenador
+    ).json()["itens"]
+    documento = next(d for d in itens if d["codigo"] == codigo)
+    r = cliente.post(
+        f"/documentos/{documento['id']}/solicitacoes", json={"descricao": motivo},
+        headers=coordenador,
+    )
+    assert r.status_code == 201, r.text
+    assert r.json()["status"] == "autorizada", r.text
+    return r.json()
+
+
 def enviar_arquivo(cliente, cabecalhos, obra_id: int, nome: str, conteudo: bytes,
                    substituir: bool = False, titulo="Prancha de teste",
-                   descricao="Emissão para teste"):
+                   descricao="Emissão para teste", autorizar_com=None):
     """Executa os três passos do envio e devolve a resposta da confirmação.
 
     Manda um título e uma descrição por padrão, porque documento novo exige
     título e revisão nova exige "o que mudou". Passe ``titulo=SEM_TITULO`` ou
     ``descricao=SEM_DESCRICAO`` para testar justamente a falta deles.
+
+    ``autorizar_com`` (cabeçalhos de um coordenador) autoriza antes a revisão
+    nova de um documento já liberado — o código vem do nome, antes do "-R".
     """
     from urllib.parse import urlsplit
+
+    if autorizar_com is not None:
+        autorizar(cliente, autorizar_com, obra_id, nome.rsplit("-R", 1)[0])
 
     corpo = {"nome_arquivo": nome, "tamanho": len(conteudo), "substituir": substituir}
     if titulo is not SEM_TITULO:

@@ -7,7 +7,7 @@ Os arquivos seguintes da mesma revisão não pedem de novo.
 
 import pytest
 
-from .conftest import SEM_DESCRICAO, autenticar, enviar_arquivo
+from .conftest import SEM_DESCRICAO, autenticar, autorizar, enviar_arquivo
 
 PDF = b"%PDF-1.7\n" + b"0" * 200
 DWG = b"AC1032" + b"\x00" * 200
@@ -86,7 +86,8 @@ def test_cada_revisao_nova_pede_a_sua(cliente, admin, obra):
     cliente.post(f"/revisoes/{r00.json()['revisao']['id']}/publicar", json={}, headers=admin)
 
     sem = enviar_arquivo(
-        cliente, admin, obra["id"], "DSC-ARQ-PE-005-R01.pdf", PDF, descricao=SEM_DESCRICAO
+        cliente, admin, obra["id"], "DSC-ARQ-PE-005-R01.pdf", PDF, descricao=SEM_DESCRICAO,
+        autorizar_com=admin,
     )
     assert sem.status_code == 422
 
@@ -105,7 +106,9 @@ def test_liberar_nao_pede_descricao(cliente, admin, obra):
 
 
 def test_tela_sabe_quando_vai_pedir(cliente, admin, obra):
-    enviar_arquivo(cliente, admin, obra["id"], "DSC-ARQ-PE-007-R00.pdf", PDF)
+    r = enviar_arquivo(cliente, admin, obra["id"], "DSC-ARQ-PE-007-R00.pdf", PDF)
+    cliente.post(f"/revisoes/{r.json()['revisao']['id']}/publicar", json={}, headers=admin)
+    autorizar(cliente, admin, obra["id"], "DSC-ARQ-PE-007")
     r = cliente.post(
         f"/obras/{obra['id']}/nomenclatura/validar",
         json={"nomes": ["DSC-ARQ-PE-007-R00.dwg", "DSC-ARQ-PE-007-R01.pdf", "DSC-ARQ-PE-008-R00.pdf"]},

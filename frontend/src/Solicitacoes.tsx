@@ -1,7 +1,9 @@
-/** Solicitação de revisão: a obra (ou o coordenador) pede, o projeto atende.
+/** Solicitação de revisão: a obra pede, o coordenador autoriza, o projeto atende.
  *
- * O pedido é sobre o projeto liberado e fecha sozinho quando a revisão nova é
- * liberada para obra. A descrição é obrigatória; fotos e PDFs marcados, não.
+ * O pedido é sobre o projeto liberado. O coordenador autoriza ou recusa (com
+ * motivo) — e também autoriza direto, sem pedido. Só com revisão autorizada o
+ * documento aceita revisão nova; o pedido fecha quando quem libera a revisão
+ * nova o marca como atendido. A descrição é obrigatória; fotos e PDFs, não.
  */
 
 import { useRef, useState, type FormEvent } from "react";
@@ -9,16 +11,35 @@ import { api, ErroApi, formatarData, formatarTamanho, type Anexo, type Solicitac
 import { Aviso } from "./componentes";
 
 const DESCRICAO_MIN = 10;
+const MOTIVO_MIN = 10;
 const ANEXO_MAX_MB = 25;
 const ACEITOS = ".pdf,.jpg,.jpeg,.png,.webp";
 
-/** A marca ao lado do status: o projeto continua liberado, mas há pedido aberto. */
-export function MarcaSolicitada({ quantidade }: { quantidade: number }) {
-  if (quantidade <= 0) return null;
+/** As marcas ao lado do status: o projeto continua liberado, mas há pedido
+ *  esperando o coordenador, ou revisão já autorizada a caminho. */
+export function MarcaSolicitada({
+  quantidade,
+  autorizadas = 0,
+}: {
+  quantidade: number;
+  autorizadas?: number;
+}) {
   return (
-    <span className="marca-solicitada" title="Há pedido de revisão em aberto">
-      Revisão solicitada{quantidade > 1 ? ` (${quantidade})` : ""}
-    </span>
+    <>
+      {quantidade > 0 && (
+        <span className="marca-solicitada" title="Pedido de revisão esperando o coordenador">
+          Revisão solicitada{quantidade > 1 ? ` (${quantidade})` : ""}
+        </span>
+      )}
+      {autorizadas > 0 && (
+        <span
+          className="marca-solicitada autorizada"
+          title="Revisão autorizada: a nova vai substituir esta"
+        >
+          Revisão autorizada{autorizadas > 1 ? ` (${autorizadas})` : ""}
+        </span>
+      )}
+    </>
   );
 }
 
@@ -62,16 +83,27 @@ async function subirAnexo(solicitacaoId: number, arquivo: File) {
   await api.post(`/anexos/${inicio.anexo_id}/confirmar`);
 }
 
+// Ordem na tela: o que pede decisão primeiro, o encerrado por último.
+const ORDEM: Record<Solicitacao["status"], number> = {
+  aberta: 0,
+  autorizada: 1,
+  atendida: 2,
+  recusada: 3,
+};
+
 export function SolicitacoesDoDocumento({
   documentoId,
   solicitacoes,
   podeSolicitar,
+  podeAutorizar,
   temLiberada,
   aoMudar,
 }: {
   documentoId: number;
   solicitacoes: Solicitacao[];
   podeSolicitar: boolean;
+  /** Coordenador: autoriza, recusa, e o pedido dele já nasce autorizado. */
+  podeAutorizar: boolean;
   temLiberada: boolean;
   aoMudar: () => Promise<void>;
 }) {
@@ -83,9 +115,11 @@ export function SolicitacoesDoDocumento({
   const [ok, setOk] = useState<string | null>(null);
   const entrada = useRef<HTMLInputElement>(null);
 
-  const abertas = solicitacoes.filter((s) => s.status === "aberta");
-  const atendidas = solicitacoes.filter((s) => s.status === "atendida");
-  if (solicitacoes.length === 0 && !(podeSolicitar && temLiberada)) return null;
+  const ordenadas = [...solicitacoes].sort((a, b) => ORDEM[a.status] - ORDEM[b.status]);
+  const pode = (podeSolicitar || podeAutorizar) && temLiberada;
+  if (solicitacoes.length === 0 && !pode) return null;
+
+  const verbo = podeAutorizar ? "Autorizar revisão" : "Solicitar revisão";
 
   function escolher(arquivos: File[]) {
     const grandes = arquivos.filter((a) => a.size > ANEXO_MAX_MB * 1024 * 1024);
@@ -120,9 +154,11 @@ export function SolicitacoesDoDocumento({
       setAbrindo(false);
       await aoMudar();
       if (falharam.length) {
-        setErro(`Solicitação registrada, mas não foi possível anexar: ${falharam.join(", ")}.`);
+        setErro(`Registrado, mas não foi possível anexar: ${falharam.join(", ")}.`);
+      } else if (criada.status === "autorizada") {
+        setOk("Revisão autorizada. O projetista da última revisão foi avisado.");
       } else {
-        setOk("Solicitação registrada. A equipe de projetos vai vê-la ao lado do status.");
+        setOk("Solicitação registrada. O coordenador vai autorizar ou recusar.");
       }
     } catch (ex) {
       setErro(ex instanceof ErroApi ? ex.message : "Não foi possível registrar a solicitação.");
@@ -135,9 +171,9 @@ export function SolicitacoesDoDocumento({
     <div className="folha">
       <div className="folha-titulo">
         <strong>Solicitações de revisão</strong>
-        {podeSolicitar && temLiberada && !abrindo && (
+        {pode && !abrindo && (
           <button className="botao pequeno" onClick={() => setAbrindo(true)}>
-            Solicitar revisão
+            {verbo}
           </button>
         )}
       </div>
@@ -160,6 +196,12 @@ export function SolicitacoesDoDocumento({
                 required
               />
             </label>
+            {podeAutorizar && (
+              <p className="silencioso" style={{ margin: "6px 0 0", fontSize: 12 }}>
+                Como coordenador, a revisão já sai autorizada e o projetista da última revisão
+                é avisado.
+              </p>
+            )}
 
             <div className="linha" style={{ marginTop: 10 }}>
               <button
@@ -210,7 +252,7 @@ export function SolicitacoesDoDocumento({
                 className="botao"
                 disabled={enviando || descricao.trim().length < DESCRICAO_MIN}
               >
-                {enviando ? "Enviando…" : "Enviar solicitação"}
+                {enviando ? "Enviando…" : podeAutorizar ? "Autorizar revisão" : "Enviar solicitação"}
               </button>
               <button
                 type="button"
@@ -233,16 +275,22 @@ export function SolicitacoesDoDocumento({
           </form>
         )}
 
-        {abertas.map((s) => (
-          <ItemSolicitacao key={s.id} solicitacao={s} aoErro={setErro} />
-        ))}
-        {atendidas.map((s) => (
-          <ItemSolicitacao key={s.id} solicitacao={s} aoErro={setErro} />
+        {ordenadas.map((s) => (
+          <ItemSolicitacao
+            key={s.id}
+            solicitacao={s}
+            podeDecidir={podeAutorizar}
+            aoErro={setErro}
+            aoOk={setOk}
+            aoMudar={aoMudar}
+          />
         ))}
 
         {solicitacoes.length === 0 && !abrindo && (
           <p className="silencioso" style={{ margin: 0, fontSize: 13 }}>
-            Nenhuma solicitação. Se algo do projeto liberado precisa mudar, peça a revisão aqui.
+            {podeAutorizar
+              ? "Nenhuma solicitação. Para abrir uma revisão nova deste documento, autorize aqui."
+              : "Nenhuma solicitação. Se algo do projeto liberado precisa mudar, peça a revisão aqui."}
           </p>
         )}
       </div>
@@ -250,29 +298,84 @@ export function SolicitacoesDoDocumento({
   );
 }
 
+const ROTULO: Record<Solicitacao["status"], string> = {
+  aberta: "Aguardando autorização",
+  autorizada: "Autorizada",
+  atendida: "Atendida",
+  recusada: "Recusada",
+};
+
+const ESTILO: Record<Solicitacao["status"], string> = {
+  aberta: "estado-em_revisao",
+  autorizada: "estado-autorizada",
+  atendida: "estado-liberado_para_obra",
+  recusada: "estado-cancelado",
+};
+
 function ItemSolicitacao({
   solicitacao: s,
+  podeDecidir,
   aoErro,
+  aoOk,
+  aoMudar,
 }: {
   solicitacao: Solicitacao;
-  aoErro: (m: string) => void;
+  podeDecidir: boolean;
+  aoErro: (m: string | null) => void;
+  aoOk: (m: string | null) => void;
+  aoMudar: () => Promise<void>;
 }) {
-  const aberta = s.status === "aberta";
+  const [recusando, setRecusando] = useState(false);
+  const [motivo, setMotivo] = useState("");
+  const [ocupado, setOcupado] = useState(false);
+
+  async function decidir(acao: "autorizar" | "recusar") {
+    aoErro(null);
+    aoOk(null);
+    setOcupado(true);
+    try {
+      await api.post(
+        `/solicitacoes/${s.id}/${acao}`,
+        acao === "recusar" ? { motivo: motivo.trim() } : undefined,
+      );
+      setRecusando(false);
+      setMotivo("");
+      await aoMudar();
+      aoOk(
+        acao === "autorizar"
+          ? "Revisão autorizada. O projetista da última revisão foi avisado."
+          : "Solicitação recusada. Quem pediu foi avisado, com o motivo.",
+      );
+    } catch (ex) {
+      aoErro(ex instanceof ErroApi ? ex.message : "Não foi possível registrar a decisão.");
+    } finally {
+      setOcupado(false);
+    }
+  }
+
+  const encerrada = s.status === "atendida" || s.status === "recusada";
   return (
-    <div className={`solicitacao ${aberta ? "aberta" : "atendida"}`}>
+    <div className={`solicitacao ${encerrada ? "atendida" : "aberta"}`}>
       <div className="linha" style={{ gap: 8 }}>
-        <span className={`estado ${aberta ? "estado-em_revisao" : "estado-liberado_para_obra"}`}>
-          {aberta ? "Aberta" : "Atendida"}
-        </span>
+        <span className={`estado ${ESTILO[s.status]}`}>{ROTULO[s.status]}</span>
         <span className="silencioso" style={{ fontSize: 12 }}>
           {s.criada_por ? `${s.criada_por.nome} · ` : ""}
           {formatarData(s.criada_em)}
           {s.revisao_numero ? ` · sobre a R${s.revisao_numero}` : ""}
-          {!aberta &&
+          {(s.status === "autorizada" || s.status === "recusada") &&
+            s.decidida_por &&
+            s.decidida_por.id !== s.criada_por?.id &&
+            ` · ${s.status === "autorizada" ? "autorizada" : "recusada"} por ${s.decidida_por.nome} em ${formatarData(s.decidida_em)}`}
+          {s.status === "atendida" &&
             ` · atendida${s.atendida_por_numero ? ` pela R${s.atendida_por_numero}` : ""} em ${formatarData(s.atendida_em)}`}
         </span>
       </div>
       <p className="descricao-solicitacao">{s.descricao}</p>
+      {s.status === "recusada" && s.motivo_recusa && (
+        <p className="descricao-solicitacao motivo-recusa">
+          <strong>Motivo da recusa:</strong> {s.motivo_recusa}
+        </p>
+      )}
       {s.anexos.length > 0 && (
         <div className="linha" style={{ gap: 6 }}>
           {s.anexos.map((a) => (
@@ -285,6 +388,60 @@ function ItemSolicitacao({
               {a.content_type === "application/pdf" ? "PDF" : "Foto"} · {a.nome_original}
             </button>
           ))}
+        </div>
+      )}
+
+      {podeDecidir && s.status === "aberta" && !recusando && (
+        <div className="linha" style={{ gap: 8, marginTop: 10 }}>
+          <button className="botao pequeno" onClick={() => decidir("autorizar")} disabled={ocupado}>
+            {ocupado ? "Autorizando…" : "Autorizar revisão"}
+          </button>
+          <button
+            className="botao secundario pequeno"
+            onClick={() => setRecusando(true)}
+            disabled={ocupado}
+          >
+            Recusar
+          </button>
+        </div>
+      )}
+      {recusando && (
+        <div style={{ marginTop: 10 }}>
+          <label className="campo">
+            <span className="rotulo">Por que a revisão não será feita</span>
+            <textarea
+              value={motivo}
+              onChange={(e) => setMotivo(e.target.value)}
+              placeholder="Ex.: A posição segue o projeto aprovado na prefeitura."
+              maxLength={4000}
+              rows={3}
+              autoFocus
+            />
+          </label>
+          <div className="linha" style={{ gap: 8, marginTop: 8 }}>
+            <button
+              className="botao pequeno"
+              onClick={() => decidir("recusar")}
+              disabled={ocupado || motivo.trim().length < MOTIVO_MIN}
+            >
+              {ocupado ? "Recusando…" : "Recusar solicitação"}
+            </button>
+            <button
+              className="botao secundario pequeno"
+              onClick={() => {
+                setRecusando(false);
+                setMotivo("");
+              }}
+              disabled={ocupado}
+            >
+              Voltar
+            </button>
+            {motivo.trim().length > 0 && motivo.trim().length < MOTIVO_MIN && (
+              <span className="silencioso" style={{ fontSize: 12 }}>
+                Explique com pelo menos {MOTIVO_MIN} caracteres — é o que quem pediu vai ler.
+              </span>
+            )}
+          </div>
         </div>
       )}
     </div>

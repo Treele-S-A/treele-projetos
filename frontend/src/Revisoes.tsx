@@ -116,7 +116,7 @@ export function HistoricoRevisoes({
           aoMudar={aoMudar}
           aoBaixar={aoBaixar}
           aoExcluirDocumento={aoExcluirDocumento}
-          pedidosAbertos={solicitacoes.filter((s) => s.status === "aberta")}
+          pedidosAutorizados={solicitacoes.filter((s) => s.status === "autorizada")}
         />
       ))}
     </>
@@ -131,11 +131,11 @@ function LinhaRevisao({
   aoMudar,
   aoBaixar,
   aoExcluirDocumento,
-  pedidosAbertos,
+  pedidosAutorizados,
 }: {
   revisao: Revisao;
   unica: boolean;
-  pedidosAbertos: Solicitacao[];
+  pedidosAutorizados: Solicitacao[];
   podePublicar: boolean;
   podeCancelar: boolean;
   aoMudar: () => Promise<void>;
@@ -144,7 +144,9 @@ function LinhaRevisao({
 }) {
   // Pedidos que esta revisão atende — marcados por quem libera. Fecham na
   // liberação; os não marcados seguem abertos.
-  const [atendidos, setAtendidos] = useState<number[]>([]);
+  // Vêm marcados: a revisão nova existe por causa deles. Quem libera desmarca
+  // o que ela não resolveu.
+  const [atendidos, setAtendidos] = useState<number[]>(() => pedidosAutorizados.map((p) => p.id));
   // Excluir é definitivo e vale para qualquer status: só administrador.
   const admin = useSessao().usuario?.admin ?? false;
   const [verificacao, setVerificacao] = useState<Verificacao | null>(null);
@@ -351,10 +353,10 @@ Isto não pode ser desfeito.`)) {
 
           {podePublicar ? (
             <>
-              {pedidosAbertos.length > 0 && (
+              {pedidosAutorizados.length > 0 && (
                 <fieldset className="pedidos-atendidos">
                   <legend className="rotulo">Solicitações de revisão atendidas</legend>
-                  {pedidosAbertos.map((p) => (
+                  {pedidosAutorizados.map((p) => (
                     <label key={p.id} className="pedido-atendido">
                       <input
                         type="checkbox"
@@ -370,7 +372,7 @@ Isto não pode ser desfeito.`)) {
                     </label>
                   ))}
                   <span className="silencioso" style={{ fontSize: 12 }}>
-                    As marcadas fecham ao liberar a R{revisao.numero}. As outras seguem abertas.
+                    As marcadas fecham ao liberar a R{revisao.numero}. As desmarcadas continuam autorizadas.
                   </span>
                 </fieldset>
               )}

@@ -282,7 +282,10 @@ export default function Acervo() {
                       <td>
                         <span className="linha" style={{ gap: 6, flexWrap: "nowrap" }}>
                           {d.revisao_atual && <Estado status={d.revisao_atual.status} />}
-                          <MarcaSolicitada quantidade={d.solicitacoes_abertas} />
+                          <MarcaSolicitada
+                            quantidade={d.solicitacoes_abertas}
+                            autorizadas={d.solicitacoes_autorizadas}
+                          />
                         </span>
                       </td>
                       <td className="mono silencioso" style={{ fontSize: 12 }}>

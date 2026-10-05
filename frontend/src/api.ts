@@ -197,7 +197,12 @@ export interface Anexo {
 /** Aviso no sininho: pedido de revisão ou revisão liberada para obra. */
 export interface Notificacao {
   id: number;
-  tipo: "solicitacao_revisao" | "revisao_liberada";
+  tipo:
+    | "solicitacao_revisao"
+    | "revisao_autorizada"
+    | "solicitacao_recusada"
+    | "revisao_enviada"
+    | "revisao_liberada";
   titulo: string;
   texto: string;
   criada_em: string;
@@ -209,12 +214,16 @@ export interface Notificacao {
 export interface Solicitacao {
   id: number;
   descricao: string;
-  status: "aberta" | "atendida";
+  /** aberta = esperando o coordenador; autorizada = libera a revisão nova. */
+  status: "aberta" | "autorizada" | "atendida" | "recusada";
   criada_em: string;
   criada_por: Usuario | null;
   revisao_numero: string | null;
   atendida_em: string | null;
   atendida_por_numero: string | null;
+  decidida_em: string | null;
+  decidida_por: Usuario | null;
+  motivo_recusa: string | null;
   anexos: Anexo[];
 }
 
@@ -228,8 +237,10 @@ export interface Documento {
   criado_em: string;
   total_revisoes: number;
   revisao_atual: RevisaoResumo | null;
-  /** Pedidos de revisão ainda abertos — a marca ao lado do status. */
+  /** Pedidos esperando o coordenador, e revisões já autorizadas — as marcas
+   *  ao lado do status. */
   solicitacoes_abertas: number;
+  solicitacoes_autorizadas: number;
 }
 
 export interface DocumentoDetalhe extends Documento {

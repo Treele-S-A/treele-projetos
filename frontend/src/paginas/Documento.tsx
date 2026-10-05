@@ -32,6 +32,7 @@ export default function Documento() {
   // é aqui que ele é preenchido — por quem tem permissão de enviar.
   const podeEditarTitulo = obra?.permissoes.includes("enviar") ?? false;
   const podeSolicitar = obra?.permissoes.includes("solicitar_revisao") ?? false;
+  const podeAutorizar = obra?.permissoes.includes("autorizar_revisao") ?? false;
 
   const carregar = useCallback(async () => {
     setCarregando(true);
@@ -46,6 +47,8 @@ export default function Documento() {
   }, [documentoId]);
 
   useEffect(() => {
+    // Outro documento: limpa o anterior, para não mostrá-lo enquanto carrega.
+    setDoc(null);
     carregar();
   }, [carregar]);
 
@@ -69,7 +72,9 @@ export default function Documento() {
     baixarArquivo(arquivo, (m) => setErro(new ErroApi(0, m)), setAviso);
   }
 
-  if (carregando) return <Carregando texto="Abrindo documento" />;
+  // Só na primeira abertura: recarregar depois de uma ação (autorizar, liberar)
+  // não pode desmontar a tela — sumiria o aviso de confirmação e a rolagem.
+  if (carregando && !doc) return <Carregando texto="Abrindo documento" />;
   if (!doc) {
     return (
       <Aviso tom="erro" titulo={erro?.message ?? "Documento não encontrado."} itens={erro?.erros} />
@@ -137,7 +142,10 @@ export default function Documento() {
             </div>
           )}
         </div>
-        <MarcaSolicitada quantidade={doc.solicitacoes_abertas} />
+        <MarcaSolicitada
+          quantidade={doc.solicitacoes_abertas}
+          autorizadas={doc.solicitacoes_autorizadas}
+        />
         {atual && (
           <Selo
             status={atual.status}
@@ -177,6 +185,7 @@ export default function Documento() {
         documentoId={doc.id}
         solicitacoes={doc.solicitacoes}
         podeSolicitar={podeSolicitar}
+        podeAutorizar={podeAutorizar}
         temLiberada={doc.revisoes.some((r) => r.status === "liberado_para_obra")}
         aoMudar={carregar}
       />

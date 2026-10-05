@@ -917,3 +917,24 @@ body {
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
+
+/* Revisão autorizada: a nova vai substituir esta. */
+.marca-solicitada.autorizada {
+  color: var(--petroleo);
+  background: rgba(47, 76, 82, 0.1);
+}
+
+.marca-solicitada.autorizada::before {
+  content: "✓";
+  background: var(--petroleo);
+}
+
+.estado.estado-autorizada {
+  color: var(--petroleo);
+  background: rgba(47, 76, 82, 0.1);
+}
+
+.motivo-recusa {
+  font-size: 13px;
+  opacity: 0.85;
+}

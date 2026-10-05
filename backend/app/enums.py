@@ -48,21 +48,33 @@ class StatusArquivo(str, enum.Enum):
 
 
 class StatusSolicitacao(str, enum.Enum):
-    """A solicitação de revisão fica aberta até sair a revisão nova liberada."""
+    """Ciclo do pedido de revisão (TREELE, 05/10/2026).
+
+    aberta → autorizada → atendida, ou aberta → recusada. O pedido da obra
+    nasce aberto e espera o coordenador; o do coordenador já nasce autorizado.
+    Só com um pedido autorizado o documento aceita revisão nova.
+    """
 
     aberta = "aberta"
+    autorizada = "autorizada"
     atendida = "atendida"
+    recusada = "recusada"
 
 
 class TipoNotificacao(str, enum.Enum):
     """O que gerou o aviso (TREELE, 02/10/2026)."""
 
-    # Pedido de revisão novo: coordenadores da obra e o projetista que subiu a
-    # última revisão do documento.
+    # Pedido de revisão da obra: os coordenadores, que autorizam ou recusam.
     solicitacao_revisao = "solicitacao_revisao"
     # Revisão liberada para obra: a equipe com papel "obra". Uma por revisão,
     # nunca por arquivo.
     revisao_liberada = "revisao_liberada"
+    # Revisão nova subiu (primeiro arquivo dela): os coordenadores.
+    revisao_enviada = "revisao_enviada"
+    # Coordenador autorizou a revisão: o projetista que subiu a última.
+    revisao_autorizada = "revisao_autorizada"
+    # Coordenador recusou o pedido: quem pediu.
+    solicitacao_recusada = "solicitacao_recusada"
 
 
 class PapelObra(str, enum.Enum):
@@ -96,6 +108,9 @@ class PapelObra(str, enum.Enum):
 #   gerenciar ......... membros da obra e padrão de nomenclatura
 #   solicitar_revisao . pede alteração num projeto liberado, com descrição
 #                       obrigatória e anexos opcionais (TREELE, 02/10/2026)
+#   autorizar_revisao . autoriza ou recusa o pedido; autoriza também sem pedido
+#                       — sem autorização, o documento não aceita revisão nova
+#                       (TREELE, 05/10/2026)
 PERMISSOES: dict[PapelObra, set[str]] = {
     PapelObra.coordenador: {
         "ver_obsoletos",
@@ -105,6 +120,7 @@ PERMISSOES: dict[PapelObra, set[str]] = {
         "cancelar",
         "gerenciar",
         "solicitar_revisao",
+        "autorizar_revisao",
     },
     PapelObra.projetista: {"ver_obsoletos", "ver_em_revisao", "enviar"},
     # A obra vê o histórico — precisa dele para conferir o que executou semana

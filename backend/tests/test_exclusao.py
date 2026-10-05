@@ -43,7 +43,8 @@ def coordenador(cliente, admin, obra):
 
 def _enviar(cliente, admin, obra, prancha, rev, liberar=False):
     nome = f"{OBRA}-ARQ-EP-{prancha}-R{rev}.pdf"
-    r = enviar_arquivo(cliente, admin, obra["id"], nome, PDF)
+    r = enviar_arquivo(cliente, admin, obra["id"], nome, PDF,
+                       autorizar_com=admin if rev != "00" else None)
     assert r.status_code == 200, r.text
     corpo = r.json()
     if liberar:

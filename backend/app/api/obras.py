@@ -37,6 +37,7 @@ from ..schemas import (
     ValidarNomeSaida,
 )
 from ..services import auditoria
+from ..services import solicitacoes as servico_solicitacoes
 from ..services.nomenclatura import analisar, validar_definicao
 from ..services.equipe import garantir_admins_coordenadores
 from ..services.storage import armazenamento, chave_logo, detectar_imagem
@@ -504,11 +505,19 @@ def validar_nomes(
                     )
                 )
 
+        # Revisão nova num documento sem autorização: mostra antes de subir.
+        erros = list(r.erros)
+        if r.valido and documento is not None and revisao is None:
+            bloqueio = servico_solicitacoes.bloqueio_de_revisao_nova(documento, r.revisao_numero)
+            if bloqueio:
+                erros.append(bloqueio)
+        valido = r.valido and not erros
+
         resultados.append(
             NomeAnalisado(
                 nome_arquivo=nome,
-                valido=r.valido,
-                erros=r.erros,
+                valido=valido,
+                erros=erros,
                 codigo_documento=r.codigo_documento,
                 disciplina=r.disciplina_codigo,
                 fase=r.fase_codigo,
@@ -518,12 +527,12 @@ def validar_nomes(
                 documento_existe=documento is not None,
                 documento_titulo=documento.titulo if documento is not None else None,
                 precisa_titulo=bool(
-                    r.valido
+                    valido
                     and not (documento is not None and documento.titulo)
                     and not limpar_titulo(r.titulo)
                 ),
                 revisao_existe=revisao is not None,
-                precisa_descricao=bool(r.valido and revisao is None),
+                precisa_descricao=bool(valido and revisao is None),
                 revisao_status=revisao.status if revisao is not None else None,
             )
         )

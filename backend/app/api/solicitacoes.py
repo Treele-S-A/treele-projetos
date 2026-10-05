@@ -1,10 +1,12 @@
-"""Solicitação de revisão — pedido, anexos e abertura dos anexos.
+"""Solicitação de revisão — pedido, autorização, anexos e abertura dos anexos.
 
 Os anexos seguem o fluxo dos arquivos de projeto: a API cria a linha e
 devolve uma URL assinada, o navegador sobe direto para o armazenamento, e a
 API confere que chegou. Foto de celular passa fácil do limite de corpo de
 requisição da hospedagem; por isso nada de passar bytes pela API.
 """
+
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
@@ -19,6 +21,7 @@ from ..schemas import (
     AnexoOut,
     SolicitacaoCriar,
     SolicitacaoOut,
+    SolicitacaoRecusar,
 )
 from ..services import auditoria
 from ..services import notificacoes
@@ -46,7 +49,8 @@ def _documento(db: Session, usuario: Usuario, documento_id: int) -> tuple[Docume
 
 
 def _minha_solicitacao(db: Session, usuario: Usuario, solicitacao_id: int) -> SolicitacaoRevisao:
-    """Anexo só entra pela mão de quem fez o pedido, e com o pedido aberto."""
+    """Anexo só entra pela mão de quem fez o pedido, e com o pedido valendo
+    (aberto ou autorizado — o do coordenador já nasce autorizado)."""
     solicitacao = db.get(SolicitacaoRevisao, solicitacao_id)
     if solicitacao is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Solicitação não encontrada.")
@@ -55,11 +59,31 @@ def _minha_solicitacao(db: Session, usuario: Usuario, solicitacao_id: int) -> So
         raise HTTPException(
             status.HTTP_403_FORBIDDEN, "Só quem fez a solicitação anexa arquivos a ela."
         )
-    if solicitacao.status != StatusSolicitacao.aberta:
+    if solicitacao.status not in servico.ACEITA_ANEXO:
         raise HTTPException(
-            status.HTTP_409_CONFLICT, "Esta solicitação já foi atendida e não aceita anexos."
+            status.HTTP_409_CONFLICT,
+            f"Esta solicitação já foi {solicitacao.status.value} e não aceita anexos.",
         )
     return solicitacao
+
+
+def _decidir(
+    db: Session, usuario: Usuario, solicitacao_id: int
+) -> tuple[SolicitacaoRevisao, ContextoObra]:
+    """Pedido aberto, nas mãos de quem pode autorizar."""
+    solicitacao = db.get(SolicitacaoRevisao, solicitacao_id)
+    if solicitacao is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Solicitação não encontrada.")
+    _, ctx = _documento(db, usuario, solicitacao.documento_id)
+    ctx.exigir(
+        "autorizar_revisao", "Somente o coordenador da obra autoriza ou recusa revisões."
+    )
+    if solicitacao.status != StatusSolicitacao.aberta:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            f"Esta solicitação já foi {solicitacao.status.value}. Recarregue a página.",
+        )
+    return solicitacao, ctx
 
 
 @router.post(
@@ -74,10 +98,13 @@ def solicitar(
     usuario: Usuario = Depends(usuario_atual),
     db: Session = Depends(get_db),
 ):
+    """Pedido da obra nasce aberto, à espera do coordenador. O do coordenador
+    já nasce autorizado: é a revisão que vem do escritório (05/10/2026)."""
     documento, ctx = _documento(db, usuario, documento_id)
     ctx.exigir(
         "solicitar_revisao", "Somente o coordenador ou a obra pedem revisão de projeto."
     )
+    autoriza = ctx.pode("autorizar_revisao")
 
     liberada = next(
         (r for r in documento.revisoes if r.status == StatusRevisao.liberado_para_obra), None
@@ -100,15 +127,83 @@ def solicitar(
         descricao=descricao,
         criada_por_id=usuario.id,
     )
+    if autoriza:
+        solicitacao.status = StatusSolicitacao.autorizada
+        solicitacao.decidida_em = datetime.now(timezone.utc)
+        solicitacao.decidida_por_id = usuario.id
     db.add(solicitacao)
     db.flush()
     auditoria.registrar(
-        db, acao="revisao_solicitada", entidade="solicitacao", entidade_id=solicitacao.id,
+        db, acao="revisao_autorizada" if autoriza else "revisao_solicitada",
+        entidade="solicitacao", entidade_id=solicitacao.id,
         usuario=usuario, obra_id=ctx.obra.id,
-        detalhes={"documento": documento.codigo, "revisao": liberada.numero},
+        detalhes={"documento": documento.codigo, "revisao": liberada.numero, "sem_pedido": autoriza},
         request=request,
     )
-    avisos = notificacoes.ao_solicitar(db, solicitacao, usuario)
+    avisos = (
+        notificacoes.ao_autorizar(db, solicitacao, usuario)
+        if autoriza
+        else notificacoes.ao_solicitar(db, solicitacao, usuario)
+    )
+    db.commit()
+    notificacoes.enviar_emails(db, avisos)
+    db.refresh(solicitacao)
+    return servico.saida(solicitacao)
+
+
+@router.post("/solicitacoes/{solicitacao_id}/autorizar", response_model=SolicitacaoOut)
+def autorizar(
+    solicitacao_id: int,
+    request: Request,
+    usuario: Usuario = Depends(usuario_atual),
+    db: Session = Depends(get_db),
+):
+    """O coordenador autoriza o pedido da obra: o documento passa a aceitar
+    revisão nova, e o projetista da última revisão é avisado."""
+    solicitacao, ctx = _decidir(db, usuario, solicitacao_id)
+    solicitacao.status = StatusSolicitacao.autorizada
+    solicitacao.decidida_em = datetime.now(timezone.utc)
+    solicitacao.decidida_por_id = usuario.id
+    auditoria.registrar(
+        db, acao="revisao_autorizada", entidade="solicitacao", entidade_id=solicitacao.id,
+        usuario=usuario, obra_id=ctx.obra.id,
+        detalhes={"documento": solicitacao.documento.codigo, "sem_pedido": False},
+        request=request,
+    )
+    db.flush()
+    avisos = notificacoes.ao_autorizar(db, solicitacao, usuario)
+    db.commit()
+    notificacoes.enviar_emails(db, avisos)
+    db.refresh(solicitacao)
+    return servico.saida(solicitacao)
+
+
+@router.post("/solicitacoes/{solicitacao_id}/recusar", response_model=SolicitacaoOut)
+def recusar(
+    solicitacao_id: int,
+    dados: SolicitacaoRecusar,
+    request: Request,
+    usuario: Usuario = Depends(usuario_atual),
+    db: Session = Depends(get_db),
+):
+    """O coordenador recusa o pedido, dizendo por quê. Quem pediu é avisado."""
+    solicitacao, ctx = _decidir(db, usuario, solicitacao_id)
+    motivo = limpar_descricao(dados.motivo)
+    problema = servico.problema_no_motivo(motivo)
+    if problema:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, problema)
+    solicitacao.status = StatusSolicitacao.recusada
+    solicitacao.decidida_em = datetime.now(timezone.utc)
+    solicitacao.decidida_por_id = usuario.id
+    solicitacao.motivo_recusa = motivo
+    auditoria.registrar(
+        db, acao="revisao_recusada", entidade="solicitacao", entidade_id=solicitacao.id,
+        usuario=usuario, obra_id=ctx.obra.id,
+        detalhes={"documento": solicitacao.documento.codigo},
+        request=request,
+    )
+    db.flush()
+    avisos = notificacoes.ao_recusar(db, solicitacao, usuario)
     db.commit()
     notificacoes.enviar_emails(db, avisos)
     db.refresh(solicitacao)

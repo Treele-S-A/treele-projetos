@@ -128,7 +128,8 @@ def test_rvt_exige_ifc(cliente, admin, obra):
 
 
 def test_nova_revisao_torna_a_anterior_obsoleta(cliente, admin, obra):
-    enviar_arquivo(cliente, admin, obra["id"], "TRL001-EST-PE-001-R01.dwg", DWG)
+    enviar_arquivo(cliente, admin, obra["id"], "TRL001-EST-PE-001-R01.dwg", DWG,
+                   autorizar_com=admin)
     r = enviar_arquivo(cliente, admin, obra["id"], "TRL001-EST-PE-001-R01.pdf", PDF)
     revisao_id = r.json()["revisao"]["id"]
 
@@ -204,10 +205,31 @@ def test_acrescimo_apos_liberacao_fica_registrado(cliente, admin, obra):
     assert marcados[0]["detalhes"]["arquivo"].endswith(".dwg")
 
 
+def test_nao_abre_revisao_nova_com_a_anterior_em_revisao(cliente, admin, obra):
+    """Revisão nova só depois da anterior liberada e autorizada (05/10/2026)."""
+    enviar_arquivo(cliente, admin, obra["id"], "TRL001-HID-PE-006-R00.pdf", PDF)
+    r = enviar_arquivo(cliente, admin, obra["id"], "TRL001-HID-PE-006-R01.pdf", PDF)
+    assert r.status_code == 409
+    assert "ainda está em revisão" in r.json()["detail"]["erros"][0]
+
+
 def test_nao_libera_revisao_antiga_depois_da_nova(cliente, admin, obra):
-    """Publicar a R00 depois da R01 deixaria a obra com projeto velho."""
-    enviar_arquivo(cliente, admin, obra["id"], "TRL001-HID-PE-005-R00.pdf", PDF)
-    r1 = enviar_arquivo(cliente, admin, obra["id"], "TRL001-HID-PE-005-R01.pdf", PDF)
+    """Publicar a R00 depois da R01 deixaria a obra com projeto velho.
+
+    Com a autorização de revisão, a R01 nem sobe com a R00 em revisão; mas o
+    acervo de antes da regra pode ter esse caso — montado aqui pelo banco.
+    """
+    from app.db import SessionLocal
+    from app.enums import StatusRevisao
+    from app.models import Revisao
+
+    r0 = enviar_arquivo(cliente, admin, obra["id"], "TRL001-HID-PE-005-R00.pdf", PDF)
+    cliente.post(f"/revisoes/{r0.json()['revisao']['id']}/publicar", json={}, headers=admin)
+    r1 = enviar_arquivo(cliente, admin, obra["id"], "TRL001-HID-PE-005-R01.pdf", PDF,
+                        autorizar_com=admin)
+    with SessionLocal() as db:
+        db.get(Revisao, r0.json()["revisao"]["id"]).status = StatusRevisao.em_revisao
+        db.commit()
     documento = _documento(cliente, admin, obra["id"], "TRL001-HID-PE-005")
     detalhe = cliente.get(f"/documentos/{documento['id']}", headers=admin).json()
     por_numero = {r["numero"]: r for r in detalhe["revisoes"]}

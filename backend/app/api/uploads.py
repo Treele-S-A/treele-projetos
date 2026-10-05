@@ -26,6 +26,7 @@ from ..enums import StatusArquivo, StatusRevisao, TipoArquivo
 from ..models import Disciplina, Documento, Fase, Revisao, Arquivo
 from ..schemas import UploadIniciarEntrada, UploadIniciarSaida
 from ..services import auditoria
+from ..services import solicitacoes as servico_solicitacoes
 from ..services.nomenclatura import analisar
 from ..services.storage import armazenamento, montar_chave
 from ..services.titulos import (
@@ -140,6 +141,21 @@ def iniciar(
         if documento is not None
         else None
     )
+    # --- autorização ---------------------------------------------------------
+    # Documento já liberado só ganha revisão nova com revisão autorizada pelo
+    # coordenador (TREELE, 05/10/2026). Conferido antes de tudo que segue: é o
+    # motivo mais fundamental para recusar.
+    if revisao_existente is None and documento is not None:
+        bloqueio = servico_solicitacoes.bloqueio_de_revisao_nova(documento, r.revisao_numero)
+        if bloqueio:
+            raise HTTPException(
+                status.HTTP_409_CONFLICT,
+                {
+                    "mensagem": f"{r.codigo_documento} R{r.revisao_numero} precisa de autorização.",
+                    "erros": [bloqueio],
+                },
+            )
+
     descricao = limpar_descricao(dados.descricao)
     if revisao_existente is None:
         problema = problema_na_descricao(descricao)

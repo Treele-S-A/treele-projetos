@@ -272,6 +272,10 @@ class SolicitacaoOut(BaseModel):
     revisao_numero: str | None = None
     atendida_em: datetime | None = None
     atendida_por_numero: str | None = None
+    # Autorização ou recusa do coordenador.
+    decidida_em: datetime | None = None
+    decidida_por: UsuarioOut | None = None
+    motivo_recusa: str | None = None
     anexos: list[AnexoOut] = []
 
 
@@ -301,6 +305,10 @@ class SolicitacaoCriar(BaseModel):
     descricao: str
 
 
+class SolicitacaoRecusar(BaseModel):
+    motivo: str
+
+
 class AnexoIniciar(BaseModel):
     nome_arquivo: str = Field(min_length=1, max_length=300)
     tamanho: int = Field(ge=1)
@@ -323,8 +331,10 @@ class DocumentoOut(Modelo):
     criado_em: datetime
     total_revisoes: int = 0
     revisao_atual: RevisaoResumo | None = None
-    # Pedidos de alteração ainda não atendidos — a marca ao lado do status.
+    # Pedidos de alteração esperando o coordenador, e os já autorizados — as
+    # marcas ao lado do status.
     solicitacoes_abertas: int = 0
+    solicitacoes_autorizadas: int = 0
 
 
 class DocumentoDetalhe(DocumentoOut):

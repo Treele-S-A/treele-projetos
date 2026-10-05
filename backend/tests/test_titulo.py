@@ -9,7 +9,7 @@ import pytest
 from app.db import SessionLocal
 from app.models import Documento
 
-from .conftest import SEM_TITULO, enviar_arquivo
+from .conftest import SEM_TITULO, autorizar, enviar_arquivo
 
 PDF = b"%PDF-1.7\n" + b"0" * 200
 DWG = b"AC1032" + b"\x00" * 200
@@ -73,13 +73,15 @@ def test_documento_novo_com_titulo_nasce_com_ele(cliente, admin, obra):
 
 
 def test_revisoes_seguintes_aproveitam_o_titulo(cliente, admin, obra):
-    enviar_arquivo(
+    r = enviar_arquivo(
         cliente, admin, obra["id"], "TIT001-ARQ-PE-004-R00.pdf", PDF, titulo="Cortes AA e BB"
     )
     # Companheiro da mesma revisão e revisão nova: nenhum pede título.
     assert enviar_arquivo(
         cliente, admin, obra["id"], "TIT001-ARQ-PE-004-R00.dwg", DWG, titulo=SEM_TITULO
     ).status_code == 200
+    cliente.post(f"/revisoes/{r.json()['revisao']['id']}/publicar", json={}, headers=admin)
+    autorizar(cliente, admin, obra["id"], "TIT001-ARQ-PE-004")
     assert enviar_arquivo(
         cliente, admin, obra["id"], "TIT001-ARQ-PE-004-R01.pdf", PDF, titulo=SEM_TITULO
     ).status_code == 200
@@ -89,19 +91,23 @@ def test_revisoes_seguintes_aproveitam_o_titulo(cliente, admin, obra):
 def test_titulo_diferente_numa_revisao_seguinte_e_ignorado(cliente, admin, obra):
     """Título se troca na tela do documento, de propósito — não por acidente,
     no meio de um envio."""
-    enviar_arquivo(
+    r = enviar_arquivo(
         cliente, admin, obra["id"], "TIT001-ARQ-PE-005-R00.pdf", PDF, titulo="Fachada Norte"
     )
-    enviar_arquivo(
-        cliente, admin, obra["id"], "TIT001-ARQ-PE-005-R01.pdf", PDF, titulo="Outra coisa"
-    )
+    cliente.post(f"/revisoes/{r.json()['revisao']['id']}/publicar", json={}, headers=admin)
+    assert enviar_arquivo(
+        cliente, admin, obra["id"], "TIT001-ARQ-PE-005-R01.pdf", PDF, titulo="Outra coisa",
+        autorizar_com=admin,
+    ).status_code == 200
     assert _documento(cliente, admin, obra["id"], "TIT001-ARQ-PE-005")["titulo"] == "Fachada Norte"
 
 
 def test_documento_antigo_sem_titulo_pede_um_no_proximo_envio(cliente, admin, obra):
-    enviar_arquivo(
+    r = enviar_arquivo(
         cliente, admin, obra["id"], "TIT001-ARQ-PE-006-R00.pdf", PDF, titulo="Provisório"
     )
+    cliente.post(f"/revisoes/{r.json()['revisao']['id']}/publicar", json={}, headers=admin)
+    autorizar(cliente, admin, obra["id"], "TIT001-ARQ-PE-006")
     # Simula um documento de antes da regra, que ficou sem título.
     with SessionLocal() as db:
         doc = db.query(Documento).filter_by(codigo="TIT001-ARQ-PE-006").one()

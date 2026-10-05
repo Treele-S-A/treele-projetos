@@ -4,7 +4,7 @@ from urllib.parse import urlsplit
 
 import pytest
 
-from .conftest import autenticar, enviar_arquivo
+from .conftest import autenticar, autorizar, enviar_arquivo
 
 PDF = b"%PDF-1.7\n" + b"0" * 200
 DWG = b"AC1032" + b"\x00" * 200
@@ -91,6 +91,7 @@ def test_visualizar_segue_as_regras_do_download(cliente, admin, obra, da_obra):
     )
 
     antigo = _enviar(cliente, admin, obra, "VIS-ARQ-PE-006-R00.pdf", PDF, liberar=True)
+    autorizar(cliente, admin, obra["id"], "VIS-ARQ-PE-006")
     _enviar(cliente, admin, obra, "VIS-ARQ-PE-006-R01.pdf", PDF, liberar=True)
     r = cliente.get(f"/arquivos/{antigo['id']}/visualizar", headers=da_obra)
     assert r.status_code == 200, r.text

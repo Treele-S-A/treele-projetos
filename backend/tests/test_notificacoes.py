@@ -69,7 +69,9 @@ def _nao_lidas(cliente, cab):
 
 
 def _liberar(cliente, admin, obra, envia, prancha, rev="00", extras=()):
-    r = enviar_arquivo(cliente, envia, obra["id"], f"NTF-ARQ-PE-{prancha}-R{rev}.pdf", PDF)
+    autorizar_com = admin if rev != "00" else None
+    r = enviar_arquivo(cliente, envia, obra["id"], f"NTF-ARQ-PE-{prancha}-R{rev}.pdf", PDF,
+                       autorizar_com=autorizar_com)
     assert r.status_code == 200, r.text
     for nome, conteudo in extras:
         e = enviar_arquivo(cliente, envia, obra["id"], f"NTF-ARQ-PE-{prancha}-R{rev}.{nome}", conteudo)
@@ -81,49 +83,144 @@ def _liberar(cliente, admin, obra, envia, prancha, rev="00", extras=()):
     return doc.json()["itens"][0]["id"]
 
 
-def test_pedido_avisa_coordenadores_e_quem_subiu_a_ultima(cliente, admin, obra, p):
+def _pedir(cliente, cab, doc, descricao=PEDIDO):
+    r = cliente.post(f"/documentos/{doc}/solicitacoes", json={"descricao": descricao}, headers=cab)
+    assert r.status_code == 201, r.text
+    return r.json()
+
+
+def _tipos(cliente, cab):
+    return [a["tipo"] for a in _avisos(cliente, cab) if not a["lida"]]
+
+
+# ------------------------------------------------------------ pedido da obra
+
+
+def test_pedido_da_obra_avisa_so_os_coordenadores(cliente, admin, obra, p):
     doc = _liberar(cliente, admin, obra, p["autor"], "001")
     _limpar(cliente, admin, *p.values())
 
-    r = cliente.post(f"/documentos/{doc}/solicitacoes", json={"descricao": PEDIDO}, headers=p["campo"])
-    assert r.status_code == 201, r.text
+    _pedir(cliente, p["campo"], doc)
 
-    for quem in ("coord", "autor"):
-        avisos = _avisos(cliente, p[quem])
+    for cab in (p["coord"], admin):  # admin é coordenador de todas as obras
+        avisos = _avisos(cliente, cab)
         assert avisos[0]["tipo"] == "solicitacao_revisao"
         assert avisos[0]["documento_id"] == doc
         assert avisos[0]["obra_codigo"] == "NTF"
         assert "Campo Silva pediu revisão da R00" in avisos[0]["texto"]
         assert PEDIDO in avisos[0]["texto"]
-        assert _nao_lidas(cliente, p[quem]) == 1
-    # Administrador é coordenador de todas as obras: recebe também.
-    assert _nao_lidas(cliente, admin) == 1
-    # Projetista que não subiu a última revisão, quem pediu, outra pessoa da
-    # obra e quem é de fora: nada.
-    for quem in ("outro", "campo", "campo2", "fora"):
+        assert _nao_lidas(cliente, cab) == 1
+    # O projetista só fica sabendo quando o coordenador autorizar.
+    for quem in ("autor", "outro", "campo", "campo2", "fora"):
         assert _nao_lidas(cliente, p[quem]) == 0, quem
+
+
+def test_autorizar_avisa_o_projetista_da_ultima_revisao(cliente, admin, obra, p):
+    doc = _liberar(cliente, admin, obra, p["autor"], "002")
+    pedido = _pedir(cliente, p["campo"], doc)
+    _limpar(cliente, admin, *p.values())
+
+    r = cliente.post(f"/solicitacoes/{pedido['id']}/autorizar", headers=p["coord"])
+    assert r.status_code == 200, r.text
+    assert r.json()["status"] == "autorizada"
+    assert r.json()["decidida_por"]["nome"] == "Coord Silva"
+
+    aviso = _avisos(cliente, p["autor"])[0]
+    assert aviso["tipo"] == "revisao_autorizada"
+    assert aviso["titulo"] == "Revisão autorizada · NTF-ARQ-PE-002"
+    assert "Coord Silva autorizou a revisão da R00" in aviso["texto"]
+    assert "pedida por Campo Silva" in aviso["texto"]
+    assert PEDIDO in aviso["texto"]
+    for quem in ("outro", "campo", "campo2", "coord", "fora"):
+        assert _nao_lidas(cliente, p[quem]) == 0, quem
+    assert _nao_lidas(cliente, admin) == 0
+
+
+def test_coordenador_autoriza_direto_sem_pedido_da_obra(cliente, admin, obra, p):
+    doc = _liberar(cliente, admin, obra, p["autor"], "003")
+    _limpar(cliente, admin, *p.values())
+
+    pedido = _pedir(cliente, p["coord"], doc, "Compatibilizar com o projeto de ar-condicionado.")
+
+    assert pedido["status"] == "autorizada"
+    assert _tipos(cliente, p["autor"]) == ["revisao_autorizada"]
+    assert "pedida por" not in _avisos(cliente, p["autor"])[0]["texto"]
+    # Ninguém mais: nem o próprio coordenador, nem os outros, nem a obra.
+    assert _nao_lidas(cliente, p["coord"]) == 0
+    assert _nao_lidas(cliente, admin) == 0
+    assert _nao_lidas(cliente, p["campo"]) == 0
 
 
 def test_projetista_da_revisao_em_andamento_e_quem_recebe(cliente, admin, obra, p):
     """Já tem R01 subindo pela mão de outro projetista: é ele quem precisa saber."""
-    doc = _liberar(cliente, admin, obra, p["autor"], "002")
-    r = enviar_arquivo(cliente, p["outro"], obra["id"], "NTF-ARQ-PE-002-R01.pdf", PDF)
+    doc = _liberar(cliente, admin, obra, p["autor"], "010")
+    _pedir(cliente, p["coord"], doc)  # autoriza a R01
+    r = enviar_arquivo(cliente, p["outro"], obra["id"], "NTF-ARQ-PE-010-R01.pdf", PDF)
     assert r.status_code == 200, r.text
     _limpar(cliente, admin, *p.values())
 
-    cliente.post(f"/documentos/{doc}/solicitacoes", json={"descricao": PEDIDO}, headers=p["campo"])
+    pedido = _pedir(cliente, p["campo"], doc)
+    cliente.post(f"/solicitacoes/{pedido['id']}/autorizar", headers=p["coord"])
     assert _nao_lidas(cliente, p["outro"]) == 1
     assert _nao_lidas(cliente, p["autor"]) == 0
 
 
-def test_coordenador_que_pede_nao_avisa_a_si_mesmo(cliente, admin, obra, p):
-    doc = _liberar(cliente, admin, obra, p["autor"], "003")
+def test_recusar_avisa_quem_pediu_com_o_motivo(cliente, admin, obra, p):
+    doc = _liberar(cliente, admin, obra, p["autor"], "011")
+    pedido = _pedir(cliente, p["campo"], doc)
     _limpar(cliente, admin, *p.values())
 
-    cliente.post(f"/documentos/{doc}/solicitacoes", json={"descricao": PEDIDO}, headers=p["coord"])
-    assert _nao_lidas(cliente, p["coord"]) == 0
-    assert _nao_lidas(cliente, admin) == 1
-    assert _nao_lidas(cliente, p["autor"]) == 1
+    sem_motivo = cliente.post(
+        f"/solicitacoes/{pedido['id']}/recusar", json={"motivo": "não"}, headers=p["coord"]
+    )
+    assert sem_motivo.status_code == 422
+    projetista = cliente.post(
+        f"/solicitacoes/{pedido['id']}/recusar", json={"motivo": "Não cabe agora."}, headers=p["autor"]
+    )
+    assert projetista.status_code == 403
+
+    motivo = "O ralo segue o projeto aprovado na prefeitura; não muda."
+    r = cliente.post(
+        f"/solicitacoes/{pedido['id']}/recusar", json={"motivo": motivo}, headers=p["coord"]
+    )
+    assert r.status_code == 200, r.text
+    assert r.json()["status"] == "recusada"
+    assert r.json()["motivo_recusa"] == motivo
+
+    aviso = _avisos(cliente, p["campo"])[0]
+    assert aviso["tipo"] == "solicitacao_recusada"
+    assert motivo in aviso["texto"]
+    assert PEDIDO in aviso["texto"]
+    for quem in ("autor", "outro", "campo2", "coord", "fora"):
+        assert _nao_lidas(cliente, p[quem]) == 0, quem
+
+    # Decidido não se decide de novo.
+    de_novo = cliente.post(f"/solicitacoes/{pedido['id']}/autorizar", headers=p["coord"])
+    assert de_novo.status_code == 409
+
+
+# ------------------------------------------------------------ revisão enviada
+
+
+def test_revisao_enviada_avisa_os_coordenadores_uma_vez(cliente, admin, obra, p):
+    _limpar(cliente, admin, *p.values())
+    enviar_arquivo(cliente, p["autor"], obra["id"], "NTF-ARQ-PE-012-R00.pdf", PDF)
+    enviar_arquivo(cliente, p["autor"], obra["id"], "NTF-ARQ-PE-012-R00.dwg", DWG)
+    # Arquivo substituído na mesma revisão também não é revisão nova.
+    enviar_arquivo(cliente, p["autor"], obra["id"], "NTF-ARQ-PE-012-R00.pdf", PDF, substituir=True)
+
+    for cab in (p["coord"], admin):
+        assert _tipos(cliente, cab) == ["revisao_enviada"]
+        aviso = _avisos(cliente, cab)[0]
+        assert aviso["titulo"] == "R00 enviada · NTF-ARQ-PE-012"
+        assert "Autor Silva enviou a R00" in aviso["texto"]
+        assert "Emissão para teste" in aviso["texto"]
+    # A obra não sabe de revisão em andamento; quem enviou, não se avisa.
+    for quem in ("autor", "outro", "campo", "campo2", "fora"):
+        assert _nao_lidas(cliente, p[quem]) == 0, quem
+
+
+# ------------------------------------------------------------ liberação
 
 
 def test_liberacao_avisa_so_a_obra_uma_vez_por_revisao(cliente, admin, obra, p):
@@ -138,9 +235,10 @@ def test_liberacao_avisa_so_a_obra_uma_vez_por_revisao(cliente, admin, obra, p):
         assert "Emissão para teste" in avisos[0]["texto"]
         # Primeira revisão: não há anterior para descartar.
         assert "deixa de valer" not in avisos[0]["texto"]
-    for quem in ("autor", "outro", "coord", "fora"):
+    for quem in ("autor", "outro", "fora"):
         assert _nao_lidas(cliente, p[quem]) == 0, quem
-    assert _nao_lidas(cliente, admin) == 0
+    # O coordenador soube do envio, não da liberação.
+    assert _tipos(cliente, p["coord"]) == ["revisao_enviada"]
 
 
 def test_liberacao_de_revisao_nova_diz_qual_deixa_de_valer(cliente, admin, obra, p):
@@ -162,7 +260,7 @@ def test_envio_sem_liberar_nao_avisa_a_obra(cliente, admin, obra, p):
 def test_marcar_como_lida(cliente, admin, obra, p):
     doc = _liberar(cliente, admin, obra, p["autor"], "006")
     _limpar(cliente, admin, *p.values())
-    cliente.post(f"/documentos/{doc}/solicitacoes", json={"descricao": PEDIDO}, headers=p["campo"])
+    _pedir(cliente, p["campo"], doc)
     aviso = _avisos(cliente, p["coord"])[0]
 
     # De outra pessoa: como se não existisse.
@@ -172,8 +270,8 @@ def test_marcar_como_lida(cliente, admin, obra, p):
     assert cliente.post(f"/notificacoes/{aviso['id']}/lida", headers=p["coord"]).status_code == 204
     assert _nao_lidas(cliente, p["coord"]) == 0
     assert _avisos(cliente, p["coord"])[0]["lida"] is True
-    # A do projetista continua não lida: cada um marca a sua.
-    assert _nao_lidas(cliente, p["autor"]) == 1
+    # A do outro coordenador continua não lida: cada um marca a sua.
+    assert _nao_lidas(cliente, admin) == 1
 
 
 def test_exige_login(cliente):
@@ -226,8 +324,9 @@ def test_email_vai_para_cada_destinatario_com_o_link(cliente, admin, obra, p, sm
     assert r.status_code == 201, r.text
 
     para = {m["To"] for m in smtp.enviados}
-    assert {"coord@ntf.teste.com.br", "autor@ntf.teste.com.br", "admin@teste.com.br"} <= para
+    assert {"coord@ntf.teste.com.br", "admin@teste.com.br"} <= para
     assert "campo@ntf.teste.com.br" not in para
+    assert "autor@ntf.teste.com.br" not in para
     assert "outro@ntf.teste.com.br" not in para
     msg = next(m for m in smtp.enviados if m["To"] == "coord@ntf.teste.com.br")
     assert msg["Subject"] == "[NTF] Revisão solicitada · NTF-ARQ-PE-007"
