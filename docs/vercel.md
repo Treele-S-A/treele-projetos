@@ -47,11 +47,14 @@ uso comercial.
 
 ## 1. Código no GitHub
 
-Já está: `sistemastreele/treele-projetos`, privado, numa conta de usuário (não
-organização) criada para os sistemas da TREELE. Esteve na organização
-`treele-construtora` de 02 a 05/10/2026 e saiu de lá porque no plano Hobby a Vercel recusa repositório privado de organização
-("Cannot deploy from a private GitHub organization repository on the Hobby
-plan"). Só transferir de novo depois de passar a Vercel para o Pro. A Vercel lê de lá — cada
+Já está: `viniciusbordini/treele-projetos`, privado, na conta pessoal. Passou
+pela organização `treele-construtora` e pelas contas `titreele` e
+`sistemastreele` (02 a 05/10/2026) e voltou. No plano Hobby a Vercel só
+publica repositório privado de **conta pessoal**, com commits cujo **autor é o
+dono da conta Vercel**; fora disso o deploy sai bloqueado ("Cannot deploy from
+a private GitHub organization repository on the Hobby plan" / "the commit
+author did not have contributing access"). Só mudar o repositório de conta
+depois de passar a Vercel para o Pro. A Vercel lê de lá — cada
 envio para a branch `main` vira um deploy novo, sozinho.
 
 ## 2. Armazenamento dos arquivos
