@@ -16,7 +16,7 @@ Acervo em duas visões: tabela com filtros e navegação por pastas
 
 ---
 
-## Fase 1.5 — Colaboração
+## Fase 1.5 — Colaboração (quase pronta: faltam os comentários na revisão)
 
 **Estimativa: ~3 semanas**, mais o e-mail quando o TI liberar o envio.
 
@@ -70,7 +70,9 @@ usa para comparar revisões. Construir aqui adianta lá.
 
 ---
 
-## Fase 2 — Chat com IA sobre o acervo
+## Fase 2 — Chat com IA sobre o acervo ✅ pronta (06/10/2026)
+
+Entregue com o Gemini, plano gratuito — ver [chat.md](chat.md).
 
 **Estimativa: 1 a 2 semanas.** É rápido justamente porque a Fase 1 estruturou os
 dados.

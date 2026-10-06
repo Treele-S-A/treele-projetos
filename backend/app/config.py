@@ -92,6 +92,11 @@ class Settings(BaseSettings):
     email_smtp_senha: str = ""
     # Quem aparece como remetente: "Treèle Projetos <projetos@treele.com.br>".
     email_remetente: str = ""
+    # Chat do acervo (Fase 2): chave da API do Gemini. Vazia = chat desligado,
+    # e o botão nem aparece. O modelo é configurável para trocar sem código.
+    gemini_api_key: str = ""
+    chat_modelo: str = "gemini-3.8-flash"
+
     # Endereço das telas, para os links dos e-mails. Vazio = descobre sozinho
     # (ver endereco_site).
     site_url: str = ""
@@ -141,6 +146,10 @@ class Settings(BaseSettings):
     def s3_endpoint_servidor(self) -> str | None:
         """Endereço que a própria API usa. Cai no público quando não há rede interna."""
         return self.s3_endpoint_interno or self.s3_endpoint
+
+    @property
+    def chat_ligado(self) -> bool:
+        return bool(self.gemini_api_key.strip())
 
     @property
     def email_ligado(self) -> bool:

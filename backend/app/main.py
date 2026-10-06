@@ -14,6 +14,7 @@ from fastapi.staticfiles import StaticFiles
 from .api import (
     arquivos,
     auth,
+    chat,
     catalogos,
     documentos,
     eventos,
@@ -88,6 +89,7 @@ for modulo in (
     eventos,
     solicitacoes,
     notificacoes,
+    chat,
     storage_local,
 ):
     app.include_router(modulo.router, prefix=settings.api_prefix)

@@ -10,6 +10,7 @@ import {
   useParams,
 } from "react-router-dom";
 import { api } from "./api";
+import Assistente from "./Assistente";
 import { Carregando, SIMBOLO } from "./componentes";
 import { CHAVE_OBRA, useSessao } from "./sessao";
 import Acervo from "./paginas/Acervo";
@@ -279,6 +280,7 @@ function Moldura() {
         <AvisoVersaoNova />
         <Outlet />
       </main>
+      <Assistente obraId={obraId} />
     </div>
   );
 }
