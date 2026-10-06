@@ -330,10 +330,39 @@ def test_email_vai_para_cada_destinatario_com_o_link(cliente, admin, obra, p, sm
     assert "outro@ntf.teste.com.br" not in para
     msg = next(m for m in smtp.enviados if m["To"] == "coord@ntf.teste.com.br")
     assert msg["Subject"] == "[NTF] Revisão solicitada · NTF-ARQ-PE-007"
-    corpo = msg.get_content()
-    assert "Olá, Coord." in corpo
-    assert PEDIDO in corpo
-    assert f"http://testserver/documentos/{doc}" in corpo
+    link = f"http://testserver/documentos/{doc}"
+    texto = msg.get_body(preferencelist=("plain",)).get_content()
+    assert "Olá, Coord." in texto
+    assert PEDIDO in texto
+    assert link in texto
+
+    # Versão com a cara da Treèle: selo, botão para o documento e o símbolo
+    # dentro da mensagem (cid), não por link.
+    html = msg.get_body(preferencelist=("html",)).get_content()
+    assert "Revisão solicitada" in html
+    assert "Abrir documento" in html
+    assert f'href="{link}"' in html
+    assert "NTF · Obra avisos" in html
+    assert "cid:simbolo.treele@projetos" in html
+    imagens = [p for p in msg.walk() if p.get_content_type() == "image/png"]
+    assert len(imagens) == 1
+    assert imagens[0]["Content-ID"] == "<simbolo.treele@projetos>"
+
+
+def test_texto_do_aviso_e_escapado_no_html():
+    """O pedido é escrito por quem está na obra: no HTML, vira texto, nunca tag."""
+    from app.services import email_modelo
+
+    html = email_modelo.html(
+        tipo="solicitacao_revisao", saudacao="Olá, Ana.", titulo="Revisão <b>solicitada</b>",
+        texto="Campo pediu.\n\nO que deve mudar:\n<script>alert(1)</script> & mais",
+        obra="TRE · Treviso", cor_obra="#2f5960", link="https://x/documentos/1",
+        cid_simbolo="c",
+    )
+    assert "<script>" not in html
+    assert "&lt;script&gt;" in html
+    assert "<b>solicitada</b>" not in html
+    assert "O que deve mudar" in html
 
 
 def test_email_que_falha_nao_derruba_o_pedido(cliente, admin, obra, p, smtp):

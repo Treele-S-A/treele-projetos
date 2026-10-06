@@ -23,7 +23,7 @@ from sqlalchemy.orm import Session
 from ..config import settings
 from ..enums import PapelObra, StatusRevisao, TipoNotificacao
 from ..models import Documento, Notificacao, ObraMembro, Revisao, SolicitacaoRevisao, Usuario
-from . import email
+from . import email, email_modelo
 
 TEXTO_MAX_NO_AVISO = 600
 
@@ -232,14 +232,34 @@ def enviar_emails(db: Session, notificacoes: list[Notificacao]) -> None:
     mensagens = []
     for n in notificacoes:
         usuario = db.get(Usuario, n.usuario_id)
+        saudacao = f"Olá, {usuario.nome.split()[0]}."
+        # No HTML, o título é a prancha — o selo já diz o que aconteceu.
+        documento = db.get(Documento, n.documento_id) if n.documento_id else None
+        if documento is not None and documento.titulo:
+            titulo, subtitulo = documento.titulo, documento.codigo
+        elif documento is not None:
+            titulo, subtitulo = documento.codigo, None
+        else:
+            titulo, subtitulo = n.titulo, None
         mensagens.append(
             email.Mensagem(
                 para=usuario.email,
                 assunto=f"[{n.obra.codigo}] {n.titulo}",
                 texto=(
-                    f"Olá, {usuario.nome.split()[0]}.\n\n{n.texto}\n\n"
+                    f"{saudacao}\n\n{n.texto}\n\n"
                     f"Abrir no sistema: {link(n)}\n\n"
                     "—\nTreèle Projetos · aviso automático, não responda este e-mail."
+                ),
+                html=email_modelo.html(
+                    tipo=n.tipo.value,
+                    saudacao=saudacao,
+                    titulo=titulo,
+                    subtitulo=subtitulo,
+                    texto=n.texto,
+                    obra=f"{n.obra.codigo} · {n.obra.nome}",
+                    cor_obra=n.obra.cor,
+                    link=link(n),
+                    cid_simbolo=email.CID_SIMBOLO,
                 ),
             )
         )

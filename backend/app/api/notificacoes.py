@@ -11,7 +11,7 @@ from ..db import get_db
 from ..deps import usuario_atual
 from ..models import Notificacao, Usuario
 from ..schemas import EmailTesteSaida, NotificacaoContagem, NotificacaoOut
-from ..services import email
+from ..services import email, email_modelo
 
 router = APIRouter(prefix="/notificacoes", tags=["notificações"])
 
@@ -87,14 +87,30 @@ def email_teste(usuario: Usuario = Depends(usuario_atual)):
         raise HTTPException(
             status.HTTP_403_FORBIDDEN, "Somente um administrador testa o envio de e-mail."
         )
+    saudacao = f"Olá, {usuario.nome.split()[0]}."
+    corpo = (
+        "Se este e-mail chegou, as notificações por e-mail estão funcionando.\n\n"
+        "Como vão chegar os avisos:\nRevisão enviada, solicitada, autorizada, recusada e "
+        "liberada para obra — cada um para quem precisa saber."
+    )
     erro = email.diagnosticar(
         email.Mensagem(
             para=usuario.email,
             assunto="Teste de e-mail · Treèle Projetos",
             texto=(
-                f"Olá, {usuario.nome.split()[0]}.\n\n"
-                "Se este e-mail chegou, as notificações por e-mail estão funcionando.\n\n"
+                f"{saudacao}\n\n{corpo}\n\n"
                 f"{settings.endereco_site}\n\n—\nTreèle Projetos · aviso automático."
+            ),
+            html=email_modelo.html(
+                tipo="teste",
+                saudacao=saudacao,
+                titulo="As notificações por e-mail estão funcionando",
+                texto=corpo,
+                obra="Treèle Projetos",
+                cor_obra=None,
+                link=settings.endereco_site,
+                rotulo_botao="Abrir o sistema",
+                cid_simbolo=email.CID_SIMBOLO,
             ),
         )
     )

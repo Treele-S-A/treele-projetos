@@ -32,6 +32,14 @@ Detalhes:
 
 ## E-mail
 
+Desde 06/10/2026 o e-mail sai com a cara da Treèle: cabeçalho petróleo com o
+símbolo, a régua nas três cores da marca, um selo dizendo o que aconteceu, a
+prancha como título, o pedido ou o motivo em destaque e o botão **Abrir
+documento**. A faixa lateral leva a cor da obra. O símbolo vai dentro da
+mensagem — aparece mesmo no programa que bloqueia imagem de fora — e a versão
+em texto puro segue junto, para quem lê sem HTML. Modelo em
+`backend/app/services/email_modelo.py`.
+
 O sistema envia por **SMTP**, então serve qualquer serviço: Microsoft 365 (o que
 a TREELE usa), Google Workspace, Resend e outros. Trocar de serviço é trocar
 variável de ambiente, não código.

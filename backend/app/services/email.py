@@ -17,6 +17,7 @@ from email.message import EmailMessage
 from email.utils import make_msgid, parseaddr
 
 from ..config import settings
+from .email_modelo import SIMBOLO
 
 log = logging.getLogger("treele.email")
 
@@ -25,11 +26,18 @@ log = logging.getLogger("treele.email")
 TEMPO_LIMITE = 10
 
 
+# Identificador do símbolo dentro da mensagem: o HTML aponta para "cid:" + ele.
+CID_SIMBOLO = "simbolo.treele@projetos"
+
+
 @dataclass
 class Mensagem:
     para: str
     assunto: str
     texto: str
+    # Versão com a cara da Treèle (services/email_modelo.py). O texto vai
+    # junto sempre, para quem lê sem HTML.
+    html: str | None = None
 
 
 def _conectar() -> smtplib.SMTP:
@@ -79,6 +87,15 @@ def _montar(m: Mensagem) -> EmailMessage:
     dominio = parseaddr(settings.email_remetente)[1].rpartition("@")[2] or None
     msg["Message-ID"] = make_msgid(domain=dominio)
     msg.set_content(m.texto)
+    if m.html:
+        msg.add_alternative(m.html, subtype="html")
+        # O símbolo vai junto da parte HTML, e não por link: aparece mesmo no
+        # programa que bloqueia imagem de fora.
+        if SIMBOLO.is_file():
+            msg.get_payload()[1].add_related(
+                SIMBOLO.read_bytes(), maintype="image", subtype="png",
+                cid=f"<{CID_SIMBOLO}>", filename="treele.png",
+            )
     return msg
 
 
