@@ -9,6 +9,10 @@ import {
 } from "react";
 import { api, gravarToken, lerToken, type Catalogo, type Obra, type Usuario } from "./api";
 
+/** A obra que a barra lateral lembra entre uma tela e outra (App.tsx). É da
+ *  pessoa, não do navegador: sai junto com a sessão. */
+export const CHAVE_OBRA = "treele.obra";
+
 interface Sessao {
   usuario: Usuario | null;
   obras: Obra[];
@@ -65,6 +69,8 @@ export function ProvedorSessao({ children }: { children: ReactNode }) {
     async (email: string, senha: string) => {
       const r = await api.post<{ token: string }>("/auth/login", { email, senha });
       gravarToken(r.token);
+      // Quem entra não herda a obra de quem usou o navegador antes.
+      localStorage.removeItem(CHAVE_OBRA);
       await carregarTudo();
     },
     [carregarTudo],
@@ -72,6 +78,7 @@ export function ProvedorSessao({ children }: { children: ReactNode }) {
 
   const sair = useCallback(() => {
     gravarToken(null);
+    localStorage.removeItem(CHAVE_OBRA);
     setUsuario(null);
     setObras([]);
   }, []);

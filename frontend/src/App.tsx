@@ -11,7 +11,7 @@ import {
 } from "react-router-dom";
 import { api } from "./api";
 import { Carregando, SIMBOLO } from "./componentes";
-import { useSessao } from "./sessao";
+import { CHAVE_OBRA, useSessao } from "./sessao";
 import Acervo from "./paginas/Acervo";
 import Configuracoes from "./paginas/Configuracoes";
 import Conta from "./paginas/Conta";
@@ -24,7 +24,6 @@ import Registro from "./paginas/Registro";
 import SolicitacoesGerais from "./paginas/SolicitacoesGerais";
 import Usuarios from "./paginas/Usuarios";
 
-const CHAVE_OBRA = "treele.obra";
 
 /** Lê a obra da URL — a moldura não tem rota própria com parâmetro. */
 function obraDaUrl(caminho: string): number | null {
@@ -262,7 +261,16 @@ function Moldura() {
             <NavLink to="/conta" className={({ isActive }) => (isActive ? "ativo" : "")}>
               Minha conta
             </NavLink>
-            <button onClick={sair}>Sair</button>
+            <button
+              onClick={() => {
+                // Volta ao início antes de sair: quem entrar depois começa na
+                // tela de obras, não na última que a pessoa anterior abriu.
+                navegar("/", { replace: true });
+                sair();
+              }}
+            >
+              Sair
+            </button>
           </div>
         </div>
       </nav>
@@ -276,12 +284,14 @@ function Moldura() {
 }
 
 export default function App() {
-  const { usuario, carregando, obras } = useSessao();
+  const { usuario, carregando } = useSessao();
 
   if (carregando) return <Carregando texto="Abrindo o acervo" />;
   if (!usuario) return <Entrar />;
 
-  const inicial = obras.length > 0 ? `/obras/${obras[0].id}/acervo` : "/obras";
+  // Toda entrada começa na carteira de obras (TREELE, 06/10/2026). Link de
+  // e-mail é exceção natural: ele já traz o endereço, e não passa por aqui.
+  const inicial = "/obras";
 
   return (
     <Routes>
