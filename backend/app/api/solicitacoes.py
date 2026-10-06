@@ -8,20 +8,23 @@ requisição da hospedagem; por isso nada de passar bytes pela API.
 
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
-from sqlalchemy.orm import Session
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from sqlalchemy import func, select
+from sqlalchemy.orm import Session, selectinload
 
 from ..db import get_db
 from ..deps import ContextoObra, montar_contexto, status_visiveis, usuario_atual
 from ..enums import StatusArquivo, StatusRevisao, StatusSolicitacao
-from ..models import AnexoSolicitacao, Documento, SolicitacaoRevisao, Usuario
+from ..models import AnexoSolicitacao, Documento, Obra, SolicitacaoRevisao, Usuario
 from ..schemas import (
     AnexoIniciar,
     AnexoIniciarSaida,
     AnexoOut,
     SolicitacaoCriar,
+    SolicitacaoGeralOut,
     SolicitacaoOut,
     SolicitacaoRecusar,
+    SolicitacoesContagem,
 )
 from ..services import auditoria
 from ..services import notificacoes
@@ -84,6 +87,68 @@ def _decidir(
             f"Esta solicitação já foi {solicitacao.status.value}. Recarregue a página.",
         )
     return solicitacao, ctx
+
+
+def _so_administrador(usuario: Usuario) -> None:
+    if not usuario.admin:
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            "Somente um administrador vê as solicitações de todas as obras.",
+        )
+
+
+@router.get("/solicitacoes/contagem", response_model=SolicitacoesContagem)
+def contagem(usuario: Usuario = Depends(usuario_atual), db: Session = Depends(get_db)):
+    """O contador do menu: pedidos esperando o coordenador autorizar ou recusar."""
+    _so_administrador(usuario)
+    total = db.scalar(
+        select(func.count(SolicitacaoRevisao.id)).where(
+            SolicitacaoRevisao.status == StatusSolicitacao.aberta
+        )
+    )
+    return SolicitacoesContagem(aguardando=total or 0)
+
+
+@router.get("/solicitacoes", response_model=list[SolicitacaoGeralOut])
+def todas(
+    status_: list[StatusSolicitacao] | None = Query(None, alias="status"),
+    obra_id: int | None = None,
+    usuario: Usuario = Depends(usuario_atual),
+    db: Session = Depends(get_db),
+):
+    """Os pedidos de revisão de todas as obras, mais recentes primeiro. Só
+    administrador (TREELE, 06/10/2026): é o painel de quem acompanha tudo."""
+    _so_administrador(usuario)
+    consulta = (
+        select(SolicitacaoRevisao, Documento, Obra)
+        .join(Documento, SolicitacaoRevisao.documento_id == Documento.id)
+        .join(Obra, Documento.obra_id == Obra.id)
+        .options(
+            selectinload(SolicitacaoRevisao.criada_por),
+            selectinload(SolicitacaoRevisao.decidida_por),
+            selectinload(SolicitacaoRevisao.revisao),
+            selectinload(SolicitacaoRevisao.atendida_por_revisao),
+            selectinload(SolicitacaoRevisao.anexos),
+        )
+        .order_by(SolicitacaoRevisao.criada_em.desc(), SolicitacaoRevisao.id.desc())
+        .limit(500)
+    )
+    if status_:
+        consulta = consulta.where(SolicitacaoRevisao.status.in_(status_))
+    if obra_id is not None:
+        consulta = consulta.where(Obra.id == obra_id)
+    return [
+        SolicitacaoGeralOut(
+            **servico.saida(s).model_dump(),
+            obra_id=obra.id,
+            obra_codigo=obra.codigo,
+            obra_nome=obra.nome,
+            documento_id=documento.id,
+            documento_codigo=documento.codigo,
+            documento_titulo=documento.titulo,
+        )
+        for s, documento, obra in db.execute(consulta).all()
+    ]
 
 
 @router.post(

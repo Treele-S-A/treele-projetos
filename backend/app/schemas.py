@@ -301,6 +301,21 @@ class EmailTesteSaida(BaseModel):
     erro: str | None = None
 
 
+class SolicitacaoGeralOut(SolicitacaoOut):
+    """Pedido na lista de todas as obras: leva junto onde ele está."""
+
+    obra_id: int
+    obra_codigo: str
+    obra_nome: str
+    documento_id: int
+    documento_codigo: str
+    documento_titulo: str | None = None
+
+
+class SolicitacoesContagem(BaseModel):
+    aguardando: int
+
+
 class SolicitacaoCriar(BaseModel):
     descricao: str
 

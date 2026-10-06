@@ -312,6 +312,11 @@ const ESTILO: Record<Solicitacao["status"], string> = {
   recusada: "estado-cancelado",
 };
 
+/** A situação do pedido, no mesmo chip da tela do documento. */
+export function SituacaoSolicitacao({ status }: { status: Solicitacao["status"] }) {
+  return <span className={`estado ${ESTILO[status]}`}>{ROTULO[status]}</span>;
+}
+
 function ItemSolicitacao({
   solicitacao: s,
   podeDecidir,
@@ -340,6 +345,8 @@ function ItemSolicitacao({
       );
       setRecusando(false);
       setMotivo("");
+      // O contador de solicitações do menu (administrador) muda junto.
+      window.dispatchEvent(new Event("treele:solicitacoes"));
       await aoMudar();
       aoOk(
         acao === "autorizar"
@@ -355,9 +362,12 @@ function ItemSolicitacao({
 
   const encerrada = s.status === "atendida" || s.status === "recusada";
   return (
-    <div className={`solicitacao ${encerrada ? "atendida" : "aberta"}`}>
+    <div
+      id={`solicitacao-${s.id}`}
+      className={`solicitacao ${encerrada ? "atendida" : "aberta"}`}
+    >
       <div className="linha" style={{ gap: 8 }}>
-        <span className={`estado ${ESTILO[s.status]}`}>{ROTULO[s.status]}</span>
+        <SituacaoSolicitacao status={s.status} />
         <span className="silencioso" style={{ fontSize: 12 }}>
           {s.criada_por ? `${s.criada_por.nome} · ` : ""}
           {formatarData(s.criada_em)}

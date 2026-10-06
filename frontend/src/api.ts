@@ -227,6 +227,16 @@ export interface Solicitacao {
   anexos: Anexo[];
 }
 
+/** Pedido na lista de todas as obras (administrador): leva junto onde está. */
+export interface SolicitacaoGeral extends Solicitacao {
+  obra_id: number;
+  obra_codigo: string;
+  obra_nome: string;
+  documento_id: number;
+  documento_codigo: string;
+  documento_titulo: string | null;
+}
+
 export interface Documento {
   id: number;
   codigo: string;

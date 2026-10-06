@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import {
   api,
   ErroApi,
@@ -51,6 +51,19 @@ export default function Documento() {
     setDoc(null);
     carregar();
   }, [carregar]);
+
+  // Vindo da lista de solicitações (#solicitacao-N): leva até o pedido e o
+  // destaca, depois que o documento chega.
+  const { hash } = useLocation();
+  useEffect(() => {
+    if (!doc || !hash.startsWith("#solicitacao-")) return;
+    const alvo = document.getElementById(hash.slice(1));
+    if (!alvo) return;
+    alvo.scrollIntoView({ block: "center" });
+    alvo.classList.add("destacada");
+    const t = window.setTimeout(() => alvo.classList.remove("destacada"), 2500);
+    return () => window.clearTimeout(t);
+  }, [doc, hash]);
 
   async function salvarTitulo(e: FormEvent) {
     e.preventDefault();

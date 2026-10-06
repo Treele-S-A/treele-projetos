@@ -21,6 +21,7 @@ import Enviar from "./paginas/Enviar";
 import Notificacoes from "./paginas/Notificacoes";
 import Obras from "./paginas/Obras";
 import Registro from "./paginas/Registro";
+import SolicitacoesGerais from "./paginas/SolicitacoesGerais";
 import Usuarios from "./paginas/Usuarios";
 
 const CHAVE_OBRA = "treele.obra";
@@ -50,29 +51,45 @@ function useObraAtiva(caminho: string): number | null {
   return daUrl ?? lembrada;
 }
 
-/** Quantos avisos não lidos. Busca a cada troca de tela, a cada minuto e
- *  quando a tela de notificações marca alguma como lida. */
-function useNaoLidas(caminho: string): number {
+/** Um contador do menu. Busca a cada troca de tela, a cada minuto e quando
+ *  alguma tela avisa que ele mudou (o evento). Desligado, não busca nada. */
+function useContador(
+  caminho: string,
+  endereco: string,
+  campo: string,
+  evento: string,
+  ligado = true,
+): number {
   const [total, setTotal] = useState(0);
 
   useEffect(() => {
+    if (!ligado) return;
     let vivo = true;
     const buscar = () =>
       api
-        .get<{ nao_lidas: number }>("/notificacoes/contagem")
-        .then((r) => vivo && setTotal(r.nao_lidas))
+        .get<Record<string, number>>(endereco)
+        .then((r) => vivo && setTotal(r[campo] ?? 0))
         .catch(() => {});
     buscar();
     const relogio = window.setInterval(buscar, 60_000);
-    window.addEventListener("treele:notificacoes", buscar);
+    window.addEventListener(evento, buscar);
     return () => {
       vivo = false;
       window.clearInterval(relogio);
-      window.removeEventListener("treele:notificacoes", buscar);
+      window.removeEventListener(evento, buscar);
     };
-  }, [caminho]);
+  }, [caminho, endereco, campo, evento, ligado]);
 
   return total;
+}
+
+function Contador({ total, rotulo }: { total: number; rotulo: (n: number) => string }) {
+  if (total <= 0) return null;
+  return (
+    <span className="contador" aria-label={rotulo(total)}>
+      {total > 99 ? "99+" : total}
+    </span>
+  );
 }
 
 /** A tela própria de pasta deixou de existir (06/10/2026): a fase abre na
@@ -107,7 +124,14 @@ function Moldura() {
   const navegar = useNavigate();
   const obraId = useObraAtiva(local.pathname);
   const obra = obras.find((o) => o.id === obraId) ?? null;
-  const naoLidas = useNaoLidas(local.pathname);
+  const naoLidas = useContador(
+    local.pathname, "/notificacoes/contagem", "nao_lidas", "treele:notificacoes",
+  );
+  // Pedidos esperando autorização, de todas as obras: só o administrador vê.
+  const aguardando = useContador(
+    local.pathname, "/solicitacoes/contagem", "aguardando", "treele:solicitacoes",
+    usuario?.admin ?? false,
+  );
 
   const pode = (p: string) => obra?.permissoes.includes(p) ?? false;
 
@@ -196,17 +220,30 @@ function Moldura() {
               className={({ isActive }) => `com-contador ${isActive ? "ativo" : ""}`}
             >
               Notificações
-              {naoLidas > 0 && (
-                <span className="contador" aria-label={naoLidas === 1 ? "1 não lida" : `${naoLidas} não lidas`}>
-                  {naoLidas > 99 ? "99+" : naoLidas}
-                </span>
-              )}
+              <Contador
+                total={naoLidas}
+                rotulo={(n) => (n === 1 ? "1 não lida" : `${n} não lidas`)}
+              />
             </NavLink>
           )}
           {usuario?.admin && (
-            <NavLink to="/usuarios" className={({ isActive }) => (isActive ? "ativo" : "")}>
-              Usuários
-            </NavLink>
+            <>
+              <NavLink
+                to="/solicitacoes"
+                className={({ isActive }) => `com-contador ${isActive ? "ativo" : ""}`}
+              >
+                Solicitações de revisão
+                <Contador
+                  total={aguardando}
+                  rotulo={(n) =>
+                    n === 1 ? "1 aguardando autorização" : `${n} aguardando autorização`
+                  }
+                />
+              </NavLink>
+              <NavLink to="/usuarios" className={({ isActive }) => (isActive ? "ativo" : "")}>
+                Usuários
+              </NavLink>
+            </>
           )}
         </div>
 
@@ -263,6 +300,7 @@ export default function App() {
         <Route path="/usuarios" element={<Usuarios />} />
         <Route path="/conta" element={<Conta />} />
         <Route path="/notificacoes" element={<Notificacoes />} />
+        <Route path="/solicitacoes" element={<SolicitacoesGerais />} />
         <Route path="*" element={<Navigate to={inicial} replace />} />
       </Route>
     </Routes>

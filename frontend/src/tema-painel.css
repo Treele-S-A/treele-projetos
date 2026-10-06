@@ -998,3 +998,82 @@ body {
 .folha.zona-perigo .folha-titulo strong {
   color: var(--obsoleto);
 }
+
+/* Solicitações de todas as obras (administrador). */
+.filtros-solicitacoes {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 14px;
+}
+
+.filtros-solicitacoes .seletor-visao {
+  flex-wrap: wrap;
+}
+
+.filtros-solicitacoes .campo {
+  min-width: 220px;
+}
+
+.lista-solicitacoes {
+  display: grid;
+  border-top: 1px solid var(--traco-fino);
+}
+
+.item-solicitacao {
+  display: grid;
+  gap: 6px;
+  padding: 14px 22px;
+  border-bottom: 1px solid var(--traco-fino);
+  color: inherit;
+  text-decoration: none;
+}
+
+.item-solicitacao:last-child {
+  border-bottom: none;
+}
+
+.item-solicitacao:hover {
+  background: var(--azul-claro);
+}
+
+.item-solicitacao:hover .doc-na-pasta .titulo {
+  color: var(--link);
+}
+
+.item-topo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.item-descricao {
+  font-size: 13.5px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.item-rodape {
+  font-size: 12px;
+}
+
+/* O pedido aberto a partir da lista pisca de leve, para o olho achar. */
+.solicitacao.destacada {
+  animation: destaque-pedido 2.5s ease-out;
+}
+
+@keyframes destaque-pedido {
+  0%,
+  40% {
+    background: rgba(47, 76, 82, 0.12);
+  }
+  100% {
+    background: transparent;
+  }
+}

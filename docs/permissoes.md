@@ -67,6 +67,10 @@ atende (02/10 e 05/10/2026):
   marcadas fecham ali ("atendida pela R01"); as desmarcadas continuam
   autorizadas.
 - **Quem é avisado:** ver [notificacoes.md](notificacoes.md).
+- **Painel de todas as obras** (06/10/2026): os administradores têm no menu
+  *Solicitações de revisão*, com os pedidos de todas as obras — filtro por
+  situação e por obra — e um contador dos que aguardam autorização. Clicar
+  num pedido abre o documento já nele.
 
 ## Perfil comercial
 
