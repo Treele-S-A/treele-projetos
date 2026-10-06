@@ -1590,21 +1590,6 @@ table.tabela {
   }
 }
 
-/* A fase é um destino, não um nó que expande: abre a pasta. */
-.arvore-linha.linha-pasta {
-  padding-left: 40px;
-  cursor: pointer;
-  color: inherit;
-}
-
-.arvore-linha.linha-pasta:hover {
-  background: var(--azul-claro);
-}
-
-.arvore-linha.linha-pasta:hover .arvore-nome {
-  color: var(--link);
-}
-
 .arvore-linha.nivel-disciplina {
   padding-left: 18px;
 }

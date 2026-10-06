@@ -938,3 +938,54 @@ body {
   font-size: 13px;
   opacity: 0.85;
 }
+
+/* Pastas no acervo (06/10/2026): a fase abre ali mesmo, e cada documento é
+   uma linha que leva direto à tela dele. */
+.arvore-linha.nivel-fase {
+  padding-left: 40px;
+}
+
+.arvore-linha.nivel-documento {
+  padding-left: 86px;
+  color: inherit;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.arvore-linha.nivel-documento:hover {
+  background: var(--azul-claro);
+}
+
+.arvore-linha.nivel-documento:hover .doc-na-pasta .titulo {
+  color: var(--link);
+}
+
+.arvore-linha.nivel-documento .doc-na-pasta .titulo {
+  font-size: 14px;
+}
+
+.arvore-estado {
+  gap: 8px;
+  flex-wrap: nowrap;
+}
+
+.arvore-vazio.nivel-documento {
+  padding-left: 86px;
+}
+
+@media (max-width: 700px) {
+  .arvore-linha.nivel-documento {
+    padding-left: 30px;
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+  .arvore-linha.nivel-fase {
+    padding-left: 18px;
+  }
+  .arvore-vazio.nivel-documento {
+    padding-left: 30px;
+  }
+  .arvore-estado {
+    flex-wrap: wrap;
+  }
+}

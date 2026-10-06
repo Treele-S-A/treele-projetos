@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useSearchParams } from "react-router-dom";
 import {
   api,
   ErroApi,
@@ -37,8 +37,11 @@ export default function Acervo() {
   const [status, setStatus] = useState<StatusRevisao | "">("");
   const [tipo, setTipo] = useState<TipoArquivo | "">("");
   const [pagina, setPagina] = useState(1);
-  const [visao, setVisao] = useState<Visao>(
-    () => (localStorage.getItem(CHAVE_VISAO) as Visao) || "lista",
+  // Vindo de um link de pasta (?pasta=ARQ/PE): abre nas pastas, com ela aberta.
+  const [parametros] = useSearchParams();
+  const pastaPedida = parametros.get("pasta") ?? undefined;
+  const [visao, setVisao] = useState<Visao>(() =>
+    pastaPedida ? "arvore" : (localStorage.getItem(CHAVE_VISAO) as Visao) || "lista",
   );
 
   const [dados, setDados] = useState<Pagina<Documento> | null>(null);
@@ -156,7 +159,7 @@ export default function Acervo() {
 
       {visao === "arvore" ? (
         <div className="folha">
-          <Arvore obraId={Number(obraId)} />
+          <Arvore obraId={Number(obraId)} abrir={pastaPedida} />
         </div>
       ) : (
       <div className="folha">

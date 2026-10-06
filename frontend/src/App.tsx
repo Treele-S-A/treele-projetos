@@ -1,5 +1,14 @@
 import { useEffect, useState } from "react";
-import { Navigate, NavLink, Outlet, Route, Routes, useLocation, useNavigate } from "react-router-dom";
+import {
+  Navigate,
+  NavLink,
+  Outlet,
+  Route,
+  Routes,
+  useLocation,
+  useNavigate,
+  useParams,
+} from "react-router-dom";
 import { api } from "./api";
 import { Carregando, SIMBOLO } from "./componentes";
 import { useSessao } from "./sessao";
@@ -11,7 +20,6 @@ import Entrar from "./paginas/Entrar";
 import Enviar from "./paginas/Enviar";
 import Notificacoes from "./paginas/Notificacoes";
 import Obras from "./paginas/Obras";
-import Pasta from "./paginas/Pasta";
 import Registro from "./paginas/Registro";
 import Usuarios from "./paginas/Usuarios";
 
@@ -65,6 +73,13 @@ function useNaoLidas(caminho: string): number {
   }, [caminho]);
 
   return total;
+}
+
+/** A tela própria de pasta deixou de existir (06/10/2026): a fase abre na
+ *  árvore do acervo. Link antigo (favorito, e-mail) cai nela, já aberta. */
+function PastaAntiga() {
+  const { obraId, disciplina, fase } = useParams();
+  return <Navigate to={`/obras/${obraId}/acervo?pasta=${disciplina}/${fase}`} replace />;
 }
 
 /** Faixa no topo quando a tela ficou para trás de uma atualização. */
@@ -131,12 +146,7 @@ function Moldura() {
             <>
               <NavLink
                 to={`/obras/${obra.id}/acervo`}
-                // A pasta é uma vista do acervo: o item continua marcado nela.
-                className={({ isActive }) =>
-                  isActive || local.pathname.startsWith(`/obras/${obra.id}/pastas/`)
-                    ? "ativo"
-                    : ""
-                }
+                className={({ isActive }) => (isActive ? "ativo" : "")}
               >
                 Acervo
               </NavLink>
@@ -245,7 +255,7 @@ export default function App() {
         <Route path="/obras/:obraId/enviar" element={<Enviar />} />
         <Route
           path="/obras/:obraId/pastas/:disciplina/:fase"
-          element={<Pasta />}
+          element={<PastaAntiga />}
         />
         <Route path="/obras/:obraId/configuracoes" element={<Configuracoes />} />
         <Route path="/obras/:obraId/registro" element={<Registro />} />
