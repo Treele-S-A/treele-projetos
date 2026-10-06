@@ -98,9 +98,10 @@ def html(
 
 <tr><td style="background:{PETROLEO};border-radius:14px 14px 0 0;padding:18px 26px;">
 <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
-<td style="padding-right:12px;vertical-align:middle;">
-<img src="cid:{cid_simbolo}" width="34" height="34" alt="Treèle" style="display:block;border:0;background:#ffffff;border-radius:50%;padding:3px;">
+<td width="40" height="40" style="width:40px;height:40px;background:#ffffff;border-radius:50%;text-align:center;vertical-align:middle;">
+<img src="cid:{cid_simbolo}" width="32" height="32" alt="" style="display:block;margin:4px auto;border:0;">
 </td>
+<td style="width:12px;"></td>
 <td style="vertical-align:middle;">
 <div style="font-size:18px;font-weight:700;color:#ffffff;line-height:1.1;">Projetos</div>
 <div style="font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:#b9cbcd;margin-top:3px;">Treèle Construtora</div>

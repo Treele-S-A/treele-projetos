@@ -347,6 +347,8 @@ def test_email_vai_para_cada_destinatario_com_o_link(cliente, admin, obra, p, sm
     imagens = [p for p in msg.walk() if p.get_content_type() == "image/png"]
     assert len(imagens) == 1
     assert imagens[0]["Content-ID"] == "<simbolo.treele@projetos>"
+    # Embutida, não anexo: como anexo, o Outlook não liga a imagem ao "cid:".
+    assert imagens[0].get_content_disposition() == "inline"
 
 
 def test_texto_do_aviso_e_escapado_no_html():

@@ -90,11 +90,14 @@ def _montar(m: Mensagem) -> EmailMessage:
     if m.html:
         msg.add_alternative(m.html, subtype="html")
         # O símbolo vai junto da parte HTML, e não por link: aparece mesmo no
-        # programa que bloqueia imagem de fora.
+        # programa que bloqueia imagem de fora. "inline" é obrigatório — como
+        # "attachment" (o padrão quando há nome de arquivo), o Outlook e o
+        # Resend o tratam como anexo e o "cid:" do HTML fica sem imagem (caso
+        # real, 06/10/2026).
         if SIMBOLO.is_file():
             msg.get_payload()[1].add_related(
                 SIMBOLO.read_bytes(), maintype="image", subtype="png",
-                cid=f"<{CID_SIMBOLO}>", filename="treele.png",
+                cid=f"<{CID_SIMBOLO}>", disposition="inline", filename="treele.png",
             )
     return msg
 
