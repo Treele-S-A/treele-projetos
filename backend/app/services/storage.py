@@ -204,6 +204,10 @@ class ArmazenamentoLocal:
         except ValueError:
             pass
 
+    def remover_varios(self, chaves: list[str]) -> None:
+        for chave in chaves:
+            self.remover(chave)
+
 
 class ArmazenamentoS3:
     """Dois clientes, de propósito.
@@ -357,6 +361,16 @@ class ArmazenamentoS3:
 
     def remover(self, chave: str) -> None:
         self.cliente.delete_object(Bucket=self.bucket, Key=chave)
+
+    def remover_varios(self, chaves: list[str]) -> None:
+        """Em lotes de mil — o máximo do S3 por chamada. Uma obra inteira cabe
+        em poucas chamadas, dentro do tempo de uma função de hospedagem."""
+        for i in range(0, len(chaves), 1000):
+            lote = chaves[i : i + 1000]
+            self.cliente.delete_objects(
+                Bucket=self.bucket,
+                Delete={"Objects": [{"Key": c} for c in lote], "Quiet": True},
+            )
 
 
 def obter_armazenamento():

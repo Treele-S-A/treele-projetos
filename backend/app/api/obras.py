@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from fastapi.concurrency import run_in_threadpool
-from sqlalchemy import select
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.orm import Session
 
 from ..db import get_db
@@ -16,14 +16,20 @@ from ..deps import (
 )
 from ..enums import PERMISSOES, PapelObra, TipoArquivo
 from ..models import (
+    AnexoSolicitacao,
+    Arquivo,
     Documento,
+    Evento,
     Obra,
     ObraMembro,
     PadraoNomenclatura,
     Revisao,
+    SolicitacaoRevisao,
     Usuario,
 )
 from ..schemas import (
+    ExclusaoObraEntrada,
+    ExclusaoObraPrevia,
     MembroCriar,
     MembroOut,
     NomeAnalisado,
@@ -36,6 +42,7 @@ from ..schemas import (
     ValidarNomeEntrada,
     ValidarNomeSaida,
 )
+from ..security import conferir_senha
 from ..services import auditoria
 from ..services import solicitacoes as servico_solicitacoes
 from ..services.nomenclatura import analisar, validar_definicao
@@ -267,6 +274,124 @@ def _apagar_imagem(chave: str) -> None:
 # --------------------------------------------------------------------------
 # Equipe
 # --------------------------------------------------------------------------
+
+
+# --------------------------------------------------------------------------
+# Exclusão da obra — só administrador (TREELE, 06/10/2026)
+# --------------------------------------------------------------------------
+
+
+def _so_administrador(ctx: ContextoObra) -> None:
+    if not ctx.usuario.admin:
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN, "Somente um administrador exclui obras."
+        )
+
+
+def _previa(db: Session, obra: Obra) -> ExclusaoObraPrevia:
+    def contar(consulta):
+        return db.scalar(consulta) or 0
+
+    do_documento = select(Documento.id).where(Documento.obra_id == obra.id)
+    da_revisao = select(Revisao.id).where(Revisao.documento_id.in_(do_documento))
+    return ExclusaoObraPrevia(
+        codigo=obra.codigo,
+        nome=obra.nome,
+        documentos=contar(select(func.count()).select_from(do_documento.subquery())),
+        revisoes=contar(select(func.count()).select_from(da_revisao.subquery())),
+        arquivos=contar(
+            select(func.count(Arquivo.id)).where(Arquivo.revisao_id.in_(da_revisao))
+        ),
+        tamanho=contar(
+            select(func.sum(Arquivo.tamanho)).where(Arquivo.revisao_id.in_(da_revisao))
+        ),
+        solicitacoes=contar(
+            select(func.count(SolicitacaoRevisao.id)).where(
+                SolicitacaoRevisao.documento_id.in_(do_documento)
+            )
+        ),
+        membros=contar(
+            select(func.count(ObraMembro.id)).where(ObraMembro.obra_id == obra.id)
+        ),
+    )
+
+
+@router.get("/{obra_id}/exclusao", response_model=ExclusaoObraPrevia)
+def previa_da_exclusao(ctx: ContextoObra = Depends(contexto_obra)):
+    """O que vai junto, para quem vai excluir saber antes de confirmar."""
+    _so_administrador(ctx)
+    return _previa(ctx.db, ctx.obra)
+
+
+@router.post("/{obra_id}/excluir", response_model=ExclusaoObraPrevia)
+def excluir(
+    dados: ExclusaoObraEntrada,
+    request: Request,
+    ctx: ContextoObra = Depends(contexto_obra),
+):
+    """Exclui a obra e tudo dela: documentos, revisões, arquivos, pedidos de
+    revisão, equipe e avisos. Não tem volta.
+
+    Duas travas, conferidas aqui e não só na tela: o código da obra digitado
+    — um clique por engano, ou uma chamada com o número errado, não apaga uma
+    obra inteira — e a senha de quem exclui, para que um computador deixado
+    logado não baste. POST e não DELETE: a senha vai no corpo, nunca no
+    endereço, que fica nos logs.
+
+    O registro de atividades fica (a regra é nunca apagar): as linhas da obra
+    perdem a ligação com ela, que deixa de existir, e uma última diz quem
+    excluiu e o que havia.
+    """
+    _so_administrador(ctx)
+    db, obra = ctx.db, ctx.obra
+    if dados.confirmacao.strip().upper() != obra.codigo.upper():
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            f"Para excluir, digite o código da obra ({obra.codigo}).",
+        )
+    if not conferir_senha(dados.senha, ctx.usuario.senha_hash):
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN, "Senha incorreta. A obra não foi excluída."
+        )
+
+    previa = _previa(db, obra)
+    do_documento = select(Documento.id).where(Documento.obra_id == obra.id)
+    da_revisao = select(Revisao.id).where(Revisao.documento_id.in_(do_documento))
+    chaves = list(
+        db.scalars(select(Arquivo.storage_key).where(Arquivo.revisao_id.in_(da_revisao)))
+    ) + list(
+        db.scalars(
+            select(AnexoSolicitacao.storage_key)
+            .join(SolicitacaoRevisao, AnexoSolicitacao.solicitacao_id == SolicitacaoRevisao.id)
+            .where(SolicitacaoRevisao.documento_id.in_(do_documento))
+        )
+    )
+    if obra.logo_chave:
+        chaves.append(obra.logo_chave)
+
+    db.execute(update(Evento).where(Evento.obra_id == obra.id).values(obra_id=None))
+    auditoria.registrar(
+        db, acao="obra_excluida", entidade="obra", entidade_id=obra.id,
+        usuario=ctx.usuario, obra_id=None,
+        detalhes=previa.model_dump(),
+        request=request,
+    )
+    # Exclusão pelo banco: documentos, revisões, arquivos, pedidos, anexos,
+    # equipe, padrão e avisos saem em cascata (ON DELETE CASCADE).
+    db.execute(delete(Obra).where(Obra.id == obra.id))
+    db.commit()
+
+    # Depois do commit: o banco já não aponta para eles. Falha aqui deixa só
+    # objeto órfão — espaço, não inconsistência.
+    try:
+        armazenamento.remover_varios(chaves)
+    except Exception as erro:  # noqa: BLE001 - storage externo, qualquer falha
+        print(
+            f"aviso: {len(chaves)} objeto(s) da obra {previa.codigo} ficaram no "
+            f"armazenamento ({type(erro).__name__})",
+            flush=True,
+        )
+    return previa
 
 
 @router.get("/{obra_id}/membros", response_model=list[MembroOut])

@@ -22,8 +22,13 @@ Obra A e projetista na Obra B. Além disso existe o perfil global de
 | Alterar nomenclatura da obra | ✓ | | |
 | Ver registro de atividades | ✓ | | | |
 
-O administrador tem todas as permissões em todas as obras — e uma a mais,
-que nenhum papel de obra tem: **excluir arquivos e revisões**. Além disso,
+O administrador tem todas as permissões em todas as obras — e duas a mais,
+que nenhum papel de obra tem: **excluir arquivos e revisões** e **excluir a
+obra inteira** (06/10/2026). Excluir a obra fica no fim das Configurações da
+obra e pede duas confirmações, conferidas também pelo servidor: digitar o
+código da obra e a própria senha. Apaga documentos, revisões, arquivos,
+pedidos de revisão, equipe e avisos; o registro de atividades fica, com uma
+última linha dizendo quem excluiu e o que havia. Além disso,
 **todo administrador é coordenador de todas as obras** (02/10/2026),
 inclusive as criadas depois, e todo administrador criado depois também passa
 a ser. Por isso ele aparece na equipe de cada obra e não pode ser removido
