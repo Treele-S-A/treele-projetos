@@ -51,6 +51,11 @@ class Sobrecarga(ChatIndisponivel):
     """O modelo está sobrecarregado (500/503) — vale tentar de novo ou outro."""
 
 
+class CotaEsgotada(Sobrecarga):
+    """A cota gratuita deste modelo acabou (429). Repetir nele não adianta; a
+    cota é por modelo, então o reserva ainda tem a dele."""
+
+
 # Tentativas diante de sobrecarga: o principal, ele de novo após uma pausa, e o
 # reserva. 503 volta rápido, então as três cabem no tempo da função.
 PAUSA_ANTES_DE_REPETIR = 2.0
@@ -66,13 +71,21 @@ def _tentativas() -> list[tuple[str, float]]:
 
 def _com_reserva(fazer):
     """Roda `fazer(modelo)` nas tentativas, enquanto o Google disser que está
-    sobrecarregado. Outro erro qualquer não se repete: seria o mesmo de novo."""
+    sobrecarregado ou sem cota. Outro erro qualquer não se repete: seria o
+    mesmo de novo. Cota esgotada pula direto para o próximo modelo."""
     ultimo: Sobrecarga | None = None
+    sem_cota: set[str] = set()
     for modelo, pausa in _tentativas():
+        if modelo in sem_cota:
+            continue
         if pausa:
             time.sleep(pausa)
         try:
             return fazer(modelo)
+        except CotaEsgotada as erro:
+            log.warning("Chat: cota de %s esgotada (%s).", modelo, erro.detalhe)
+            sem_cota.add(modelo)
+            ultimo = erro
         except Sobrecarga as erro:
             log.warning("Chat: %s sobrecarregado (%s).", modelo, erro.detalhe)
             ultimo = erro
@@ -109,9 +122,10 @@ def _chamar(corpo: dict, tempo: float = TEMPO_POR_CHAMADA, modelo: str | None = 
             "O assistente não respondeu a tempo. Tente de novo.", type(erro).__name__
         ) from erro
     if r.status_code == 429:
-        raise ChatIndisponivel(
+        raise CotaEsgotada(
             "O limite gratuito de perguntas foi atingido por agora. Espere um minuto e "
-            "tente de novo."
+            "tente de novo.",
+            _motivo(r),
         )
     if r.status_code in (401, 403):
         log.error("Chat: chave recusada (%s).", r.status_code)

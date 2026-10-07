@@ -196,11 +196,16 @@ def test_limite_do_plano_gratuito_vira_mensagem_clara(cliente, admin, monkeypatc
         status_code = 429
         text = "quota"
 
+        def json(self):
+            return {"error": {"message": "Quota exceeded for metric generate_content_free_tier_requests, limit: 10"}}
+
     monkeypatch.setattr(settings, "gemini_api_key", "chave-de-teste")
     monkeypatch.setattr(chat_modelo.httpx, "post", lambda *a, **k: Resposta())
     r = cliente.post("/chat", json={"mensagens": [{"papel": "usuario", "texto": "Oi"}]}, headers=admin)
     assert r.status_code == 503
     assert "limite gratuito" in r.json()["detail"]
+    # Administrador vê qual cota estourou.
+    assert "limit: 10" in r.json()["detail"]
 
 
 def test_exige_login(cliente):
@@ -380,3 +385,22 @@ def test_outro_erro_nao_se_repete(cliente, admin, monkeypatch):
     monkeypatch.setattr(chat_modelo.httpx, "post", lambda *a, **k: chamadas.append(1) or Resposta())
     cliente.post("/chat", json={"mensagens": [{"papel": "usuario", "texto": "Oi"}]}, headers=admin)
     assert len(chamadas) == 1
+
+
+def test_cota_esgotada_pula_para_o_reserva_sem_repetir(cliente, admin, monkeypatch):
+    usados = []
+
+    def falso(corpo, tempo=None, modelo=None):
+        usados.append(modelo)
+        if modelo == "principal":
+            raise chat_modelo.CotaEsgotada("sem cota", "429 quota")
+        return {"candidates": [{"content": {"parts": [{"text": "Pelo reserva."}]}}]}
+
+    monkeypatch.setattr(settings, "gemini_api_key", "chave-de-teste")
+    monkeypatch.setattr(settings, "chat_modelo", "principal")
+    monkeypatch.setattr(settings, "chat_modelo_reserva", "reserva")
+    monkeypatch.setattr(chat_modelo, "PAUSA_ANTES_DE_REPETIR", 0)
+    monkeypatch.setattr(chat_modelo, "_chamar", falso)
+    r = cliente.post("/chat", json={"mensagens": [{"papel": "usuario", "texto": "Oi"}]}, headers=admin)
+    assert r.json()["resposta"] == "Pelo reserva."
+    assert usados == ["principal", "reserva"]
