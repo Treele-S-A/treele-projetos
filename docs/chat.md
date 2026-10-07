@@ -44,6 +44,12 @@ consulta). Tudo que é do fornecedor está em
 `backend/app/services/chat_modelo.py`: trocar de fornecedor é reescrever só
 esse arquivo.
 
+Quando o Google responde que o modelo está sobrecarregado (503, comum no
+plano gratuito em horário de pico), o chat espera um instante e repete, e
+depois troca para o modelo reserva, `gemini-2.5-flash`
+(`CHAT_MODELO_RESERVA`). Só se todos falharem a pessoa vê o aviso de
+sobrecarga. Administrador vê, junto da mensagem de erro, o motivo técnico.
+
 Limites e condições do plano gratuito:
 
 - Algo como 10 a 15 perguntas por minuto e 1.000 a 1.500 por dia. Passou do

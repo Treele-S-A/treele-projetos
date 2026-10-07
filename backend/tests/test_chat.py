@@ -141,7 +141,7 @@ def modelo_falso(monkeypatch):
         ]}}]},
     ]
 
-    def falso(corpo):
+    def falso(corpo, tempo=None, modelo=None):
         chamadas.append(corpo)
         return roteiro[len(chamadas) - 1]
 
@@ -280,7 +280,7 @@ def test_revisao_pedida_que_nao_existe(cenario, ferramentas_de):
 def test_leitura_vai_ao_modelo_como_pdf(monkeypatch):
     corpos = []
 
-    def falso(corpo, tempo=None):
+    def falso(corpo, tempo=None, modelo=None):
         corpos.append((corpo, tempo))
         return {"candidates": [{"content": {"parts": [{"text": "Nota 1: concreto C30."}]}}]}
 
@@ -326,3 +326,57 @@ def test_administrador_ve_o_motivo_tecnico_e_os_outros_nao(cliente, admin, cenar
     campo = autenticar(cliente, "campo@cht.teste.com.br", SENHA)
     r = cliente.post("/chat", json=corpo, headers=campo)
     assert "Detalhe técnico" not in r.json()["detail"]
+
+
+def test_sobrecarga_tenta_de_novo_e_cai_no_reserva(cliente, admin, monkeypatch):
+    """503 do Google (caso real, 07/10/2026): repete e troca de modelo."""
+    usados = []
+
+    def falso(corpo, tempo=None, modelo=None):
+        usados.append(modelo)
+        if modelo == "principal":
+            raise chat_modelo.Sobrecarga("sobrecarregado", "503 high demand")
+        return {"candidates": [{"content": {"parts": [{"text": "Respondi pelo reserva."}]}}]}
+
+    monkeypatch.setattr(settings, "gemini_api_key", "chave-de-teste")
+    monkeypatch.setattr(settings, "chat_modelo", "principal")
+    monkeypatch.setattr(settings, "chat_modelo_reserva", "reserva")
+    monkeypatch.setattr(chat_modelo, "PAUSA_ANTES_DE_REPETIR", 0)
+    monkeypatch.setattr(chat_modelo, "_chamar", falso)
+    r = cliente.post("/chat", json={"mensagens": [{"papel": "usuario", "texto": "Oi"}]}, headers=admin)
+    assert r.status_code == 200, r.text
+    assert r.json()["resposta"] == "Respondi pelo reserva."
+    assert usados == ["principal", "principal", "reserva"]
+
+
+def test_sobrecarga_em_todos_vira_mensagem_clara(cliente, admin, monkeypatch):
+    class Resposta:
+        status_code = 503
+        text = ""
+
+        def json(self):
+            return {"error": {"message": "This model is currently experiencing high demand."}}
+
+    chamadas = []
+    monkeypatch.setattr(settings, "gemini_api_key", "chave-de-teste")
+    monkeypatch.setattr(chat_modelo, "PAUSA_ANTES_DE_REPETIR", 0)
+    monkeypatch.setattr(chat_modelo.httpx, "post", lambda *a, **k: chamadas.append(1) or Resposta())
+    r = cliente.post("/chat", json={"mensagens": [{"papel": "usuario", "texto": "Oi"}]}, headers=admin)
+    assert r.status_code == 503
+    assert "sobrecarregado" in r.json()["detail"]
+    assert len(chamadas) == 3
+
+
+def test_outro_erro_nao_se_repete(cliente, admin, monkeypatch):
+    class Resposta:
+        status_code = 400
+        text = ""
+
+        def json(self):
+            return {"error": {"message": "Invalid argument."}}
+
+    chamadas = []
+    monkeypatch.setattr(settings, "gemini_api_key", "chave-de-teste")
+    monkeypatch.setattr(chat_modelo.httpx, "post", lambda *a, **k: chamadas.append(1) or Resposta())
+    cliente.post("/chat", json={"mensagens": [{"papel": "usuario", "texto": "Oi"}]}, headers=admin)
+    assert len(chamadas) == 1
