@@ -103,6 +103,7 @@ def saude():
         "storage": settings.storage_backend,
         "versao": VERSAO or None,
         "email": settings.email_ligado,
+        "chat": settings.chat_ligado,
     }
 
 
