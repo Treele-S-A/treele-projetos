@@ -208,6 +208,9 @@ class ArmazenamentoLocal:
         for chave in chaves:
             self.remover(chave)
 
+    def ler_bytes(self, chave: str) -> bytes:
+        return self.caminho(chave).read_bytes()
+
 
 class ArmazenamentoS3:
     """Dois clientes, de propósito.
@@ -361,6 +364,11 @@ class ArmazenamentoS3:
 
     def remover(self, chave: str) -> None:
         self.cliente.delete_object(Bucket=self.bucket, Key=chave)
+
+    def ler_bytes(self, chave: str) -> bytes:
+        """O arquivo inteiro na memória — só para o que é pequeno o bastante
+        (o assistente lê PDFs com limite de tamanho)."""
+        return self.cliente.get_object(Bucket=self.bucket, Key=chave)["Body"].read()
 
     def remover_varios(self, chaves: list[str]) -> None:
         """Em lotes de mil — o máximo do S3 por chamada. Uma obra inteira cabe

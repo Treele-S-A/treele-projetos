@@ -15,6 +15,7 @@ nele. Cada parte que a IA devolve volta a ela intacta — inclusive a
 rodada e outra.
 """
 
+import base64
 import logging
 from dataclasses import dataclass
 
@@ -28,6 +29,8 @@ log = logging.getLogger("treele.chat")
 URL = "https://generativelanguage.googleapis.com/v1beta/models/{modelo}:generateContent"
 # A função tem 60 s na Vercel; a soma das rodadas precisa caber nisso.
 TEMPO_POR_CHAMADA = 20
+# Ler um PDF de prancha leva mais.
+TEMPO_LEITURA_PDF = 35
 MAX_RODADAS = 6
 
 
@@ -41,13 +44,13 @@ class Turno:
     texto: str
 
 
-def _chamar(corpo: dict) -> dict:
+def _chamar(corpo: dict, tempo: float = TEMPO_POR_CHAMADA) -> dict:
     try:
         r = httpx.post(
             URL.format(modelo=settings.chat_modelo),
             headers={"x-goog-api-key": settings.gemini_api_key},
             json=corpo,
-            timeout=TEMPO_POR_CHAMADA,
+            timeout=tempo,
         )
     except httpx.HTTPError as erro:
         log.error("Chat: sem resposta do modelo (%s).", type(erro).__name__)
@@ -106,3 +109,35 @@ def conversar(sistema: str, historico: list[Turno], ferramentas: Ferramentas) ->
         "ou dizer a obra e a disciplina."
     )
 
+
+
+LEITURA = """Você está lendo o PDF de uma prancha de projeto de construção civil
+({codigo}). Responda, em português, só com o que estiver no PDF: {pergunta}
+
+Regras: seja literal e cite o que está escrito (notas, legendas, carimbo,
+tabela de revisões). Se algo não estiver legível ou não aparecer, diga isso —
+não complete por conta própria. Medidas e cotas: transcreva como estão e avise
+quando a leitura for incerta."""
+
+
+def ler_pdf(dados: bytes, pergunta: str, codigo: str) -> str:
+    """Uma chamada à parte, com o PDF junto. Volta só o texto lido — o PDF não
+    entra no resto da conversa, que ficaria pesada a cada pergunta seguinte."""
+    resposta = _chamar(
+        {
+            "contents": [{
+                "role": "user",
+                "parts": [
+                    {"inlineData": {
+                        "mimeType": "application/pdf",
+                        "data": base64.b64encode(dados).decode("ascii"),
+                    }},
+                    {"text": LEITURA.format(codigo=codigo, pergunta=pergunta)},
+                ],
+            }],
+        },
+        tempo=TEMPO_LEITURA_PDF,
+    )
+    partes = ((resposta.get("candidates") or [{}])[0].get("content") or {}).get("parts") or []
+    texto = "".join(p.get("text", "") for p in partes if not p.get("thought")).strip()
+    return texto or "Não foi possível ler o PDF."

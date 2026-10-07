@@ -8,8 +8,12 @@ obra de que não participa. E como a resposta sai do banco, a IA não inventa
 número de revisão — que é justamente o erro que não se pode cometer aqui.
 
 Tudo é só leitura. O chat consulta; quem altera é a pessoa, na tela.
+
+Ler o PDF de um projeto (07/10/2026) segue a regra do download: só abre o que
+a pessoa poderia baixar, e cada leitura fica no registro de atividades.
 """
 
+from collections.abc import Callable
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
@@ -17,9 +21,21 @@ from fastapi import HTTPException
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from ..config import settings
 from ..deps import ContextoObra, montar_contexto, status_visiveis
-from ..enums import StatusRevisao, StatusSolicitacao
-from ..models import Disciplina, Documento, Fase, Obra, ObraMembro, Revisao, SolicitacaoRevisao, Usuario
+from ..enums import StatusRevisao, StatusSolicitacao, TipoArquivo
+from ..models import (
+    Disciplina,
+    Documento,
+    Fase,
+    Obra,
+    ObraMembro,
+    Revisao,
+    SolicitacaoRevisao,
+    Usuario,
+)
+from . import auditoria
+from .storage import armazenamento
 
 LIMITE_DOCUMENTOS = 40
 
@@ -101,6 +117,28 @@ DECLARACOES = [
         },
     },
     {
+        "name": "ler_projeto",
+        "description": (
+            "Abre o PDF de um documento e lê o que está nele: carimbo (título, "
+            "escala, responsável, data), tabela de revisões da prancha, notas "
+            "gerais, legendas, especificações, ambientes e elementos desenhados. "
+            "Use quando a pergunta for sobre o CONTEÚDO da prancha, e não sobre "
+            "status ou histórico. Sem revisão, lê a vigente."
+        ),
+        "parameters": {
+            "type": "OBJECT",
+            "properties": {
+                "codigo": {"type": "STRING", "description": "Código exato, ex.: TRE-ARQ-PE-001."},
+                "pergunta": {
+                    "type": "STRING",
+                    "description": "O que procurar no PDF, em português.",
+                },
+                "revisao": {"type": "STRING", "description": "Ex.: R01. Opcional."},
+            },
+            "required": ["codigo", "pergunta"],
+        },
+    },
+    {
         "name": "listar_solicitacoes",
         "description": (
             "Solicitações de revisão (pedidos de alteração em projeto liberado), "
@@ -124,9 +162,17 @@ DECLARACOES = [
 class Ferramentas:
     """As consultas, presas à pessoa que pergunta."""
 
-    def __init__(self, db: Session, usuario: Usuario):
+    def __init__(
+        self,
+        db: Session,
+        usuario: Usuario,
+        leitor: Callable[[bytes, str, str], str] | None = None,
+    ):
         self.db = db
         self.usuario = usuario
+        # Quem lê o PDF (chat_modelo.ler_pdf). Injetado: os testes trocam por um
+        # leitor de mentira, e este módulo não depende do fornecedor de IA.
+        self.leitor = leitor
 
     # ------------------------------------------------------------- obras
 
@@ -171,6 +217,7 @@ class Ferramentas:
             "resumo_da_obra": self.resumo_da_obra,
             "liberacoes_recentes": self.liberacoes_recentes,
             "listar_solicitacoes": self.listar_solicitacoes,
+            "ler_projeto": self.ler_projeto,
         }.get(nome)
         if metodo is None:
             return {"erro": f"Consulta desconhecida: {nome}."}
@@ -276,6 +323,76 @@ class Ferramentas:
             }
             if not self.usuario.comercial:
                 saida["solicitacoes"] = [_solicitacao(s) for s in doc.solicitacoes]
+            return saida
+        return {"erro": f"Documento '{codigo}' não encontrado entre os que você pode ver."}
+
+    def ler_projeto(self, codigo: str, pergunta: str, revisao: str | None = None):
+        from ..api.arquivos import _conferir_leitura  # a mesma regra do download
+
+        if self.leitor is None:
+            return {"erro": "Leitura de PDF indisponível."}
+        for ctx in self._contextos(None):
+            doc = self.db.scalar(
+                select(Documento).where(
+                    Documento.obra_id == ctx.obra.id, Documento.codigo == codigo.strip().upper()
+                )
+            )
+            if doc is None or not ctx.ve_disciplina(doc.disciplina.codigo):
+                continue
+            visiveis = status_visiveis(ctx)
+            candidatas = [
+                r for r in sorted(doc.revisoes, key=lambda r: r.ordem, reverse=True)
+                if r.status in visiveis and r.status != StatusRevisao.cancelado
+            ]
+            if revisao:
+                numero = revisao.strip().upper().removeprefix("R")
+                candidatas = [r for r in candidatas if r.numero.upper() == numero]
+            if not candidatas:
+                return {"erro": f"Nenhuma revisão de {doc.codigo} que você possa ler"
+                                + (f" com o número {revisao}." if revisao else ".")}
+            rev = candidatas[0]
+            pdfs = [
+                a for a in rev.arquivos
+                if a.tipo == TipoArquivo.pdf and a.status.value == "disponivel"
+            ]
+            if not pdfs:
+                return {"erro": f"A R{rev.numero} de {doc.codigo} não tem PDF para ler."}
+            arquivo = pdfs[0]
+            try:
+                aviso = _conferir_leitura(arquivo, ctx)
+            except HTTPException as erro:
+                return {"erro": erro.detail}
+            limite = settings.chat_pdf_max_mb * 1024 * 1024
+            if arquivo.tamanho > limite:
+                return {"erro": (
+                    f"O PDF {arquivo.nome_original} tem {arquivo.tamanho / 1048576:.0f} MB; o "
+                    f"assistente lê até {settings.chat_pdf_max_mb} MB. Abra o arquivo no sistema."
+                )}
+
+            leitura = self.leitor(armazenamento.ler_bytes(arquivo.storage_key), pergunta, doc.codigo)
+            # Fica no registro como qualquer leitura de arquivo.
+            auditoria.registrar(
+                self.db, acao="lido_pelo_assistente", entidade="arquivo",
+                entidade_id=arquivo.id, usuario=self.usuario, obra_id=ctx.obra.id,
+                detalhes={
+                    "arquivo": arquivo.nome_original, "documento": doc.codigo,
+                    "revisao": rev.numero, "status_revisao": rev.status.value,
+                },
+            )
+            saida = {
+                "link": f"/documentos/{doc.id}",
+                "codigo": doc.codigo,
+                "titulo": doc.titulo,
+                "revisao_lida": f"R{rev.numero}",
+                "status": ROTULO_STATUS[rev.status.value],
+                "arquivo": arquivo.nome_original,
+                "leitura": leitura,
+                "lembrete": "Medidas e cotas lidas do desenho devem ser conferidas no PDF.",
+            }
+            if aviso:
+                saida["aviso"] = aviso
+            if len(pdfs) > 1:
+                saida["outros_pdfs_nesta_revisao"] = [a.nome_original for a in pdfs[1:]]
             return saida
         return {"erro": f"Documento '{codigo}' não encontrado entre os que você pode ver."}
 

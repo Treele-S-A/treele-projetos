@@ -99,6 +99,9 @@ class Settings(BaseSettings):
     # e o botão nem aparece. O modelo é configurável para trocar sem código.
     gemini_api_key: str = ""
     chat_modelo: str = "gemini-3.8-flash"
+    # Maior PDF que o assistente lê. O PDF vai junto da chamada ao modelo; acima
+    # disto a chamada passa do tamanho aceito ou do tempo da função.
+    chat_pdf_max_mb: int = 14
 
     # Endereço das telas, para os links dos e-mails. Vazio = descobre sozinho
     # (ver endereco_site).

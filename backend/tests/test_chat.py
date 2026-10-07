@@ -55,10 +55,10 @@ def cenario(cliente, admin):
 def ferramentas_de():
     sessoes = []
 
-    def fazer(usuario_id):
+    def fazer(usuario_id, leitor=None):
         db = SessionLocal()
         sessoes.append(db)
-        return Ferramentas(db, db.get(Usuario, usuario_id))
+        return Ferramentas(db, db.get(Usuario, usuario_id), leitor=leitor)
 
     yield fazer
     for db in sessoes:
@@ -205,3 +205,90 @@ def test_limite_do_plano_gratuito_vira_mensagem_clara(cliente, admin, monkeypatc
 
 def test_exige_login(cliente):
     assert cliente.post("/chat", json={"mensagens": [{"papel": "usuario", "texto": "Oi"}]}).status_code == 401
+
+
+# ------------------------------------------------------------ leitura do PDF
+
+
+class _Leitor:
+    """Leitor de mentira: guarda o que recebeu e devolve um texto fixo."""
+
+    def __init__(self):
+        self.chamadas = []
+
+    def __call__(self, dados, pergunta, codigo):
+        self.chamadas.append((dados, pergunta, codigo))
+        return "Carimbo: escala 1:50. Nota 3: impermeabilizar o box."
+
+
+def test_le_o_pdf_da_revisao_vigente_e_registra(cenario, ferramentas_de):
+    from app.models import Evento
+    from sqlalchemy import select
+
+    leitor = _Leitor()
+    f = ferramentas_de(cenario["ids"]["campo"], leitor)
+    r = f.executar("ler_projeto", {"codigo": "CHA-ARQ-PE-001", "pergunta": "Qual a escala?"})
+    assert r["leitura"].startswith("Carimbo: escala 1:50")
+    assert r["revisao_lida"] == "R00"
+    assert r["arquivo"] == "CHA-ARQ-PE-001-R00.pdf"
+    assert "conferidas no PDF" in r["lembrete"]
+    dados, pergunta, codigo = leitor.chamadas[0]
+    assert dados == PDF and pergunta == "Qual a escala?" and codigo == "CHA-ARQ-PE-001"
+
+    f.db.commit()
+    evento = f.db.scalars(
+        select(Evento).where(Evento.acao == "lido_pelo_assistente").order_by(Evento.id.desc())
+    ).first()
+    assert evento.detalhes["arquivo"] == "CHA-ARQ-PE-001-R00.pdf"
+    assert evento.usuario_id == cenario["ids"]["campo"]
+
+
+def test_leitura_segue_a_regra_do_download(cenario, ferramentas_de):
+    leitor = _Leitor()
+    campo = ferramentas_de(cenario["ids"]["campo"], leitor)
+    # A obra não lê o que ainda está em revisão; o comercial só lê COM.
+    assert "erro" in campo.ler_projeto(codigo="CHA-EST-PE-001", pergunta="x")
+    comercial = ferramentas_de(cenario["ids"]["comercial"], leitor)
+    assert "erro" in comercial.ler_projeto(codigo="CHA-ARQ-PE-001", pergunta="x")
+    assert "leitura" in comercial.ler_projeto(codigo="CHA-COM-PE-001", pergunta="x")
+    # O projetista lê a em revisão, com o aviso.
+    proj = ferramentas_de(cenario["ids"]["proj"], leitor)
+    r = proj.ler_projeto(codigo="CHA-EST-PE-001", pergunta="x")
+    assert "EM REVISÃO" in r["aviso"]
+    # Ninguém lê obra de que não participa.
+    assert "erro" in campo.ler_projeto(codigo="CHB-ARQ-PE-001", pergunta="x")
+    assert len(leitor.chamadas) == 2
+
+
+def test_pdf_grande_demais_nao_vai_ao_modelo(cenario, ferramentas_de, monkeypatch):
+    monkeypatch.setattr(settings, "chat_pdf_max_mb", 0)
+    leitor = _Leitor()
+    r = ferramentas_de(cenario["ids"]["proj"], leitor).ler_projeto(
+        codigo="CHA-ARQ-PE-001", pergunta="x"
+    )
+    assert "assistente lê até 0 MB" in r["erro"]
+    assert leitor.chamadas == []
+
+
+def test_revisao_pedida_que_nao_existe(cenario, ferramentas_de):
+    r = ferramentas_de(cenario["ids"]["proj"], _Leitor()).ler_projeto(
+        codigo="CHA-ARQ-PE-001", pergunta="x", revisao="R07"
+    )
+    assert "R07" in r["erro"]
+
+
+def test_leitura_vai_ao_modelo_como_pdf(monkeypatch):
+    corpos = []
+
+    def falso(corpo, tempo=None):
+        corpos.append((corpo, tempo))
+        return {"candidates": [{"content": {"parts": [{"text": "Nota 1: concreto C30."}]}}]}
+
+    monkeypatch.setattr(chat_modelo, "_chamar", falso)
+    texto = chat_modelo.ler_pdf(PDF, "Quais as notas?", "CHA-ARQ-PE-001")
+    assert texto == "Nota 1: concreto C30."
+    corpo, tempo = corpos[0]
+    partes = corpo["contents"][0]["parts"]
+    assert partes[0]["inlineData"]["mimeType"] == "application/pdf"
+    assert "Quais as notas?" in partes[1]["text"]
+    assert tempo == chat_modelo.TEMPO_LEITURA_PDF

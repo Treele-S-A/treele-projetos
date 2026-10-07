@@ -17,6 +17,22 @@ fase, status ou trecho do código/título), detalhar documento (histórico,
 arquivos, solicitações), resumo da obra por disciplina e status, liberações
 recentes e solicitações de revisão.
 
+### Leitura do PDF (07/10/2026)
+
+Para perguntas sobre o **conteúdo** de uma prancha — carimbo, escala,
+responsável, tabela de revisões, notas gerais, legendas, especificações,
+ambientes — o assistente abre o PDF da revisão (a vigente, ou a que a pessoa
+pedir) e o lê numa chamada à parte, que devolve só o texto lido.
+
+- Segue a regra do download: só lê o que a pessoa poderia baixar. Cada
+  leitura fica no registro de atividades como *Arquivo lido pelo assistente*.
+- Lê PDF até 14 MB (`CHAT_PDF_MAX_MB`). DWG e RVT não: só o PDF que vai junto.
+- **Medidas e cotas lidas do desenho podem ter erro.** O assistente avisa, e
+  a conferência é sempre no PDF.
+- No plano gratuito, **o conteúdo do PDF lido também vai para o Google** e
+  pode ser usado para melhorar os produtos dele (decisão da TREELE em
+  07/10/2026: seguir com o gratuito).
+
 A conversa não fica guardada no servidor: a tela manda o histórico a cada
 pergunta e esquece ao fechar o navegador.
 

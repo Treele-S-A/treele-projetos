@@ -74,6 +74,10 @@ Regras:
   encontrou.
 - Ao citar um documento, use link em markdown com o "link" da consulta, assim:
   [TRE-ARQ-PE-001 — Planta baixa](/documentos/12).
+- Para perguntas sobre o conteúdo de uma prancha (carimbo, notas, legendas,
+  ambientes, tabela de revisões), use ler_projeto. Ao responder com base nele,
+  diga qual revisão foi lida e lembre que medidas e cotas devem ser
+  conferidas no PDF.
 - Você só consulta. Para alterar algo (enviar, liberar, autorizar), diga onde
   a pessoa faz isso na tela.
 - Se a pergunta for sobre outra coisa que não o acervo de projetos, diga com
@@ -101,7 +105,7 @@ def perguntar(
     if dados.mensagens[-1].papel != "usuario":
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "A última mensagem é a pergunta.")
 
-    ferramentas = Ferramentas(db, usuario)
+    ferramentas = Ferramentas(db, usuario, leitor=chat_modelo.ler_pdf)
     # Só entra no contexto a obra que a pessoa pode ver — o id vem da tela.
     obra = next((o for o in ferramentas._obras_visiveis() if o.id == dados.obra_id), None)
     historico = [
@@ -113,5 +117,8 @@ def perguntar(
             _instrucoes(db, usuario, obra), historico, ferramentas
         )
     except chat_modelo.ChatIndisponivel as erro:
+        # PDF lido antes da falha também conta como leitura.
+        db.commit()
         raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, str(erro)) from erro
+    db.commit()  # registro das leituras de PDF
     return RespostaSaida(resposta=resposta)

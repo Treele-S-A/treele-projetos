@@ -14,12 +14,14 @@ interface Turno {
 
 const SUGESTOES_EQUIPE = [
   "O que foi liberado para obra nesta semana?",
+  "O que dizem as notas gerais da planta baixa do térreo?",
   "Quais documentos desta obra ainda estão em revisão?",
   "Há solicitações de revisão aguardando autorização?",
 ];
 const SUGESTOES_OBRA = [
   "O que foi liberado para obra nesta semana?",
   "Qual a revisão atual da planta baixa do térreo?",
+  "O que dizem as notas gerais da planta baixa do térreo?",
   "Quais projetos de estrutura já estão liberados?",
 ];
 
@@ -233,8 +235,8 @@ export default function Assistente({ obraId }: { obraId: number | null }) {
             </button>
           </form>
           <p className="assistente-nota">
-            Respostas geradas por IA (Google Gemini) a partir do acervo. Confira no documento
-            antes de executar.
+            Respostas geradas por IA (Google Gemini) a partir do acervo e, quando preciso, do
+            PDF da prancha. Confira no documento antes de executar.
           </p>
         </aside>
       )}
