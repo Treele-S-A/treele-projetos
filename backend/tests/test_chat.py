@@ -369,7 +369,8 @@ def test_sobrecarga_em_todos_vira_mensagem_clara(cliente, admin, monkeypatch):
     r = cliente.post("/chat", json={"mensagens": [{"papel": "usuario", "texto": "Oi"}]}, headers=admin)
     assert r.status_code == 503
     assert "sobrecarregado" in r.json()["detail"]
-    assert len(chamadas) == 3
+    # O principal duas vezes e cada reserva uma.
+    assert len(chamadas) == len(chat_modelo._tentativas())
 
 
 def test_outro_erro_nao_se_repete(cliente, admin, monkeypatch):
@@ -404,3 +405,32 @@ def test_cota_esgotada_pula_para_o_reserva_sem_repetir(cliente, admin, monkeypat
     r = cliente.post("/chat", json={"mensagens": [{"papel": "usuario", "texto": "Oi"}]}, headers=admin)
     assert r.json()["resposta"] == "Pelo reserva."
     assert usados == ["principal", "reserva"]
+
+
+def test_modelo_aposentado_pula_para_os_reservas_em_ordem(cliente, admin, monkeypatch):
+    """404 "no longer available to new users" (caso real, 07/10/2026)."""
+    usados = []
+
+    def falso(corpo, tempo=None, modelo=None):
+        usados.append(modelo)
+        if modelo == "principal":
+            raise chat_modelo.CotaEsgotada("sem cota", "429")
+        if modelo == "velho":
+            raise chat_modelo.ModeloIndisponivel("indisponível", "404")
+        return {"candidates": [{"content": {"parts": [{"text": f"Pelo {modelo}."}]}}]}
+
+    monkeypatch.setattr(settings, "gemini_api_key", "chave-de-teste")
+    monkeypatch.setattr(settings, "chat_modelo", "principal")
+    monkeypatch.setattr(settings, "chat_modelo_reserva", "velho, novo")
+    monkeypatch.setattr(chat_modelo, "PAUSA_ANTES_DE_REPETIR", 0)
+    monkeypatch.setattr(chat_modelo, "_chamar", falso)
+    r = cliente.post("/chat", json={"mensagens": [{"papel": "usuario", "texto": "Oi"}]}, headers=admin)
+    assert r.json()["resposta"] == "Pelo novo."
+    assert usados == ["principal", "velho", "novo"]
+
+
+def test_reservas_padrao_sao_modelos_liberados_para_chave_nova():
+    from app.config import Settings
+
+    reservas = Settings(_env_file=None).chat_modelo_reserva
+    assert "gemini-2.5-flash" not in reservas.split(",")

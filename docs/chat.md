@@ -46,8 +46,11 @@ esse arquivo.
 
 Quando o Google responde que o modelo está sobrecarregado (503, comum no
 plano gratuito em horário de pico), o chat espera um instante e repete, e
-depois troca para o modelo reserva, `gemini-2.5-flash`
-(`CHAT_MODELO_RESERVA`). Só se todos falharem a pessoa vê o aviso de
+depois passa pelos modelos reserva, em ordem: `gemini-3.7-flash` e
+`gemini-3.5-flash` (`CHAT_MODELO_RESERVA`, separados por vírgula). Cota
+esgotada (429) e modelo indisponível (404) pulam direto para o próximo — a
+cota gratuita é por modelo. O `gemini-2.5-flash` não serve: o Google não o
+libera mais para chave nova. Só se todos falharem a pessoa vê o aviso de
 sobrecarga. Administrador vê, junto da mensagem de erro, o motivo técnico.
 
 Limites e condições do plano gratuito:

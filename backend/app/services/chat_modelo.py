@@ -51,9 +51,17 @@ class Sobrecarga(ChatIndisponivel):
     """O modelo está sobrecarregado (500/503) — vale tentar de novo ou outro."""
 
 
-class CotaEsgotada(Sobrecarga):
-    """A cota gratuita deste modelo acabou (429). Repetir nele não adianta; a
-    cota é por modelo, então o reserva ainda tem a dele."""
+class PularModelo(Sobrecarga):
+    """Repetir neste modelo não adianta: passa direto para o próximo."""
+
+
+class CotaEsgotada(PularModelo):
+    """A cota gratuita deste modelo acabou (429). A cota é por modelo, então o
+    reserva ainda tem a dele."""
+
+
+class ModeloIndisponivel(PularModelo):
+    """O Google não serve este modelo (404) — aposentado ou fora do plano."""
 
 
 # Tentativas diante de sobrecarga: o principal, ele de novo após uma pausa, e o
@@ -62,11 +70,14 @@ PAUSA_ANTES_DE_REPETIR = 2.0
 
 
 def _tentativas() -> list[tuple[str, float]]:
-    principal, reserva = settings.chat_modelo, settings.chat_modelo_reserva
-    tentativas = [(principal, 0.0), (principal, PAUSA_ANTES_DE_REPETIR)]
-    if reserva and reserva != principal:
-        tentativas.append((reserva, 0.0))
-    return tentativas
+    """O principal duas vezes (a segunda, depois de uma pausa) e cada reserva
+    uma vez. Modelo que pede para pular não é tentado de novo."""
+    principal = settings.chat_modelo
+    reservas = [
+        m.strip() for m in settings.chat_modelo_reserva.split(",")
+        if m.strip() and m.strip() != principal
+    ]
+    return [(principal, 0.0), (principal, PAUSA_ANTES_DE_REPETIR)] + [(m, 0.0) for m in reservas]
 
 
 def _com_reserva(fazer):
@@ -82,8 +93,8 @@ def _com_reserva(fazer):
             time.sleep(pausa)
         try:
             return fazer(modelo)
-        except CotaEsgotada as erro:
-            log.warning("Chat: cota de %s esgotada (%s).", modelo, erro.detalhe)
+        except PularModelo as erro:
+            log.warning("Chat: pulando %s (%s).", modelo, erro.detalhe)
             sem_cota.add(modelo)
             ultimo = erro
         except Sobrecarga as erro:
@@ -131,6 +142,10 @@ def _chamar(corpo: dict, tempo: float = TEMPO_POR_CHAMADA, modelo: str | None = 
         log.error("Chat: chave recusada (%s).", r.status_code)
         raise ChatIndisponivel(
             "O assistente está mal configurado (chave recusada).", _motivo(r)
+        )
+    if r.status_code == 404:
+        raise ModeloIndisponivel(
+            "O assistente não conseguiu responder agora. Tente de novo.", _motivo(r)
         )
     if r.status_code in (500, 503):
         raise Sobrecarga(
