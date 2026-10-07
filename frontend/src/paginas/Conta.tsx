@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import { api, ErroApi } from "../api";
+import { api, ErroApi, gravarToken } from "../api";
 import { Aviso } from "../componentes";
 import { useSessao } from "../sessao";
 
@@ -28,7 +28,12 @@ export default function Conta() {
     }
     setSalvando(true);
     try {
-      await api.post("/auth/senha", { senha_atual: atual, senha_nova: nova });
+      // A troca derruba todas as sessões; esta segue com a nova que volta.
+      const r = await api.post<{ token: string }>("/auth/senha", {
+        senha_atual: atual,
+        senha_nova: nova,
+      });
+      gravarToken(r.token);
       setOk(true);
       setAtual("");
       setNova("");
@@ -58,7 +63,10 @@ export default function Conta() {
           {erro instanceof ErroApi && (
             <Aviso tom="erro" titulo={erro.message} itens={erro.erros} />
           )}
-          {ok && <Aviso tom="ok">Senha trocada. Use a nova no próximo acesso.</Aviso>}
+          {ok && <Aviso tom="ok">
+              Senha trocada. Os outros computadores e celulares em que você estava conectado
+              precisam entrar de novo.
+            </Aviso>}
 
           <div className="filtros">
             <label className="campo">

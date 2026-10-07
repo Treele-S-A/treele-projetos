@@ -18,7 +18,7 @@ from .models import (
     PadraoNomenclatura,
     Usuario,
 )
-from .security import ler_token
+from .security import ler_token, selo_da_senha
 
 esquema = HTTPBearer(auto_error=False)
 
@@ -30,13 +30,18 @@ def usuario_atual(
     if credencial is None:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Autenticação necessária.")
 
-    usuario_id = ler_token(credencial.credentials)
-    if usuario_id is None:
+    payload = ler_token(credencial.credentials)
+    if payload is None:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Sessão expirada ou inválida.")
 
-    usuario = db.get(Usuario, usuario_id)
+    usuario = db.get(Usuario, int(payload["sub"]))
     if usuario is None or not usuario.ativo:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Usuário inativo.")
+    # Senha trocada depois que o token saiu: a sessão não vale mais.
+    if payload.get("sv") != selo_da_senha(usuario.senha_hash):
+        raise HTTPException(
+            status.HTTP_401_UNAUTHORIZED, "A senha mudou. Entre novamente."
+        )
     return usuario
 
 

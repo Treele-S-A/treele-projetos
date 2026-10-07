@@ -36,6 +36,8 @@ class Pagina(BaseModel, Generic[T]):
 class LoginEntrada(BaseModel):
     email: EmailStr
     senha: str
+    # "Manter conectado": a sessão vale dias nesta máquina, não horas.
+    manter_conectado: bool = False
 
 
 class TokenSaida(BaseModel):

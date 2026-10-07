@@ -1282,3 +1282,25 @@ body {
     padding: 11px 15px;
   }
 }
+
+/* "Manter conectado" no login. */
+.manter-conectado {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  margin: 4px 0 14px;
+  font-size: 13.5px;
+  cursor: pointer;
+}
+
+.manter-conectado input {
+  margin-top: 3px;
+  accent-color: var(--petroleo);
+}
+
+.manter-conectado small {
+  display: block;
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--tinta-2);
+}

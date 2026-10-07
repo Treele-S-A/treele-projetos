@@ -19,7 +19,7 @@ interface Sessao {
   disciplinas: Catalogo[];
   fases: Catalogo[];
   carregando: boolean;
-  entrar(email: string, senha: string): Promise<void>;
+  entrar(email: string, senha: string, manterConectado?: boolean): Promise<void>;
   sair(): void;
   recarregarObras(): Promise<void>;
 }
@@ -66,8 +66,12 @@ export function ProvedorSessao({ children }: { children: ReactNode }) {
   }, []);
 
   const entrar = useCallback(
-    async (email: string, senha: string) => {
-      const r = await api.post<{ token: string }>("/auth/login", { email, senha });
+    async (email: string, senha: string, manterConectado = false) => {
+      const r = await api.post<{ token: string }>("/auth/login", {
+        email,
+        senha,
+        manter_conectado: manterConectado,
+      });
       gravarToken(r.token);
       // Quem entra não herda a obra de quem usou o navegador antes.
       localStorage.removeItem(CHAVE_OBRA);

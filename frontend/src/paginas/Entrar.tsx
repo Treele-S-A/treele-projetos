@@ -7,6 +7,7 @@ export default function Entrar() {
   const { entrar } = useSessao();
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
+  const [manter, setManter] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
 
@@ -15,7 +16,7 @@ export default function Entrar() {
     setErro(null);
     setEnviando(true);
     try {
-      await entrar(email.trim(), senha);
+      await entrar(email.trim(), senha, manter);
     } catch (ex) {
       setErro(ex instanceof ErroApi ? ex.message : "Não foi possível entrar.");
       setEnviando(false);
@@ -56,6 +57,18 @@ export default function Entrar() {
                 autoComplete="current-password"
                 required
               />
+            </label>
+
+            <label className="manter-conectado">
+              <input
+                type="checkbox"
+                checked={manter}
+                onChange={(e) => setManter(e.target.checked)}
+              />
+              <span>
+                Manter conectado por 30 dias
+                <small>Só em computador ou celular seu. Sem marcar, vale 12 horas.</small>
+              </span>
             </label>
 
             <button className="botao" type="submit" disabled={enviando}>

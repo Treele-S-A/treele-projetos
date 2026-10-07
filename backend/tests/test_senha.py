@@ -37,9 +37,13 @@ def test_pessoa_troca_a_propria_senha(cliente, admin):
         headers=eu,
     )
 
-    assert r.status_code == 204, r.text
+    assert r.status_code == 200, r.text
     assert _entra(cliente, email, "nova-senha-456")
     assert not _entra(cliente, email, "senha-inicial-123")
+    # A sessão de antes da troca caiu; quem trocou segue com a nova.
+    assert cliente.get("/auth/eu", headers=eu).status_code == 401
+    nova = {"Authorization": f"Bearer {r.json()['token']}"}
+    assert cliente.get("/auth/eu", headers=nova).status_code == 200
 
 
 def test_senha_atual_errada_nao_troca_nem_derruba_a_sessao(cliente, admin):

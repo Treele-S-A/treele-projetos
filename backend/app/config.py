@@ -27,6 +27,9 @@ class Settings(BaseSettings):
     # garante que isso não passe batido.
     secret_key: str = SECRET_KEY_DEV
     token_expira_minutos: int = 60 * 12
+    # "Manter conectado" no login (07/10/2026): a sessão vale isto nesta
+    # máquina, em vez das 12 horas. Limitado de propósito.
+    token_lembrar_dias: int = 30
 
     # SQLite por padrão para rodar sem Docker; o docker-compose injeta Postgres.
     database_url: str = f"sqlite:///{(DATA_DIR / 'treele.db').as_posix()}"

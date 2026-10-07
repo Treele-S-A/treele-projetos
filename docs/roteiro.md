@@ -195,6 +195,7 @@ justamente como o BCF já funciona.
 | Pastas no acervo | A fase abre na própria árvore (disciplina → fase → documentos) e o documento abre direto a tela dele; a tela própria de pasta saiu, e o endereço antigo leva à árvore com a pasta aberta | 06/10/2026 |
 | Excluir obra | Só administrador, com o código da obra digitado e a própria senha; apaga tudo da obra, o registro de atividades fica | 06/10/2026 |
 | Painel de solicitações | Administrador vê no menu os pedidos de revisão de todas as obras, com filtro e contador dos que aguardam autorização; o item abre o documento no pedido | 06/10/2026 |
+| Manter conectado | Opção no login: sessão de 30 dias na máquina (sem marcar, 12 horas). Trocar ou redefinir a senha derruba todas as sessões abertas; quem trocou a própria segue logado | 07/10/2026 |
 | Disciplina Incêndio | `INC`, a pedido da TREELE; substitui o `PCI` da proposta inicial, desativado | 05/10/2026 |
 | Perfil comercial | Todas as obras, só a disciplina COM liberada, só baixar — o acesso mais restrito do sistema | 02/10/2026 |
 | Fases | 7 códigos: EP, AP, PL, PA, PB, PE, AB | 17/09/2026 |

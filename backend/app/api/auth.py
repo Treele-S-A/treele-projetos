@@ -2,12 +2,11 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ..config import settings
 from ..db import get_db
 from ..deps import usuario_atual
 from ..models import Usuario
 from ..schemas import LoginEntrada, SenhaAlterar, TokenSaida, UsuarioOut
-from ..security import conferir_senha, criar_token, gerar_hash_senha
+from ..security import conferir_senha, criar_token, gerar_hash_senha, ler_token, validade
 from ..services import auditoria
 
 router = APIRouter(prefix="/auth", tags=["autenticação"])
@@ -31,9 +30,13 @@ def login(dados: LoginEntrada, request: Request, db: Session = Depends(get_db)):
     )
     db.commit()
 
+    return _token(usuario, dados.manter_conectado)
+
+
+def _token(usuario: Usuario, manter_conectado: bool) -> TokenSaida:
     return TokenSaida(
-        token=criar_token(usuario.id),
-        expira_em_minutos=settings.token_expira_minutos,
+        token=criar_token(usuario.id, usuario.senha_hash, manter_conectado),
+        expira_em_minutos=int(validade(manter_conectado).total_seconds() // 60),
     )
 
 
@@ -42,7 +45,7 @@ def eu(usuario: Usuario = Depends(usuario_atual)):
     return usuario
 
 
-@router.post("/senha", status_code=status.HTTP_204_NO_CONTENT)
+@router.post("/senha", response_model=TokenSaida)
 def alterar_senha(
     dados: SenhaAlterar,
     request: Request,
@@ -58,3 +61,8 @@ def alterar_senha(
         usuario=usuario, request=request,
     )
     db.commit()
+    # A troca derruba todas as sessões — inclusive esta. Quem trocou recebe
+    # uma nova, com a mesma escolha de "manter conectado"; os outros
+    # computadores precisam entrar de novo.
+    atual = ler_token(request.headers.get("authorization", "").partition(" ")[2]) or {}
+    return _token(usuario, bool(atual.get("lembrar")))
