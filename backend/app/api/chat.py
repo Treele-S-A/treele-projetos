@@ -119,6 +119,10 @@ def perguntar(
     except chat_modelo.ChatIndisponivel as erro:
         # PDF lido antes da falha também conta como leitura.
         db.commit()
-        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, str(erro)) from erro
+        mensagem = str(erro)
+        # O motivo técnico só para administrador: é quem configura o chat.
+        if usuario.admin and erro.detalhe:
+            mensagem += f" (Detalhe técnico: {erro.detalhe})"
+        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, mensagem) from erro
     db.commit()  # registro das leituras de PDF
     return RespostaSaida(resposta=resposta)

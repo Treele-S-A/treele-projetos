@@ -46,12 +46,13 @@ ROTULO_STATUS = {
     "cancelado": "Cancelado",
 }
 
-# Declarações no formato do Gemini (Schema com tipos em maiúsculas).
+# Declarações no formato do Gemini (Schema com tipos em maiúsculas). Consulta
+# sem parâmetro vai SEM "parameters": objeto vazio o Gemini recusa, e a
+# recusa derruba todas as perguntas. Opções fixas levam "format": "enum".
 DECLARACOES = [
     {
         "name": "listar_obras",
         "description": "Lista as obras que a pessoa pode ver, com código e nome.",
-        "parameters": {"type": "OBJECT", "properties": {}},
     },
     {
         "name": "buscar_documentos",
@@ -68,6 +69,7 @@ DECLARACOES = [
                 "fase": {"type": "STRING", "description": "Código, ex.: PE, EP, AB."},
                 "status": {
                     "type": "STRING",
+                    "format": "enum",
                     "enum": list(ROTULO_STATUS),
                     "description": "Status da revisão atual.",
                 },
@@ -150,6 +152,7 @@ DECLARACOES = [
                 "obra": {"type": "STRING", "description": "Código da obra; sem ele, todas."},
                 "situacao": {
                     "type": "STRING",
+                    "format": "enum",
                     "enum": ["aberta", "autorizada", "atendida", "recusada"],
                     "description": "aberta = aguardando autorização do coordenador.",
                 },

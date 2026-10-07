@@ -292,3 +292,37 @@ def test_leitura_vai_ao_modelo_como_pdf(monkeypatch):
     assert partes[0]["inlineData"]["mimeType"] == "application/pdf"
     assert "Quais as notas?" in partes[1]["text"]
     assert tempo == chat_modelo.TEMPO_LEITURA_PDF
+
+
+def test_consulta_sem_parametro_nao_declara_objeto_vazio():
+    """O Gemini recusa "parameters" com "properties" vazio — e a recusa derruba
+    todas as perguntas (caso real, 07/10/2026)."""
+    from app.services.chat_ferramentas import DECLARACOES
+
+    for d in DECLARACOES:
+        if "parameters" in d:
+            assert d["parameters"]["properties"], d["name"]
+            for campo in d["parameters"]["properties"].values():
+                if "enum" in campo:
+                    assert campo.get("format") == "enum", d["name"]
+
+
+def test_administrador_ve_o_motivo_tecnico_e_os_outros_nao(cliente, admin, cenario, monkeypatch):
+    class Resposta:
+        status_code = 400
+        text = ""
+
+        def json(self):
+            return {"error": {"message": "Invalid JSON payload received."}}
+
+    monkeypatch.setattr(settings, "gemini_api_key", "chave-de-teste")
+    monkeypatch.setattr(chat_modelo.httpx, "post", lambda *a, **k: Resposta())
+    corpo = {"mensagens": [{"papel": "usuario", "texto": "Oi"}]}
+
+    r = cliente.post("/chat", json=corpo, headers=admin)
+    assert r.status_code == 503
+    assert "Detalhe técnico: 400 Invalid JSON payload received." in r.json()["detail"]
+
+    campo = autenticar(cliente, "campo@cht.teste.com.br", SENHA)
+    r = cliente.post("/chat", json=corpo, headers=campo)
+    assert "Detalhe técnico" not in r.json()["detail"]

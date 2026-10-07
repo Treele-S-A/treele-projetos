@@ -35,13 +35,31 @@ MAX_RODADAS = 6
 
 
 class ChatIndisponivel(Exception):
-    """Falha que a pessoa precisa ver explicada (limite, chave, rede)."""
+    """Falha que a pessoa precisa ver explicada (limite, chave, rede).
+
+    `detalhe` é o motivo técnico — o código e a mensagem do fornecedor, nunca
+    a chave. A rota mostra só para administrador: é o que permite resolver
+    sem abrir o log da hospedagem."""
+
+    def __init__(self, mensagem: str, detalhe: str | None = None):
+        super().__init__(mensagem)
+        self.detalhe = detalhe
 
 
 @dataclass
 class Turno:
     papel: str  # "usuario" ou "assistente"
     texto: str
+
+
+def _motivo(r: httpx.Response) -> str:
+    """Código e mensagem do erro do Gemini. A resposta de erro não traz a
+    chave (ela vai no cabeçalho, não no corpo)."""
+    try:
+        mensagem = r.json().get("error", {}).get("message", "")
+    except ValueError:
+        mensagem = r.text
+    return f"{r.status_code} {mensagem}"[:400]
 
 
 def _chamar(corpo: dict, tempo: float = TEMPO_POR_CHAMADA) -> dict:
@@ -54,7 +72,9 @@ def _chamar(corpo: dict, tempo: float = TEMPO_POR_CHAMADA) -> dict:
         )
     except httpx.HTTPError as erro:
         log.error("Chat: sem resposta do modelo (%s).", type(erro).__name__)
-        raise ChatIndisponivel("O assistente não respondeu a tempo. Tente de novo.") from erro
+        raise ChatIndisponivel(
+            "O assistente não respondeu a tempo. Tente de novo.", type(erro).__name__
+        ) from erro
     if r.status_code == 429:
         raise ChatIndisponivel(
             "O limite gratuito de perguntas foi atingido por agora. Espere um minuto e "
@@ -62,11 +82,15 @@ def _chamar(corpo: dict, tempo: float = TEMPO_POR_CHAMADA) -> dict:
         )
     if r.status_code in (401, 403):
         log.error("Chat: chave recusada (%s).", r.status_code)
-        raise ChatIndisponivel("O assistente está mal configurado (chave recusada).")
+        raise ChatIndisponivel(
+            "O assistente está mal configurado (chave recusada).", _motivo(r)
+        )
     if r.status_code >= 400:
         # Só o código e o começo da mensagem: o corpo da pergunta não vai ao log.
         log.error("Chat: erro %s do modelo: %s", r.status_code, r.text[:300])
-        raise ChatIndisponivel("O assistente não conseguiu responder agora. Tente de novo.")
+        raise ChatIndisponivel(
+            "O assistente não conseguiu responder agora. Tente de novo.", _motivo(r)
+        )
     return r.json()
 
 
@@ -84,7 +108,11 @@ def conversar(sistema: str, historico: list[Turno], ferramentas: Ferramentas) ->
         resposta = _chamar({**corpo_base, "contents": conteudos})
         candidatos = resposta.get("candidates") or []
         if not candidatos:
-            raise ChatIndisponivel("O assistente não conseguiu responder a essa pergunta.")
+            bloqueio = (resposta.get("promptFeedback") or {}).get("blockReason")
+            raise ChatIndisponivel(
+                "O assistente não conseguiu responder a essa pergunta.",
+                f"sem resposta do modelo{f' (bloqueio: {bloqueio})' if bloqueio else ''}",
+            )
         conteudo = candidatos[0].get("content") or {}
         partes = conteudo.get("parts") or []
         chamadas = [p["functionCall"] for p in partes if "functionCall" in p]
