@@ -205,7 +205,7 @@ justamente como o BCF já funciona.
 | Acesso da obra | Vê liberado e obsoleto; não vê o que está em andamento | 22/09/2026 |
 | Ordem das fases | Colaboração (1.5) antes do chat com IA (2) | 18/09/2026 |
 | Hospedagem | ~~Render~~ → **Vercel** (Pro), para centralizar os sistemas da empresa em subdomínios; Render e VPS ficam como alternativa | 28/09/2026 |
-| Banco em produção | Supabase, schema próprio `treele`. **Provisório:** conta pessoal no plano Free até sair o acesso ao Supabase Pro da TREELE — aí o projeto é transferido | 30/09/2026 |
+| Banco em produção | Supabase, schema próprio `treele`. Começou numa conta pessoal (Free); em 09/10/2026 o projeto foi transferido para a organização da TREELE — mesmo endereço e mesmas chaves, nada mudou na Vercel | 30/09/2026 |
 | Arquivos em produção | **Supabase Storage** (R2 dispensado): envio direto do navegador testado, sem configurar CORS | 30/09/2026 |
 | Em produção | `projetos.treele.com.br` desde 30/09/2026. **Provisório:** Vercel no plano Hobby, que não permite uso comercial — passar para Pro antes do uso pela equipe | 30/09/2026 |
 | Identidade visual | Cores, símbolo e site da treèle; carimbo de liberação redondo | 25/09/2026 |
