@@ -27,7 +27,9 @@ jobs:
     timeout-minutes: 180
     env:
       DIAS_GUARDADOS: 90
-      DESTINO: sharepoint:sistema-de-projetos
+      # Pasta dentro da biblioteca de documentos: variável BACKUP_PASTA do
+      # repositório (Settings → Secrets and variables → Actions → Variables).
+      DESTINO: sharepoint:${{ vars.BACKUP_PASTA || 'sistema-de-projetos' }}
       RCLONE_VERSAO: v1.75.1
       RCLONE_SHA256: 982b5aa772841168f8e380f139e9e787b2a105403e32b94da8676a0e1c0a13ab
       # A Microsoft pede um user-agent identificado para não estrangular a cópia.

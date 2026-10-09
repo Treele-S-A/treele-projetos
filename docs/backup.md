@@ -37,9 +37,16 @@ Feita por quem administra o Microsoft 365 da TREELE.
 
 ### 1. Site do SharePoint
 
-Criar um site só para isto (ex.: **Backup Sistemas**), **privado**, com
-apenas os administradores como membros. O banco copiado tem e-mails e o
-resumo das senhas dos usuários: não pode ficar num site da empresa toda.
+O banco copiado tem e-mails e o resumo das senhas dos usuários: não pode ficar
+visível para a empresa toda. Duas formas:
+
+- Um site só para isto (ex.: **Backup Sistemas**), privado, com apenas os
+  administradores como membros. É o mais isolado.
+- Uma pasta num site que já existe (a escolha de 09/10/2026), com as
+  permissões **restritas**: na pasta, **Gerenciar acesso** → **Parar de herdar
+  permissões** (em "Avançado") e deixar só os administradores. Neste caso o
+  aplicativo do passo 2 pode gravar no site inteiro, não só na pasta — o
+  `Sites.Selected` libera por site.
 
 ### 2. Aplicativo no Entra ID
 
@@ -102,6 +109,10 @@ Repositório → **Settings** → **Secrets and variables** → **Actions** →
 | `MS_CLIENT_ID` | ID do aplicativo (cliente), passo 2 |
 | `MS_CLIENT_SECRET` | Valor do segredo, passo 2 |
 | `MS_DRIVE_ID` | ID da biblioteca, passo 3 |
+
+Na aba **Variables** da mesma tela, a variável `BACKUP_PASTA` com o caminho da
+pasta dentro da biblioteca (ex.: `TI/Backup sistema de projetos`). Sem ela, a
+cópia vai para `sistema-de-projetos/` na raiz da biblioteca.
 
 Depois, **Actions** → **Backup** → **Run workflow** para a primeira rodada.
 Faltando algum segredo, a tarefa diz qual no primeiro passo.
