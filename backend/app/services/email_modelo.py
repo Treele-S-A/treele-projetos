@@ -38,6 +38,7 @@ SELOS = {
     "solicitacao_recusada": Selo("Revisão não autorizada", "#a23d27", "#f6e3de"),
     "revisao_enviada": Selo("Revisão enviada", "#2f6f7c", "#e1eef1"),
     "revisao_liberada": Selo("Liberada para obra", "#3d7330", "#e4eedf"),
+    "revisao_reprovada": Selo("Revisão reprovada", "#a23d27", "#f6e3de"),
     "teste": Selo("Teste de e-mail", PETROLEO, "#e3ebec"),
 }
 

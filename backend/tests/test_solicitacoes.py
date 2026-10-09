@@ -9,8 +9,6 @@ from urllib.parse import urlsplit
 
 import pytest
 
-from app.services.storage import armazenamento
-
 from .conftest import autenticar, autorizar, enviar_arquivo
 
 PDF = b"%PDF-1.7\n" + b"0" * 200
@@ -278,21 +276,3 @@ def test_pedido_atendido_nao_aceita_anexo(cliente, admin, obra, pessoas):
     r01 = enviar_arquivo(cliente, admin, obra["id"], "SOL-ARQ-PE-010-R01.pdf", PDF)
     _liberar(cliente, admin, r01.json()["revisao"]["id"], atendidas=[sol])
     assert _anexar(cliente, pessoas["campo"], sol, "tarde.png", PNG).status_code == 409
-
-
-def test_excluir_documento_leva_os_anexos(cliente, admin, obra, pessoas):
-    doc = _liberado(cliente, admin, obra, "011")
-    sol = _pedir(cliente, pessoas["campo"], doc).json()["id"]
-    _anexar(cliente, pessoas["campo"], sol, "foto.png", PNG)
-    detalhe = cliente.get(f"/documentos/{doc}", headers=admin).json()
-    anexo = detalhe["solicitacoes"][0]["anexos"][0]["id"]
-    from app.db import SessionLocal
-    from app.models import AnexoSolicitacao
-
-    with SessionLocal() as db:
-        chave = db.get(AnexoSolicitacao, anexo).storage_key
-    assert armazenamento.info(chave)[0]
-
-    cliente.delete(f"/revisoes/{detalhe['revisoes'][0]['id']}", headers=admin)
-
-    assert not armazenamento.info(chave)[0]

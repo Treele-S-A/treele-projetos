@@ -246,6 +246,9 @@ class RevisaoOut(Modelo):
     obsoleta_em: datetime | None
     criada_por: UsuarioOut | None = None
     publicada_por: UsuarioOut | None = None
+    observacao: str | None = None
+    reprovada_em: datetime | None = None
+    reprovada_por: UsuarioOut | None = None
     arquivos: list[ArquivoOut] = []
 
 
@@ -436,9 +439,17 @@ class RevisaoAtualizar(BaseModel):
 
 class PublicarEntrada(BaseModel):
     descricao: str | None = None
+    # Observação da análise crítica. Opcional ao liberar.
+    observacao: str | None = Field(default=None, max_length=4000)
     # Pedidos de revisão abertos que esta revisão atende, marcados por quem
     # libera. Fecham na liberação; os não marcados seguem abertos.
     solicitacoes_atendidas: list[int] = []
+
+
+class ReprovarEntrada(BaseModel):
+    # Obrigatória: é o que o projetista precisa corrigir, e o registro da
+    # análise crítica.
+    observacao: str = Field(min_length=1, max_length=4000)
 
 
 # --------------------------------------------------------------------------
@@ -467,32 +478,6 @@ class UploadIniciarSaida(BaseModel):
     direto: bool
     revisao_nova: bool
     documento_novo: bool
-
-
-class ExclusaoObraPrevia(BaseModel):
-    """O que some junto com a obra — a tela mostra antes de confirmar."""
-
-    codigo: str
-    nome: str
-    documentos: int
-    revisoes: int
-    arquivos: int
-    tamanho: int
-    solicitacoes: int
-    membros: int
-
-
-class ExclusaoObraEntrada(BaseModel):
-    # O código da obra digitado e a senha de quem exclui: as duas travas.
-    confirmacao: str
-    senha: str
-
-
-class ExclusaoRevisaoSaida(BaseModel):
-    # Revisão anterior que voltou a valer, quando a excluída era a liberada.
-    restaurada: str | None
-    # A excluída era a única revisão: o documento saiu do acervo junto.
-    documento_excluido: bool
 
 
 class UploadConfirmarSaida(BaseModel):

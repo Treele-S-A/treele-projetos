@@ -1,9 +1,8 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useParams } from "react-router-dom";
 import {
   api,
   ErroApi,
-  formatarTamanho,
   ROTULO_PAPEL,
   type Membro,
   type Obra,
@@ -36,7 +35,7 @@ const EXTENSOES = ["dwg", "rvt", "pdf", "ifc"];
 
 export default function Configuracoes() {
   const { obraId } = useParams();
-  const { obras, recarregarObras, usuario } = useSessao();
+  const { obras, recarregarObras } = useSessao();
   const obra = obras.find((o) => o.id === Number(obraId));
 
   if (!obra) return <Carregando />;
@@ -79,151 +78,7 @@ export default function Configuracoes() {
         regra={obra.regra_companheiro}
         aoSalvar={recarregarObras}
       />
-      {usuario?.admin && <ExcluirObra obra={obra} aoExcluir={recarregarObras} />}
     </>
-  );
-}
-
-/* ------------------------------------------------------------ excluir a obra */
-
-interface Previa {
-  codigo: string;
-  nome: string;
-  documentos: number;
-  revisoes: number;
-  arquivos: number;
-  tamanho: number;
-  solicitacoes: number;
-  membros: number;
-}
-
-/** Só administrador. Duas travas, conferidas também pela API: digitar o código
- *  da obra (contra o engano) e a própria senha (contra o computador que ficou
- *  logado). */
-function ExcluirObra({ obra, aoExcluir }: { obra: Obra; aoExcluir: () => Promise<void> }) {
-  const navegar = useNavigate();
-  const [aberto, setAberto] = useState(false);
-  const [previa, setPrevia] = useState<Previa | null>(null);
-  const [codigo, setCodigo] = useState("");
-  const [senha, setSenha] = useState("");
-  const [erro, setErro] = useState<string | null>(null);
-  const [excluindo, setExcluindo] = useState(false);
-
-  async function abrir() {
-    setErro(null);
-    setAberto(true);
-    try {
-      setPrevia(await api.get<Previa>(`/obras/${obra.id}/exclusao`));
-    } catch (ex) {
-      setErro(ex instanceof ErroApi ? ex.message : "Não foi possível conferir o que a obra tem.");
-    }
-  }
-
-  function fechar() {
-    setAberto(false);
-    setCodigo("");
-    setSenha("");
-    setErro(null);
-  }
-
-  async function excluir(e: FormEvent) {
-    e.preventDefault();
-    setErro(null);
-    setExcluindo(true);
-    try {
-      await api.post(`/obras/${obra.id}/excluir`, { confirmacao: codigo.trim(), senha });
-      // Sai da tela antes de recarregar: sem a obra, esta tela não tem o que mostrar.
-      navegar("/obras", { replace: true });
-      await aoExcluir();
-    } catch (ex) {
-      setErro(ex instanceof ErroApi ? ex.message : "Não foi possível excluir a obra.");
-      setSenha("");
-      setExcluindo(false);
-    }
-  }
-
-  const codigoConfere = codigo.trim().toUpperCase() === obra.codigo.toUpperCase();
-
-  return (
-    <div className="folha zona-perigo">
-      <div className="folha-titulo">
-        <strong>Excluir obra</strong>
-        {!aberto && (
-          <button className="botao perigo pequeno" onClick={abrir}>
-            Excluir esta obra
-          </button>
-        )}
-      </div>
-      <div className="folha-corpo">
-        {!aberto ? (
-          <p className="silencioso" style={{ margin: 0, fontSize: 13 }}>
-            Apaga a obra e tudo o que é dela, sem volta. Só administradores veem esta opção.
-          </p>
-        ) : (
-          <form onSubmit={excluir}>
-            <Aviso tom="erro" titulo="Isto não tem volta.">
-              <div style={{ marginTop: 4 }}>
-                {previa ? (
-                  <>
-                    Some junto com a obra {previa.codigo} · {previa.nome}:{" "}
-                    <strong>
-                      {previa.documentos} documento{previa.documentos === 1 ? "" : "s"},{" "}
-                      {previa.revisoes} revis{previa.revisoes === 1 ? "ão" : "ões"} e{" "}
-                      {previa.arquivos} arquivo{previa.arquivos === 1 ? "" : "s"} (
-                      {formatarTamanho(previa.tamanho)})
-                    </strong>
-                    , {previa.solicitacoes} solicitaç{previa.solicitacoes === 1 ? "ão" : "ões"} de
-                    revisão e a equipe ({previa.membros} pessoa{previa.membros === 1 ? "" : "s"}). O
-                    registro de atividades guarda que a obra foi excluída, e por quem.
-                  </>
-                ) : (
-                  "Conferindo o que a obra tem…"
-                )}
-              </div>
-            </Aviso>
-            {erro && <Aviso tom="erro">{erro}</Aviso>}
-
-            <div className="filtros" style={{ marginTop: 12 }}>
-              <label className="campo">
-                <span className="rotulo">
-                  Digite o código da obra: <span className="mono">{obra.codigo}</span>
-                </span>
-                <input
-                  value={codigo}
-                  onChange={(e) => setCodigo(e.target.value)}
-                  autoComplete="off"
-                  spellCheck={false}
-                  autoFocus
-                  required
-                />
-              </label>
-              <label className="campo">
-                <span className="rotulo">Sua senha</span>
-                <input
-                  type="password"
-                  value={senha}
-                  onChange={(e) => setSenha(e.target.value)}
-                  autoComplete="current-password"
-                  required
-                />
-              </label>
-            </div>
-
-            <div className="linha" style={{ marginTop: 14 }}>
-              <button
-                className="botao perigo"
-                disabled={excluindo || !codigoConfere || !senha || !previa}
-              >
-                {excluindo ? "Excluindo…" : "Excluir obra definitivamente"}
-              </button>
-              <button type="button" className="botao secundario" onClick={fechar} disabled={excluindo}>
-                Cancelar
-              </button>
-            </div>
-          </form>
-        )}
-      </div>
-    </div>
   );
 }
 

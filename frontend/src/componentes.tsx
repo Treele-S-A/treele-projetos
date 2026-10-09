@@ -81,6 +81,7 @@ const TEXTO_SELO: Record<StatusRevisao, string> = {
   em_revisao: "Em revisão",
   obsoleto: "Obsoleto",
   cancelado: "Cancelado",
+  reprovado: "Reprovada",
 };
 
 /**

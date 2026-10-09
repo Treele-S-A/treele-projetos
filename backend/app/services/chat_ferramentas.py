@@ -44,6 +44,7 @@ ROTULO_STATUS = {
     "liberado_para_obra": "Liberado para obra",
     "obsoleto": "Obsoleto",
     "cancelado": "Cancelado",
+    "reprovado": "Reprovada",
 }
 
 # Declarações no formato do Gemini (Schema com tipos em maiúsculas). Consulta

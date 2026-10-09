@@ -167,7 +167,10 @@ def test_nao_exclui_nem_libera_nem_cancela(cliente, admin, cenario, comercial):
     arquivo = cenario["com_ok"]["arquivo"]["id"]
     revisao = cenario["com_ok"]["revisao"]["id"]
     assert cliente.delete(f"/arquivos/{arquivo}", headers=comercial).status_code == 403
-    assert cliente.delete(f"/revisoes/{revisao}", headers=comercial).status_code == 403
+    assert (
+        cliente.post(f"/revisoes/{revisao}/reprovar", json={"observacao": "x"}, headers=comercial).status_code
+        == 403
+    )
     assert cliente.post(f"/revisoes/{revisao}/cancelar", headers=comercial).status_code == 403
     assert (
         cliente.patch(f"/revisoes/{revisao}", json={"descricao": "x"}, headers=comercial).status_code

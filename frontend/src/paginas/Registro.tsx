@@ -16,6 +16,7 @@ const ROTULO_ACAO: Record<string, string> = {
   revisao_autorizada: "Autorizou revisão",
   revisao_recusada: "Recusou revisão",
   revisao_publicada: "Liberou para obra",
+  revisao_reprovada: "Reprovou revisão",
   revisao_cancelada: "Cancelou revisão",
   revisao_atualizada: "Editou descrição",
   documento_atualizado: "Editou documento",
@@ -41,10 +42,12 @@ function descrever(e: Evento): string {
   // "situacao_revisao": nome que os downloads usaram por um dia (02/10/2026).
   const situacao = d.status_revisao ?? (e.acao === "download" ? d.situacao_revisao : undefined);
   if (situacao === "obsoleto") partes.push("⚠ revisão obsoleta");
+  if (d.restaurada) partes.push(`R${d.restaurada} voltou a valer`);
+  if (d.observacao) partes.push(`“${String(d.observacao)}”`);
+  // Exclusões de antes de 09/10/2026, quando ainda se excluía revisão.
   if (e.acao === "revisao_excluida") {
     const arquivos = Array.isArray(d.arquivos) ? d.arquivos : [];
     if (arquivos.length > 0) partes.push(arquivos.join(", "));
-    if (d.restaurada) partes.push(`R${d.restaurada} voltou a valer`);
     if ((e.detalhes as Record<string, unknown>).documento_excluido === true) {
       partes.push("documento saiu do acervo");
     }

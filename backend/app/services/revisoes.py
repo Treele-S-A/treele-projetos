@@ -12,7 +12,6 @@ Duas regras concentram quase todo o valor do sistema:
    parecendo válida até alguém imprimir e executar errado.
 """
 
-from dataclasses import dataclass
 from datetime import datetime, timezone
 
 from sqlalchemy import select
@@ -69,6 +68,15 @@ def conferir_publicacao(
     if revisao.status == StatusRevisao.cancelado:
         erros.append("Esta revisão foi cancelada e não pode ser liberada.")
         return erros
+    if revisao.status == StatusRevisao.reprovado:
+        erros.append(
+            "Esta revisão foi reprovada na análise crítica. A correção vem numa "
+            "revisão nova."
+        )
+        return erros
+    if revisao.status != StatusRevisao.em_revisao:
+        erros.append(f"Esta revisão está {revisao.status.rotulo.lower()}.")
+        return erros
 
     disponiveis = [a for a in revisao.arquivos if a.status == StatusArquivo.disponivel]
     if not disponiveis:
@@ -99,7 +107,9 @@ def conferir_publicacao(
     return erros
 
 
-def publicar(db: Session, revisao: Revisao, usuario_id: int) -> list[Revisao]:
+def publicar(
+    db: Session, revisao: Revisao, usuario_id: int, observacao: str | None = None
+) -> list[Revisao]:
     """Libera a revisão e devolve as que ficaram obsoletas."""
     agora = datetime.now(timezone.utc)
 
@@ -120,44 +130,36 @@ def publicar(db: Session, revisao: Revisao, usuario_id: int) -> list[Revisao]:
     revisao.status = StatusRevisao.liberado_para_obra
     revisao.publicada_em = agora
     revisao.publicada_por_id = usuario_id
+    revisao.observacao = (observacao or "").strip() or None
 
     db.flush()
     return anteriores
 
 
-def cancelar(db: Session, revisao: Revisao) -> None:
-    revisao.status = StatusRevisao.cancelado
-    revisao.obsoleta_em = datetime.now(timezone.utc)
+def reprovar(db: Session, revisao: Revisao, usuario_id: int, observacao: str) -> None:
+    """Reprova na análise crítica. A revisão fica no histórico, com arquivos e
+    observação; a liberada anterior, se houver, segue valendo."""
+    revisao.status = StatusRevisao.reprovado
+    revisao.reprovada_em = datetime.now(timezone.utc)
+    revisao.reprovada_por_id = usuario_id
+    revisao.observacao = observacao.strip()
     db.flush()
 
 
-@dataclass
-class Exclusao:
-    chaves: list[str]
-    arquivos: list[str]
-    restaurada: Revisao | None
-    documento_excluido: bool
+def cancelar(db: Session, revisao: Revisao) -> Revisao | None:
+    """Cancela a revisão. Ela fica no histórico, dizendo que não vale.
 
-
-def excluir_revisao(db: Session, revisao: Revisao) -> Exclusao:
-    """Apaga a revisão e os arquivos dela. Não faz commit nem mexe no storage.
-
-    Se ela era a liberada, a anterior que ela tinha tornado obsoleta volta a
-    valer — senão a obra ficaria sem nenhuma revisão válida do documento,
-    justamente quando a que saiu foi excluída por estar errada. Se era a única
-    revisão, o documento sai junto: documento sem revisão é um código vazio no
-    acervo.
+    Nada se exclui (TREELE, 09/10/2026): o administrador cancela em qualquer
+    status. Se a cancelada era a liberada, a liberada anterior — que ela tinha
+    tornado obsoleta — volta a valer, senão a obra ficaria sem nenhuma revisão
+    válida do documento. Devolve a que voltou, se alguma voltou.
     """
-    documento = revisao.documento
-    chaves = [a.storage_key for a in revisao.arquivos]
-    nomes = [a.nome_original for a in revisao.arquivos]
-
     restaurada = None
     if revisao.status == StatusRevisao.liberado_para_obra:
         restaurada = db.scalar(
             select(Revisao)
             .where(
-                Revisao.documento_id == documento.id,
+                Revisao.documento_id == revisao.documento_id,
                 Revisao.id != revisao.id,
                 Revisao.status == StatusRevisao.obsoleto,
                 Revisao.ordem < revisao.ordem,
@@ -169,23 +171,10 @@ def excluir_revisao(db: Session, revisao: Revisao) -> Exclusao:
             restaurada.status = StatusRevisao.liberado_para_obra
             restaurada.obsoleta_em = None
 
-    restantes = [r for r in documento.revisoes if r.id != revisao.id]
-    if not restantes:
-        # O documento sai inteiro, e com ele os pedidos de revisão e os anexos.
-        chaves += [a.storage_key for s in documento.solicitacoes for a in s.anexos]
-    if restantes:
-        documento.revisoes.remove(revisao)
-        db.delete(revisao)
-    else:
-        db.delete(documento)
+    revisao.status = StatusRevisao.cancelado
+    revisao.obsoleta_em = datetime.now(timezone.utc)
     db.flush()
-
-    return Exclusao(
-        chaves=chaves,
-        arquivos=nomes,
-        restaurada=restaurada,
-        documento_excluido=not restantes,
-    )
+    return restaurada
 
 
 def remover_do_armazenamento(db: Session, chaves: list[str]) -> None:

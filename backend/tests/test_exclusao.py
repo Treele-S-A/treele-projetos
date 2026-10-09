@@ -1,9 +1,12 @@
-"""Exclusão de arquivos e revisões — só administrador, em qualquer status.
+"""Nada se exclui: revisões e obras ficam (TREELE, 09/10/2026).
 
-É a saída para o que nunca deveria ter entrado (obra errada, arquivo trocado).
-Por ser definitiva, as regras que importam são: ninguém além do administrador
-exclui; a obra nunca fica sem revisão válida por causa de uma exclusão; e o
-registro de atividades guarda o que saiu.
+Controle de documentos auditado (PBQP-H) guarda o histórico. Revisão que não
+vale é CANCELADA — continua no histórico dizendo que não vale. O coordenador
+cancela a que está em revisão; o administrador, qualquer uma, a qualquer
+tempo. A obra nunca fica sem revisão válida por causa de um cancelamento.
+
+Arquivo avulso o administrador ainda exclui: é a saída para o arquivo que
+entrou trocado.
 """
 
 import pytest
@@ -25,7 +28,7 @@ def obra(cliente, admin):
 
 @pytest.fixture(scope="module")
 def coordenador(cliente, admin, obra):
-    """Coordenador pode quase tudo na obra — menos excluir."""
+    """Coordenador cancela o que está em revisão — e só isso."""
     r = cliente.post(
         "/usuarios",
         json={"nome": "Coord", "email": "coord-exc@teste.com.br", "senha": "senha-coord-123"},
@@ -69,15 +72,22 @@ def _ultimo_evento(cliente, admin, obra):
     return cliente.get(f"/obras/{obra['id']}/eventos", headers=admin).json()["itens"][0]
 
 
-# ------------------------------------------------------------ quem exclui
+# ------------------------------------------------------------ nada se exclui
 
 
-def test_coordenador_nao_exclui_nem_em_andamento(cliente, admin, coordenador, obra):
-    arquivo, revisao, _ = _enviar(cliente, admin, obra, "001", "00")
+def test_revisao_nao_se_exclui_nem_pelo_administrador(cliente, admin, obra):
+    _, revisao, _ = _enviar(cliente, admin, obra, "001", "00", liberar=True)
 
-    assert cliente.delete(f"/arquivos/{arquivo['id']}", headers=coordenador).status_code == 403
-    assert cliente.delete(f"/revisoes/{revisao['id']}", headers=coordenador).status_code == 403
+    assert cliente.delete(f"/revisoes/{revisao['id']}", headers=admin).status_code == 405
     assert cliente.get(f"/revisoes/{revisao['id']}", headers=admin).status_code == 200
+
+
+def test_obra_nao_se_exclui_nem_pelo_administrador(cliente, admin, obra):
+    corpo = {"confirmacao": OBRA, "senha": "qualquer"}
+    assert cliente.post(f"/obras/{obra['id']}/excluir", json=corpo, headers=admin).status_code in (404, 405)
+    assert cliente.get(f"/obras/{obra['id']}/exclusao", headers=admin).status_code in (404, 405)
+    assert cliente.delete(f"/obras/{obra['id']}", headers=admin).status_code in (404, 405)
+    assert cliente.get(f"/obras/{obra['id']}", headers=admin).status_code == 200
 
 
 # ------------------------------------------------------------ arquivos
@@ -100,72 +110,62 @@ def test_admin_exclui_arquivo_de_revisao_liberada(cliente, admin, obra):
     assert evento["detalhes"]["situacao_revisao"] == "liberado_para_obra"
 
 
-# ------------------------------------------------------------ revisões
+# ------------------------------------------------------------ cancelar
 
 
-def test_excluir_a_liberada_devolve_a_validade_a_anterior(cliente, admin, obra):
-    """Sem isto, excluir a R01 errada deixaria a obra sem nenhuma revisão
+def test_coordenador_cancela_so_o_que_esta_em_revisao(cliente, admin, coordenador, obra):
+    _, liberada, _ = _enviar(cliente, admin, obra, "003", "00", liberar=True)
+    r = cliente.post(f"/revisoes/{liberada['id']}/cancelar", headers=coordenador)
+    assert r.status_code == 403
+    assert "administrador" in r.json()["detail"]
+
+    _, andamento, _ = _enviar(cliente, admin, obra, "004", "00")
+    r = cliente.post(f"/revisoes/{andamento['id']}/cancelar", headers=coordenador)
+    assert r.status_code == 200, r.text
+    assert r.json()["status"] == "cancelado"
+
+
+def test_admin_cancela_a_liberada_e_a_anterior_volta_a_valer(cliente, admin, obra):
+    """Sem isto, cancelar a R01 errada deixaria a obra sem nenhuma revisão
     válida do documento — a R00 continuaria marcada como obsoleta."""
-    _, r00, _ = _enviar(cliente, admin, obra, "003", "00", liberar=True)
-    _, r01, nome01 = _enviar(cliente, admin, obra, "003", "01", liberar=True)
+    _, r00, _ = _enviar(cliente, admin, obra, "005", "00", liberar=True)
+    _, r01, nome01 = _enviar(cliente, admin, obra, "005", "01", liberar=True)
     assert cliente.get(f"/revisoes/{r00['id']}", headers=admin).json()["status"] == "obsoleto"
 
-    r = cliente.delete(f"/revisoes/{r01['id']}", headers=admin)
+    r = cliente.post(f"/revisoes/{r01['id']}/cancelar", headers=admin)
 
     assert r.status_code == 200, r.text
-    assert r.json() == {"restaurada": "00", "documento_excluido": False}
-    assert cliente.get(f"/revisoes/{r01['id']}", headers=admin).status_code == 404
+    assert r.json()["status"] == "cancelado"
     volta = cliente.get(f"/revisoes/{r00['id']}", headers=admin).json()
     assert volta["status"] == "liberado_para_obra"
     assert volta["obsoleta_em"] is None
-    assert not _no_armazenamento("003", "01", nome01)
+    # A cancelada fica no histórico, com os arquivos.
+    cancelada = cliente.get(f"/revisoes/{r01['id']}", headers=admin).json()
+    assert [a["nome_original"] for a in cancelada["arquivos"]] == [nome01]
+    assert _no_armazenamento("005", "01", nome01)
 
-    doc = _documento(cliente, admin, obra, f"{OBRA}-ARQ-EP-003")
+    doc = _documento(cliente, admin, obra, f"{OBRA}-ARQ-EP-005")
     assert doc["revisao_atual"]["numero"] == "00"
     assert doc["revisao_atual"]["status"] == "liberado_para_obra"
 
-
-def test_excluir_revisao_em_andamento_nao_mexe_na_liberada(cliente, admin, obra):
-    _, r00, _ = _enviar(cliente, admin, obra, "004", "00", liberar=True)
-    _, r01, _ = _enviar(cliente, admin, obra, "004", "01")
-
-    r = cliente.delete(f"/revisoes/{r01['id']}", headers=admin)
-
-    assert r.status_code == 200, r.text
-    assert r.json() == {"restaurada": None, "documento_excluido": False}
-    assert cliente.get(f"/revisoes/{r00['id']}", headers=admin).json()["status"] == "liberado_para_obra"
-
-
-def test_excluir_a_unica_revisao_tira_o_documento_do_acervo(cliente, admin, obra):
-    _, r00, nome = _enviar(cliente, admin, obra, "005", "00", liberar=True)
-    codigo = f"{OBRA}-ARQ-EP-005"
-    doc = _documento(cliente, admin, obra, codigo)
-
-    r = cliente.delete(f"/revisoes/{r00['id']}", headers=admin)
-
-    assert r.status_code == 200, r.text
-    assert r.json() == {"restaurada": None, "documento_excluido": True}
-    assert _documento(cliente, admin, obra, codigo) is None
-    assert cliente.get(f"/documentos/{doc['id']}", headers=admin).status_code == 404
-    assert not _no_armazenamento("005", "00", nome)
-
-
-def test_exclusao_de_revisao_fica_no_registro(cliente, admin, obra):
-    _, r00, nome = _enviar(cliente, admin, obra, "006", "00")
-    cliente.delete(f"/revisoes/{r00['id']}", headers=admin)
-
     evento = _ultimo_evento(cliente, admin, obra)
-    assert evento["acao"] == "revisao_excluida"
-    assert evento["detalhes"]["documento"] == f"{OBRA}-ARQ-EP-006"
-    assert evento["detalhes"]["revisao"] == "00"
-    assert evento["detalhes"]["arquivos"] == [nome]
-    assert evento["detalhes"]["documento_excluido"] is True
+    assert evento["acao"] == "revisao_cancelada"
+    assert evento["detalhes"]["situacao_revisao"] == "liberado_para_obra"
+    assert evento["detalhes"]["restaurada"] == "00"
 
 
-def test_documento_excluido_pode_ser_enviado_de_novo(cliente, admin, obra):
-    """Excluir é para corrigir: o mesmo código precisa poder voltar limpo."""
+def test_admin_cancela_a_obsoleta_sem_mexer_na_liberada(cliente, admin, obra):
+    _, r00, _ = _enviar(cliente, admin, obra, "006", "00", liberar=True)
+    _, r01, _ = _enviar(cliente, admin, obra, "006", "01", liberar=True)
+
+    r = cliente.post(f"/revisoes/{r00['id']}/cancelar", headers=admin)
+
+    assert r.status_code == 200, r.text
+    assert cliente.get(f"/revisoes/{r01['id']}", headers=admin).json()["status"] == "liberado_para_obra"
+
+
+def test_cancelar_duas_vezes_avisa(cliente, admin, obra):
     _, r00, _ = _enviar(cliente, admin, obra, "007", "00")
-    cliente.delete(f"/revisoes/{r00['id']}", headers=admin)
-
-    _, nova, _ = _enviar(cliente, admin, obra, "007", "00")
-    assert nova["numero"] == "00"
+    assert cliente.post(f"/revisoes/{r00['id']}/cancelar", headers=admin).status_code == 200
+    r = cliente.post(f"/revisoes/{r00['id']}/cancelar", headers=admin)
+    assert r.status_code == 409

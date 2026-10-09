@@ -57,9 +57,11 @@ export function visualizarArquivo(
   const aviso =
     status === "obsoleto"
       ? "ATENÇÃO: esta revisão está OBSOLETA. Não use este arquivo para execução."
-      : status === "em_revisao"
-        ? "Esta revisão ainda está EM REVISÃO e não foi liberada para obra."
-        : null;
+      : status === "reprovado"
+        ? "ATENÇÃO: esta revisão foi REPROVADA na análise crítica. Não use este arquivo para execução."
+        : status === "em_revisao"
+          ? "Esta revisão ainda está EM REVISÃO e não foi liberada para obra."
+          : null;
   if (aviso && !window.confirm(`${aviso}
 
 Abrir mesmo assim?`)) return;
@@ -90,7 +92,6 @@ export function HistoricoRevisoes({
   podeCancelar,
   aoMudar,
   aoBaixar,
-  aoExcluirDocumento,
   solicitacoes = [],
 }: {
   revisoes: Revisao[];
@@ -100,9 +101,6 @@ export function HistoricoRevisoes({
   podeCancelar: boolean;
   aoMudar: () => Promise<void>;
   aoBaixar: (a: Arquivo) => void;
-  /** Excluir a única revisão tira o documento do acervo; quem mostra só ele
-   *  precisa sair da tela em vez de recarregar algo que não existe mais. */
-  aoExcluirDocumento?: () => void;
 }) {
   return (
     <>
@@ -110,12 +108,10 @@ export function HistoricoRevisoes({
         <LinhaRevisao
           key={r.id}
           revisao={r}
-          unica={revisoes.length === 1}
           podePublicar={podePublicar}
           podeCancelar={podeCancelar}
           aoMudar={aoMudar}
           aoBaixar={aoBaixar}
-          aoExcluirDocumento={aoExcluirDocumento}
           pedidosAutorizados={solicitacoes.filter((s) => s.status === "autorizada")}
         />
       ))}
@@ -123,37 +119,41 @@ export function HistoricoRevisoes({
   );
 }
 
+/** Análise crítica em andamento: qual decisão o coordenador está tomando. */
+type Decisao = "liberar" | "reprovar" | null;
+
 function LinhaRevisao({
   revisao,
-  unica,
   podePublicar,
   podeCancelar,
   aoMudar,
   aoBaixar,
-  aoExcluirDocumento,
   pedidosAutorizados,
 }: {
   revisao: Revisao;
-  unica: boolean;
   pedidosAutorizados: Solicitacao[];
   podePublicar: boolean;
   podeCancelar: boolean;
   aoMudar: () => Promise<void>;
   aoBaixar: (a: Arquivo) => void;
-  aoExcluirDocumento?: () => void;
 }) {
   // Pedidos que esta revisão atende — marcados por quem libera. Fecham na
   // liberação; os não marcados seguem abertos.
   // Vêm marcados: a revisão nova existe por causa deles. Quem libera desmarca
   // o que ela não resolveu.
   const [atendidos, setAtendidos] = useState<number[]>(() => pedidosAutorizados.map((p) => p.id));
-  // Excluir é definitivo e vale para qualquer status: só administrador.
+  // Nada se exclui (TREELE, 09/10/2026). O administrador cancela em qualquer
+  // status; o coordenador, só o que está em revisão.
   const admin = useSessao().usuario?.admin ?? false;
   const [verificacao, setVerificacao] = useState<Verificacao | null>(null);
   const [ocupado, setOcupado] = useState(false);
   const [erro, setErro] = useState<ErroApi | null>(null);
+  const [decisao, setDecisao] = useState<Decisao>(null);
+  const [observacao, setObservacao] = useState("");
 
   const emRevisao = revisao.status === "em_revisao";
+  const cancelavel =
+    revisao.status !== "cancelado" && (admin || (emRevisao && podeCancelar));
 
   useEffect(() => {
     if (!emRevisao) return;
@@ -163,58 +163,55 @@ function LinhaRevisao({
       .catch(() => setVerificacao(null));
   }, [revisao.id, emRevisao]);
 
-  async function publicar() {
+  function abrirDecisao(qual: Decisao) {
+    setErro(null);
+    setObservacao("");
+    setDecisao(qual);
+  }
+
+  /** Liberar ou reprovar. A observação é opcional ao liberar e obrigatória ao
+   *  reprovar — a API confere as duas coisas também. */
+  async function decidir() {
+    const texto = observacao.trim();
+    if (decisao === "reprovar" && !texto) return;
     setOcupado(true);
     setErro(null);
     try {
-      await api.post(`/revisoes/${revisao.id}/publicar`, {
-        solicitacoes_atendidas: atendidos,
-      });
+      if (decisao === "liberar") {
+        await api.post(`/revisoes/${revisao.id}/publicar`, {
+          solicitacoes_atendidas: atendidos,
+          observacao: texto || null,
+        });
+      } else {
+        await api.post(`/revisoes/${revisao.id}/reprovar`, { observacao: texto });
+      }
+      setDecisao(null);
       await aoMudar();
     } catch (ex) {
-      setErro(ex instanceof ErroApi ? ex : new ErroApi(0, "Não foi possível liberar."));
+      setErro(
+        ex instanceof ErroApi
+          ? ex
+          : new ErroApi(0, decisao === "liberar" ? "Não foi possível liberar." : "Não foi possível reprovar."),
+      );
     } finally {
       setOcupado(false);
     }
   }
 
   async function cancelar() {
-    if (!window.confirm(`Cancelar a revisão R${revisao.numero}? Ela deixa de valer.`)) return;
+    const avisos = [`Cancelar a revisão R${revisao.numero}? Ela fica no histórico, mas deixa de valer.`];
+    if (revisao.status === "liberado_para_obra") {
+      avisos.push("Ela está liberada para obra: a liberada anterior, se houver, volta a valer.");
+    }
+    if (!window.confirm(avisos.join("\n\n"))) return;
     setOcupado(true);
+    setErro(null);
     try {
       await api.post(`/revisoes/${revisao.id}/cancelar`);
       await aoMudar();
     } catch (ex) {
       setErro(ex instanceof ErroApi ? ex : new ErroApi(0, "Não foi possível cancelar."));
     } finally {
-      setOcupado(false);
-    }
-  }
-
-  async function excluirRevisao() {
-    const qtd = revisao.arquivos.length;
-    const avisos = [
-      `Excluir a revisão R${revisao.numero} de vez, com ${
-        qtd === 1 ? "o arquivo dela" : `os ${qtd} arquivos dela`
-      }?`,
-      "Isto não pode ser desfeito.",
-    ];
-    if (revisao.status === "liberado_para_obra" && !unica) {
-      avisos.push("A revisão liberada anterior volta a valer para a obra.");
-    }
-    if (unica) avisos.push("É a única revisão: o documento sai do acervo.");
-    if (!window.confirm(avisos.join("\n\n"))) return;
-
-    setOcupado(true);
-    setErro(null);
-    try {
-      const r = await api.delete<{ restaurada: string | null; documento_excluido: boolean }>(
-        `/revisoes/${revisao.id}`,
-      );
-      if (r.documento_excluido && aoExcluirDocumento) aoExcluirDocumento();
-      else await aoMudar();
-    } catch (ex) {
-      setErro(ex instanceof ErroApi ? ex : new ErroApi(0, "Não foi possível excluir."));
       setOcupado(false);
     }
   }
@@ -254,7 +251,25 @@ Isto não pode ser desfeito.`)) {
               ` · Liberada em ${formatarData(revisao.publicada_em)}${
                 revisao.publicada_por ? ` por ${revisao.publicada_por.nome}` : ""
               }`}
+            {revisao.reprovada_em &&
+              ` · Reprovada em ${formatarData(revisao.reprovada_em)}${
+                revisao.reprovada_por ? ` por ${revisao.reprovada_por.nome}` : ""
+              }`}
           </div>
+
+          {/* Registro da análise crítica: quem liberou ou reprovou disse por quê. */}
+          {revisao.observacao && (
+            <div
+              className={`observacao-analise ${
+                revisao.status === "reprovado" ? "reprovada" : revisao.publicada_em ? "liberada" : ""
+              }`}
+            >
+              <span className="rotulo">
+                {revisao.status === "reprovado" ? "Motivo da reprovação" : "Observação da liberação"}
+              </span>
+              <div style={{ marginTop: 3 }}>{revisao.observacao}</div>
+            </div>
+          )}
 
           {revisao.descricao_ia && (
             <div style={{ marginTop: 10 }}>
@@ -272,14 +287,18 @@ Isto não pode ser desfeito.`)) {
           )}
         </div>
 
-        {admin && (
+        {cancelavel && (
           <button
             className="botao perigo pequeno"
             disabled={ocupado}
-            onClick={excluirRevisao}
-            title="Somente administradores veem esta opção"
+            onClick={cancelar}
+            title={
+              emRevisao
+                ? "A revisão fica no histórico, marcada como cancelada"
+                : "Somente administradores cancelam fora da análise crítica"
+            }
           >
-            Excluir revisão
+            Cancelar revisão
           </button>
         )}
       </div>
@@ -353,7 +372,7 @@ Isto não pode ser desfeito.`)) {
 
           {podePublicar ? (
             <>
-              {pedidosAutorizados.length > 0 && (
+              {pedidosAutorizados.length > 0 && decisao !== "reprovar" && (
                 <fieldset className="pedidos-atendidos">
                   <legend className="rotulo">Solicitações de revisão atendidas</legend>
                   {pedidosAutorizados.map((p) => (
@@ -376,24 +395,77 @@ Isto não pode ser desfeito.`)) {
                   </span>
                 </fieldset>
               )}
-              <div className="linha" style={{ marginTop: 10 }}>
-                <button
-                  className="botao"
-                  disabled={ocupado || !verificacao?.pode_publicar}
-                  onClick={publicar}
-                >
-                  {ocupado ? "Liberando…" : "Liberar para obra"}
-                </button>
-                {podeCancelar && (
-                  <button className="botao perigo pequeno" disabled={ocupado} onClick={cancelar}>
-                    Cancelar revisão
+              {decisao === null ? (
+                <div className="linha" style={{ marginTop: 10 }}>
+                  <button
+                    className="botao"
+                    disabled={ocupado || !verificacao?.pode_publicar}
+                    onClick={() => abrirDecisao("liberar")}
+                  >
+                    Liberar para obra
                   </button>
-                )}
-              </div>
+                  <button
+                    className="botao secundario"
+                    disabled={ocupado}
+                    onClick={() => abrirDecisao("reprovar")}
+                  >
+                    Reprovar
+                  </button>
+                </div>
+              ) : (
+                <div className={`analise ${decisao}`}>
+                  <label className="campo" style={{ display: "block" }}>
+                    <span className="rotulo">
+                      Observação{" "}
+                      {decisao === "liberar" ? "(opcional)" : "(obrigatória — vai para quem enviou)"}
+                    </span>
+                    <textarea
+                      value={observacao}
+                      onChange={(e) => setObservacao(e.target.value)}
+                      maxLength={4000}
+                      autoFocus
+                      placeholder={
+                        decisao === "liberar"
+                          ? "Algo que a obra ou a equipe deve saber sobre esta liberação."
+                          : "O que precisa ser corrigido na próxima revisão."
+                      }
+                      disabled={ocupado}
+                    />
+                  </label>
+                  <div className="linha" style={{ marginTop: 10 }}>
+                    <button
+                      className={decisao === "liberar" ? "botao" : "botao perigo"}
+                      disabled={ocupado || (decisao === "reprovar" && !observacao.trim())}
+                      onClick={decidir}
+                    >
+                      {decisao === "liberar"
+                        ? ocupado
+                          ? "Liberando…"
+                          : `Liberar R${revisao.numero} para obra`
+                        : ocupado
+                          ? "Reprovando…"
+                          : `Reprovar R${revisao.numero}`}
+                    </button>
+                    <button
+                      className="botao secundario pequeno"
+                      disabled={ocupado}
+                      onClick={() => setDecisao(null)}
+                    >
+                      Voltar
+                    </button>
+                  </div>
+                  {decisao === "reprovar" && (
+                    <p className="silencioso" style={{ fontSize: 12, margin: "8px 0 0" }}>
+                      A R{revisao.numero} fica no histórico como reprovada. Quem a enviou recebe a
+                      observação por e-mail, e a correção vem numa revisão nova.
+                    </p>
+                  )}
+                </div>
+              )}
             </>
           ) : (
             <p className="silencioso" style={{ fontSize: 12, margin: 0 }}>
-              Esta revisão aguarda liberação do coordenador da obra.
+              Esta revisão está em análise crítica pelo coordenador da obra.
             </p>
           )}
         </div>

@@ -16,19 +16,17 @@ Obra A e projetista na Obra B. Além disso existe o perfil global de
 | Ver revisões ainda em revisão | ✓ | ✓ | |
 | Enviar arquivos | ✓ | ✓ | |
 | Editar título e descrição | ✓ | ✓ | |
-| **Liberar para obra** | ✓ | | |
-| Cancelar revisão | ✓ | | |
+| **Análise crítica: liberar para obra ou reprovar** | ✓ | | |
+| Cancelar revisão em revisão | ✓ | | |
 | Gerenciar equipe da obra | ✓ | | |
 | Alterar nomenclatura da obra | ✓ | | |
 | Ver registro de atividades | ✓ | | | |
 
 O administrador tem todas as permissões em todas as obras — e duas a mais,
-que nenhum papel de obra tem: **excluir arquivos e revisões** e **excluir a
-obra inteira** (06/10/2026). Excluir a obra fica no fim das Configurações da
-obra e pede duas confirmações, conferidas também pelo servidor: digitar o
-código da obra e a própria senha. Apaga documentos, revisões, arquivos,
-pedidos de revisão, equipe e avisos; o registro de atividades fica, com uma
-última linha dizendo quem excluiu e o que havia. Além disso,
+que nenhum papel de obra tem: **cancelar revisão em qualquer status, a
+qualquer tempo** (inclusive a liberada) e **excluir um arquivo avulso** que
+entrou trocado. **Revisões e obras não se excluem** (09/10/2026, PBQP-H): o
+controle de documentos guarda o histórico. Além disso,
 **todo administrador é coordenador de todas as obras** (02/10/2026),
 inclusive as criadas depois, e todo administrador criado depois também passa
 a ser. Por isso ele aparece na equipe de cada obra e não pode ser removido
@@ -67,10 +65,29 @@ atende (02/10 e 05/10/2026):
   marcadas fecham ali ("atendida pela R01"); as desmarcadas continuam
   autorizadas.
 - **Quem é avisado:** ver [notificacoes.md](notificacoes.md).
+- **Revisão reprovada** na análise crítica também abre a revisão nova, sem
+  outra autorização: a reprovação já pede a correção.
 - **Painel de todas as obras** (06/10/2026): os administradores têm no menu
   *Solicitações de revisão*, com os pedidos de todas as obras — filtro por
   situação e por obra — e um contador dos que aguardam autorização. Clicar
   num pedido abre o documento já nele.
+
+## Análise crítica (PBQP-H)
+
+Revisão **em revisão** é a análise crítica que o PBQP-H exige (TREELE,
+09/10/2026). O coordenador tem duas saídas, cada uma com uma caixa
+**Observação**:
+
+- **Liberar para obra** — observação opcional. Fica na revisão ("Observação
+  da liberação") e no registro de atividades.
+- **Reprovar** — observação **obrigatória**. A revisão vira *Reprovada* e
+  fica no histórico, com arquivos, quem reprovou, quando e o motivo: é o
+  registro da análise. Quem enviou a revisão (quem a criou ou mandou arquivo
+  dela) recebe o motivo no sistema e por e-mail.
+
+A reprovada não se libera nem recebe arquivo; a correção vem numa **revisão
+nova** (R01 reprovada → R02), sem precisar de outra autorização. A liberada
+anterior, se houver, segue valendo para a obra, que não vê a reprovada.
 
 ## Perfil comercial
 
@@ -84,7 +101,7 @@ mais restrito do sistema (pedido da TREELE, 02/10/2026):
 | Quais revisões | Só as **liberadas para obra** — nem obsoletas, nem em andamento |
 | Baixar | ✓ |
 | Enviar, editar título ou descrição | |
-| Liberar, cancelar, excluir | |
+| Liberar, reprovar, cancelar, excluir | |
 | Ver equipe, nomenclatura ou registro de atividades | |
 | Criar ou ver usuários, obras e catálogos | |
 
@@ -127,21 +144,18 @@ com uma versão diferente da que está no sistema, sem saber. Para corrigir
 conteúdo, publica-se uma revisão nova. É essa distinção — acrescentar pode,
 alterar não — que mantém o histórico confiável.
 
-Revisão obsoleta ou cancelada não aceita nada.
+Revisão obsoleta, reprovada ou cancelada não aceita nada.
 
-**Excluir é só do administrador, e vale para qualquer status.** Cancelar deixa
-a revisão no histórico dizendo que não vale; excluir apaga de vez, banco e
-arquivo. É a saída para o que nunca deveria ter entrado — obra errada, arquivo
-trocado — e por ser definitiva não fica com papel nenhum da obra. Duas regras
-evitam que a exclusão bagunce o acervo:
+**Nada se exclui: revisão que não vale é cancelada** (09/10/2026). Cancelada,
+ela fica no histórico, com os arquivos, dizendo que não vale. O coordenador
+cancela a que está em revisão; o administrador, qualquer uma, a qualquer
+tempo. Cancelar a **liberada** devolve a validade à liberada anterior — sem
+isso, a obra ficaria sem nenhuma revisão válida do documento. O registro de
+atividades guarda o status que a revisão tinha e o que voltou a valer.
 
-- Excluir a revisão **liberada** devolve a validade à anterior. Sem isso, a
-  obra ficaria sem nenhuma revisão válida do documento.
-- Excluir a **única** revisão tira o documento do acervo, e o código pode ser
-  enviado de novo do zero.
-
-O registro de atividades guarda o que saiu: documento, revisão, arquivos e o
-que voltou a valer.
+Até 09/10/2026 o administrador também excluía revisões e obras inteiras; isso
+saiu porque um controle de documentos auditado não apaga histórico. As
+exclusões antigas continuam no registro de atividades.
 
 **Não dá para liberar uma revisão antiga depois de uma mais nova.** Publicar a
 R00 depois da R01 já estar liberada deixaria a obra com projeto velho marcado
@@ -173,7 +187,8 @@ definido pelo papel na equipe — ver [notificacoes.md](notificacoes.md).
 ## Registro de atividades
 
 Todo evento relevante fica gravado, com usuário, IP e horário: login, envio,
-conclusão de envio, download, liberação, cancelamento, exclusão, mudança de equipe,
+conclusão de envio, download, liberação, reprovação (com a observação), cancelamento,
+exclusão de arquivo, mudança de equipe,
 alteração de nomenclatura e exportação da lista mestra.
 
 O registro de **download** é o que responde à pergunta que aparece em toda

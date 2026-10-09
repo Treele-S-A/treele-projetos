@@ -4,7 +4,8 @@ from sqlalchemy.orm import Session
 from ..db import get_db
 from ..deps import montar_contexto, status_visiveis, usuario_atual
 from ..models import Revisao, Usuario
-from ..schemas import ExclusaoRevisaoSaida, PublicarEntrada, RevisaoAtualizar, RevisaoOut
+from ..enums import StatusRevisao
+from ..schemas import PublicarEntrada, ReprovarEntrada, RevisaoAtualizar, RevisaoOut
 from ..services import auditoria
 from ..services import revisoes as servico
 from ..services import notificacoes
@@ -91,7 +92,8 @@ def publicar(
     usuario: Usuario = Depends(usuario_atual),
     db: Session = Depends(get_db),
 ):
-    """Libera para obra. Torna obsoletas as revisões anteriores liberadas."""
+    """Libera para obra — o lado "aprovado" da análise crítica. Torna
+    obsoletas as revisões anteriores liberadas."""
     revisao, ctx = _carregar(db, usuario, revisao_id)
     ctx.exigir("publicar", "Somente o coordenador da obra pode liberar revisões.")
 
@@ -120,7 +122,7 @@ def publicar(
     if dados.descricao:
         revisao.descricao = dados.descricao.strip()
 
-    obsoletas = servico.publicar(db, revisao, usuario.id)
+    obsoletas = servico.publicar(db, revisao, usuario.id, dados.observacao)
     servico_solicitacoes.atender(db, revisao, atendidos)
 
     auditoria.registrar(
@@ -131,6 +133,7 @@ def publicar(
             "revisao": revisao.numero,
             "obsoletadas": [r.numero for r in obsoletas],
             "solicitacoes_atendidas": [s.id for s in atendidos],
+            "observacao": revisao.observacao,
         },
         request=request,
     )
@@ -141,50 +144,48 @@ def publicar(
     return revisao
 
 
-@router.delete("/{revisao_id}", response_model=ExclusaoRevisaoSaida)
-def excluir(
+@router.post("/{revisao_id}/reprovar", response_model=RevisaoOut)
+def reprovar(
     revisao_id: int,
+    dados: ReprovarEntrada,
     request: Request,
     usuario: Usuario = Depends(usuario_atual),
     db: Session = Depends(get_db),
 ):
-    """Exclui a revisão e os arquivos dela, em qualquer status. Só administrador.
-
-    Diferente de cancelar: cancelada, a revisão continua no histórico dizendo
-    que não vale. Excluída, ela some — é para o que nunca deveria ter entrado
-    (obra errada, arquivo trocado). O registro de atividades guarda o que saiu.
-    """
+    """Reprova na análise crítica (TREELE, 09/10/2026). A observação é
+    obrigatória e vai para quem enviou a revisão, no sistema e por e-mail. A
+    correção vem numa revisão nova, que não precisa de outra autorização."""
     revisao, ctx = _carregar(db, usuario, revisao_id)
-    if not usuario.admin:
+    ctx.exigir("publicar", "Somente o coordenador da obra pode reprovar revisões.")
+    if revisao.status != StatusRevisao.em_revisao:
         raise HTTPException(
-            status.HTTP_403_FORBIDDEN, "Somente um administrador pode excluir revisões."
+            status.HTTP_409_CONFLICT,
+            f"A R{revisao.numero} está {revisao.status.rotulo.lower()}: só revisão "
+            "em revisão passa pela análise crítica.",
+        )
+    observacao = dados.observacao.strip()
+    if not observacao:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            "Escreva a observação: é o que o projetista precisa corrigir.",
         )
 
-    codigo = revisao.documento.codigo
-    numero = revisao.numero
-    situacao = revisao.status.value
-
-    resultado = servico.excluir_revisao(db, revisao)
+    servico.reprovar(db, revisao, usuario.id, observacao)
     auditoria.registrar(
-        db, acao="revisao_excluida", entidade="revisao", entidade_id=revisao_id,
+        db, acao="revisao_reprovada", entidade="revisao", entidade_id=revisao.id,
         usuario=usuario, obra_id=ctx.obra.id,
         detalhes={
-            "documento": codigo,
-            "revisao": numero,
-            "situacao_revisao": situacao,
-            "arquivos": resultado.arquivos,
-            "restaurada": resultado.restaurada.numero if resultado.restaurada else None,
-            "documento_excluido": resultado.documento_excluido,
+            "documento": revisao.documento.codigo,
+            "revisao": revisao.numero,
+            "observacao": observacao,
         },
         request=request,
     )
+    avisos = notificacoes.ao_reprovar(db, revisao, usuario)
     db.commit()
-    servico.remover_do_armazenamento(db, resultado.chaves)
-
-    return ExclusaoRevisaoSaida(
-        restaurada=resultado.restaurada.numero if resultado.restaurada else None,
-        documento_excluido=resultado.documento_excluido,
-    )
+    notificacoes.enviar_emails(db, avisos)
+    db.refresh(revisao)
+    return revisao
 
 
 @router.post("/{revisao_id}/cancelar", response_model=RevisaoOut)
@@ -194,21 +195,35 @@ def cancelar(
     usuario: Usuario = Depends(usuario_atual),
     db: Session = Depends(get_db),
 ):
+    """Cancela a revisão: ela fica no histórico, dizendo que não vale.
+
+    Revisões não se excluem (TREELE, 09/10/2026). O coordenador cancela a que
+    está em revisão; o administrador, em qualquer status, a qualquer tempo —
+    inclusive a liberada, e aí a liberada anterior volta a valer.
+    """
     revisao, ctx = _carregar(db, usuario, revisao_id)
     ctx.exigir("cancelar", "Somente o coordenador da obra pode cancelar revisões.")
 
-    if revisao.status.value == "liberado_para_obra":
+    if revisao.status == StatusRevisao.cancelado:
+        raise HTTPException(status.HTTP_409_CONFLICT, "Esta revisão já está cancelada.")
+    if revisao.status != StatusRevisao.em_revisao and not usuario.admin:
         raise HTTPException(
-            status.HTTP_409_CONFLICT,
-            "Não é possível cancelar uma revisão liberada para obra. "
-            "Publique uma revisão nova que a substitua.",
+            status.HTTP_403_FORBIDDEN,
+            f"A R{revisao.numero} está {revisao.status.rotulo.lower()}. Só um "
+            "administrador cancela revisão fora da análise.",
         )
 
-    servico.cancelar(db, revisao)
+    situacao = revisao.status.value
+    restaurada = servico.cancelar(db, revisao)
     auditoria.registrar(
         db, acao="revisao_cancelada", entidade="revisao", entidade_id=revisao.id,
         usuario=usuario, obra_id=ctx.obra.id,
-        detalhes={"documento": revisao.documento.codigo, "revisao": revisao.numero},
+        detalhes={
+            "documento": revisao.documento.codigo,
+            "revisao": revisao.numero,
+            "situacao_revisao": situacao,
+            "restaurada": restaurada.numero if restaurada else None,
+        },
         request=request,
     )
     db.commit()

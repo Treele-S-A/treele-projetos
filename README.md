@@ -151,12 +151,13 @@ verdade os dois endereços são iguais e basta preencher `S3_ENDPOINT`.
 
 ### Papéis
 
-| Papel | Vê obsoletos | Envia | Libera para obra | Cancela | Gerencia |
+| Papel | Vê obsoletos | Envia | Libera ou reprova (análise crítica) | Cancela | Gerencia |
 |---|:--:|:--:|:--:|:--:|:--:|
 | Coordenador | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Projetista | ✓ | ✓ | | | |
 | Obra | ✓ | | | | |
-| Cliente | | | | | |
+
+Revisões e obras não se excluem; o administrador cancela revisão em qualquer status.
 
 Detalhes em [docs/permissoes.md](docs/permissoes.md).
 

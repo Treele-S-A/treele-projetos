@@ -12,6 +12,7 @@ por e-mail, quando o e-mail está configurado.
 | **Revisão autorizada** (de um pedido ou direto pelo coordenador) | O **projetista que subiu a última revisão** do documento, só ele. É aqui — e não no pedido — que o projetista fica sabendo. |
 | **Pedido recusado** | Quem pediu, com o motivo. |
 | **Revisão liberada para obra** | As pessoas com papel **obra**. É o único aviso que a obra recebe. Um por revisão, nunca por arquivo. |
+| **Revisão reprovada** na análise crítica (09/10/2026) | **Quem enviou a revisão** — quem a criou ou mandou arquivo dela —, com a observação do coordenador. |
 
 Detalhes:
 

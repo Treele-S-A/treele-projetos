@@ -267,6 +267,15 @@ class Revisao(Base):
     obsoleta_em: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    # Análise crítica (TREELE, 09/10/2026): a observação de quem liberou ou
+    # reprovou — opcional ao liberar, obrigatória ao reprovar.
+    observacao: Mapped[str | None] = mapped_column(Text, nullable=True)
+    reprovada_em: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    reprovada_por_id: Mapped[int | None] = mapped_column(
+        ForeignKey("usuarios.id"), nullable=True
+    )
 
     documento: Mapped["Documento"] = relationship(back_populates="revisoes")
     arquivos: Mapped[list["Arquivo"]] = relationship(
@@ -275,6 +284,9 @@ class Revisao(Base):
     criada_por: Mapped["Usuario | None"] = relationship(foreign_keys=[criada_por_id])
     publicada_por: Mapped["Usuario | None"] = relationship(
         foreign_keys=[publicada_por_id]
+    )
+    reprovada_por: Mapped["Usuario | None"] = relationship(
+        foreign_keys=[reprovada_por_id]
     )
 
 

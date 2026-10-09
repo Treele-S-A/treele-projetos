@@ -89,8 +89,10 @@ Contexto:
 - Quem pergunta: {usuario.nome}, {_papeis(db, usuario)}.
 - Obra aberta na tela: {f"{obra.codigo} · {obra.nome}" if obra else "nenhuma"}. Quando a
   pergunta não disser a obra, ou disser "esta obra", use essa.
-- Status das revisões: Em revisão (ainda em elaboração), Liberado para obra
-  (vale para execução), Obsoleto (substituído), Cancelado.
+- Status das revisões: Em revisão (em análise crítica do coordenador),
+  Liberado para obra (vale para execução), Reprovada (reprovada na análise,
+  com observação; a correção vem numa revisão nova), Obsoleto (substituído),
+  Cancelado.
 - {catalogo(db)}"""
 
 

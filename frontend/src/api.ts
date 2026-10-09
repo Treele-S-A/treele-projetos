@@ -112,7 +112,8 @@ export type StatusRevisao =
   | "em_revisao"
   | "liberado_para_obra"
   | "obsoleto"
-  | "cancelado";
+  | "cancelado"
+  | "reprovado";
 
 export type TipoArquivo = "dwg" | "rvt" | "pdf" | "ifc" | "outro";
 export type PapelObra = "coordenador" | "projetista" | "obra";
@@ -175,6 +176,10 @@ export interface Revisao {
   obsoleta_em: string | null;
   criada_por: Usuario | null;
   publicada_por: Usuario | null;
+  /** Observação da análise crítica: de quem liberou (opcional) ou reprovou. */
+  observacao: string | null;
+  reprovada_em: string | null;
+  reprovada_por: Usuario | null;
   arquivos: Arquivo[];
 }
 
@@ -202,7 +207,8 @@ export interface Notificacao {
     | "revisao_autorizada"
     | "solicitacao_recusada"
     | "revisao_enviada"
-    | "revisao_liberada";
+    | "revisao_liberada"
+    | "revisao_reprovada";
   titulo: string;
   texto: string;
   criada_em: string;
@@ -330,6 +336,7 @@ export const ROTULO_STATUS: Record<StatusRevisao, string> = {
   liberado_para_obra: "Liberado",
   obsoleto: "Obsoleto",
   cancelado: "Cancelado",
+  reprovado: "Reprovada",
 };
 
 export const ROTULO_PAPEL: Record<PapelObra, string> = {

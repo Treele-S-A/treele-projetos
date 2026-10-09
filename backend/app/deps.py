@@ -154,6 +154,8 @@ def status_visiveis(ctx: ContextoObra) -> list[StatusRevisao]:
     if ctx.pode("ver_em_revisao"):
         visiveis.append(StatusRevisao.em_revisao)
         visiveis.append(StatusRevisao.cancelado)
+        # Reprovada é parte da análise crítica: a equipe vê, a obra não.
+        visiveis.append(StatusRevisao.reprovado)
     return visiveis
 
 

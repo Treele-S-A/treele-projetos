@@ -135,6 +135,10 @@ def bloqueio_de_revisao_nova(documento: Documento, numero: str) -> str | None:
     if not validas:
         return None
     anterior = max(validas, key=lambda r: (r.ordem, r.id))
+    # Reprovada na análise crítica: a reprovação já pede a correção, que vem
+    # numa revisão nova sem outra autorização (TREELE, 09/10/2026).
+    if anterior.status == StatusRevisao.reprovado:
+        return None
     if anterior.status == StatusRevisao.em_revisao:
         return (
             f"A R{anterior.numero} de {documento.codigo} ainda está em revisão. "

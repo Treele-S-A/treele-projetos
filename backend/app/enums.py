@@ -12,6 +12,10 @@ class StatusRevisao(str, enum.Enum):
     liberado_para_obra = "liberado_para_obra"
     obsoleto = "obsoleto"
     cancelado = "cancelado"
+    # Reprovada na análise crítica do coordenador (TREELE, 09/10/2026). Fica
+    # no histórico, com a observação, como registro da análise; a correção
+    # vem numa revisão nova.
+    reprovado = "reprovado"
 
     @property
     def rotulo(self) -> str:
@@ -20,6 +24,7 @@ class StatusRevisao(str, enum.Enum):
             "liberado_para_obra": "Liberado para obra",
             "obsoleto": "Obsoleto",
             "cancelado": "Cancelado",
+            "reprovado": "Reprovada",
         }[self.value]
 
 
@@ -75,6 +80,8 @@ class TipoNotificacao(str, enum.Enum):
     revisao_autorizada = "revisao_autorizada"
     # Coordenador recusou o pedido: quem pediu.
     solicitacao_recusada = "solicitacao_recusada"
+    # Coordenador reprovou a revisão na análise crítica: quem a enviou.
+    revisao_reprovada = "revisao_reprovada"
 
 
 class PapelObra(str, enum.Enum):
@@ -103,8 +110,11 @@ class PapelObra(str, enum.Enum):
 # coisas diferentes: a obra precisa do primeiro para conferir o que executou, e
 # não deve ver o segundo — projeto ainda em elaboração não é projeto.
 #   enviar ............ cria documento e sobe arquivo (nasce "em revisão")
-#   publicar .......... libera para obra e torna a anterior obsoleta
-#   cancelar .......... cancela uma revisão que não deve mais existir
+#   publicar .......... análise crítica da revisão em revisão: libera para
+#                       obra (e torna a anterior obsoleta) ou reprova, com
+#                       observação obrigatória (TREELE, 09/10/2026)
+#   cancelar .......... cancela uma revisão em revisão que não deve mais
+#                       existir. O administrador cancela em qualquer status
 #   gerenciar ......... membros da obra e padrão de nomenclatura
 #   solicitar_revisao . pede alteração num projeto liberado, com descrição
 #                       obrigatória e anexos opcionais (TREELE, 02/10/2026)

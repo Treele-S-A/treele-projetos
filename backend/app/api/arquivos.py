@@ -96,6 +96,15 @@ def _conferir_leitura(arquivo: Arquivo, ctx: ContextoObra) -> str | None:
         raise HTTPException(
             status.HTTP_403_FORBIDDEN, "Esta revisão foi cancelada."
         )
+    elif revisao.status == StatusRevisao.reprovado:
+        if not ctx.pode("ver_em_revisao"):
+            raise HTTPException(
+                status.HTTP_403_FORBIDDEN, "Esta revisão foi reprovada."
+            )
+        aviso = (
+            f"ATENÇÃO: a revisão R{revisao.numero} foi REPROVADA na análise "
+            "crítica. Não use este arquivo para execução."
+        )
     elif revisao.status == StatusRevisao.em_revisao:
         if not ctx.pode("ver_em_revisao"):
             raise HTTPException(

@@ -220,6 +220,7 @@ export default function Acervo() {
                 <option value="liberado_para_obra">Liberado para obra</option>
                 <option value="em_revisao">Em revisão</option>
                 <option value="obsoleto">Obsoleto</option>
+                <option value="reprovado">Reprovada</option>
                 <option value="cancelado">Cancelado</option>
               </select>
             </label>

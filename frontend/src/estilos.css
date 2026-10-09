@@ -68,6 +68,9 @@
   --cancelado: #5e6e75;
   --cancelado-fundo: #eef2f3;
   --cancelado-marca: #9aaab0;
+  --reprovado: #9c3a12;
+  --reprovado-fundo: #fbeee5;
+  --reprovado-marca: #e0692e;
 
   --fonte-titulo: "Quicksand", "Figtree", system-ui, sans-serif;
   --fonte-ui: "Figtree", system-ui, -apple-system, "Segoe UI", sans-serif;
@@ -474,6 +477,11 @@ textarea {
   background: var(--cancelado-fundo);
   --marca-estado: var(--cancelado-marca);
 }
+.estado-reprovado {
+  color: var(--reprovado);
+  background: var(--reprovado-fundo);
+  --marca-estado: var(--reprovado-marca);
+}
 
 /* --------------------------------------------------------------------------
    O carimbo de liberação
@@ -513,6 +521,9 @@ textarea {
 }
 .selo-cancelado {
   --cor-selo: var(--cancelado);
+}
+.selo-reprovado {
+  --cor-selo: var(--reprovado);
 }
 
 .selo svg {
@@ -1610,4 +1621,43 @@ table.tabela {
   .resumo-formatos {
     display: none;
   }
+}
+
+/* --------------------------------------------------------------------------
+   Análise crítica — liberar ou reprovar, com observação
+   -------------------------------------------------------------------------- */
+
+.analise {
+  margin-top: 12px;
+  padding: 14px 16px;
+  border: 1px solid var(--traco-medio);
+  border-radius: 10px;
+  background: var(--nevoa);
+}
+.analise.reprovar {
+  border-color: var(--reprovado-marca);
+  background: var(--reprovado-fundo);
+}
+.analise textarea {
+  width: 100%;
+  min-height: 84px;
+  margin-top: 6px;
+  resize: vertical;
+  font: inherit;
+}
+.observacao-analise {
+  margin-top: 10px;
+  padding: 8px 12px;
+  border-left: 3px solid var(--revisao-marca);
+  background: var(--revisao-fundo);
+  border-radius: 0 6px 6px 0;
+  white-space: pre-wrap;
+}
+.observacao-analise.reprovada {
+  border-left-color: var(--reprovado-marca);
+  background: var(--reprovado-fundo);
+}
+.observacao-analise.liberada {
+  border-left-color: var(--liberado-marca);
+  background: var(--liberado-fundo);
 }

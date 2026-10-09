@@ -6,6 +6,8 @@
 - Revisão autorizada: o projetista que subiu a última revisão do documento,
   só ele. É aqui, e não no pedido, que o projetista fica sabendo.
 - Pedido recusado: quem pediu.
+- Revisão reprovada na análise crítica: quem a enviou (criou a revisão ou
+  mandou arquivo dela), com a observação do coordenador.
 - Revisão liberada para obra: as pessoas com papel "obra" — o único aviso
   que a obra recebe. Uma vez por revisão, nunca por arquivo; e na liberação,
   não no envio, porque antes de liberada a revisão nem aparece para a obra.
@@ -217,6 +219,30 @@ def ao_liberar(
         revisao=revisao,
         titulo=f"R{revisao.numero} liberada para obra · {documento.codigo}",
         texto=texto,
+    )
+
+
+def ao_reprovar(db: Session, revisao: Revisao, autor: Usuario) -> list[Notificacao]:
+    """Revisão reprovada: quem a enviou, com a observação. Não faz commit."""
+    documento = revisao.documento
+    obra = documento.obra
+    quem = {revisao.criada_por_id} | {a.enviado_por_id for a in revisao.arquivos}
+    quem.discard(None)
+    destinatarios = list(
+        db.scalars(select(Usuario).where(Usuario.id.in_(quem), Usuario.ativo.is_(True)))
+    )
+    return _criar(
+        db, destinatarios, autor,
+        tipo=TipoNotificacao.revisao_reprovada,
+        documento=documento,
+        revisao=revisao,
+        titulo=f"R{revisao.numero} reprovada · {documento.codigo}",
+        texto=(
+            f"{autor.nome} reprovou a R{revisao.numero} de {_nome_documento(documento)}, "
+            f"na obra {obra.codigo} · {obra.nome}, na análise crítica.\n\n"
+            f"Observação:\n{_resumo(revisao.observacao or '')}\n\n"
+            "Envie a correção numa revisão nova."
+        ),
     )
 
 
