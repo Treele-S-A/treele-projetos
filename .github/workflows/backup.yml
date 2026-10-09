@@ -1,0 +1,132 @@
+# Backup diário fora do Supabase (09/10/2026) — ver docs/backup.md.
+#
+# Copia para o SharePoint da TREELE:
+#   arquivos/              espelho do bucket (mesmas chaves do Storage)
+#   excluidos/<data_hora>/ o que saiu ou foi substituído no bucket, por 90 dias
+#   banco/                 pg_dump do schema treele, um por dia, por 90 dias
+#
+# Nada é apagado por espelhamento: o que sai do bucket vai para excluidos/.
+
+name: Backup
+
+on:
+  schedule:
+    - cron: "17 6 * * *" # 03:17 em Brasília
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backup
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    env:
+      DIAS_GUARDADOS: 90
+      DESTINO: sharepoint:sistema-de-projetos
+      RCLONE_VERSAO: v1.75.1
+      RCLONE_SHA256: 982b5aa772841168f8e380f139e9e787b2a105403e32b94da8676a0e1c0a13ab
+      # A Microsoft pede um user-agent identificado para não estrangular a cópia.
+      RCLONE_USER_AGENT: "ISV|TREELE|BackupProjetos/1.0"
+
+      # Origem: o bucket do Supabase, pelo S3. Mesmas chaves da Vercel.
+      RCLONE_CONFIG_SUPABASE_TYPE: s3
+      RCLONE_CONFIG_SUPABASE_PROVIDER: Other
+      RCLONE_CONFIG_SUPABASE_ENDPOINT: ${{ secrets.S3_ENDPOINT }}
+      RCLONE_CONFIG_SUPABASE_REGION: ${{ secrets.S3_REGION }}
+      RCLONE_CONFIG_SUPABASE_ACCESS_KEY_ID: ${{ secrets.S3_ACCESS_KEY }}
+      RCLONE_CONFIG_SUPABASE_SECRET_ACCESS_KEY: ${{ secrets.S3_SECRET_KEY }}
+      RCLONE_CONFIG_SUPABASE_FORCE_PATH_STYLE: "true"
+      S3_BUCKET: ${{ secrets.S3_BUCKET }}
+
+      # Destino: biblioteca de documentos de um site do SharePoint, com um
+      # aplicativo do Entra ID que só enxerga aquele site (Sites.Selected).
+      RCLONE_CONFIG_SHAREPOINT_TYPE: onedrive
+      RCLONE_CONFIG_SHAREPOINT_CLIENT_CREDENTIALS: "true"
+      RCLONE_CONFIG_SHAREPOINT_TENANT: ${{ secrets.MS_TENANT_ID }}
+      RCLONE_CONFIG_SHAREPOINT_CLIENT_ID: ${{ secrets.MS_CLIENT_ID }}
+      RCLONE_CONFIG_SHAREPOINT_CLIENT_SECRET: ${{ secrets.MS_CLIENT_SECRET }}
+      RCLONE_CONFIG_SHAREPOINT_DRIVE_ID: ${{ secrets.MS_DRIVE_ID }}
+      RCLONE_CONFIG_SHAREPOINT_DRIVE_TYPE: documentLibrary
+
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+    steps:
+      - name: Conferir segredos
+        env:
+          FALTANDO: >-
+            ${{ !secrets.DATABASE_URL && 'DATABASE_URL ' || '' }}${{ !secrets.S3_ENDPOINT && 'S3_ENDPOINT ' || '' }}${{ !secrets.S3_REGION && 'S3_REGION ' || '' }}${{ !secrets.S3_BUCKET && 'S3_BUCKET ' || '' }}${{ !secrets.S3_ACCESS_KEY && 'S3_ACCESS_KEY ' || '' }}${{ !secrets.S3_SECRET_KEY && 'S3_SECRET_KEY ' || '' }}${{ !secrets.MS_TENANT_ID && 'MS_TENANT_ID ' || '' }}${{ !secrets.MS_CLIENT_ID && 'MS_CLIENT_ID ' || '' }}${{ !secrets.MS_CLIENT_SECRET && 'MS_CLIENT_SECRET ' || '' }}${{ !secrets.MS_DRIVE_ID && 'MS_DRIVE_ID' || '' }}
+        run: |
+          if [ -n "${FALTANDO// /}" ]; then
+            echo "::error::Faltam segredos no GitHub (Settings → Secrets → Actions): $FALTANDO"
+            exit 1
+          fi
+
+      - name: Instalar o rclone
+        run: |
+          zip="rclone-${RCLONE_VERSAO}-linux-amd64.zip"
+          curl -fsSLO "https://downloads.rclone.org/${RCLONE_VERSAO}/${zip}"
+          echo "${RCLONE_SHA256}  ${zip}" | sha256sum -c -
+          unzip -q "$zip"
+          sudo install -m 0755 "rclone-${RCLONE_VERSAO}-linux-amd64/rclone" /usr/local/bin/rclone
+          rclone version | head -1
+
+      - name: Banco (pg_dump do schema treele)
+        run: |
+          mkdir -p banco
+          # Driver fora, e porta 5432: o pooler em modo transação (6543), que
+          # o sistema usa, não serve para o pg_dump; o modo sessão serve.
+          url="${DATABASE_URL/postgresql+psycopg:/postgresql:}"
+          export URL="${url/:6543\//:5432/}"
+          arquivo="treele-$(date -u +%F_%H%M).dump"
+          # A versão do pg_dump acompanha a do Supabase (Postgres 17).
+          docker run --rm -e URL -v "$PWD/banco:/saida" postgres:17 \
+            pg_dump "$URL" --schema=treele --format=custom --no-owner --no-privileges \
+            --file="/saida/$arquivo"
+          # Confere que o arquivo abre e tem os dados das tabelas.
+          tabelas=$(docker run --rm -v "$PWD/banco:/saida" postgres:17 \
+            pg_restore --list "/saida/$arquivo" | grep -c "TABLE DATA")
+          echo "Banco: $arquivo, $(du -h "banco/$arquivo" | cut -f1), $tabelas tabelas" | tee -a "$GITHUB_STEP_SUMMARY"
+          [ "$tabelas" -gt 0 ]
+
+      - name: Arquivos (bucket → SharePoint)
+        run: |
+          total=$(rclone lsf -R --files-only "supabase:${S3_BUCKET}" | wc -l)
+          # Bucket vazio é chave errada ou problema no Supabase, não "apagaram tudo".
+          if [ "$total" -eq 0 ]; then
+            echo "::error::O bucket voltou vazio; nada foi alterado no backup."
+            exit 1
+          fi
+          rclone sync "supabase:${S3_BUCKET}" "${DESTINO}/arquivos" \
+            --backup-dir "${DESTINO}/excluidos/$(date -u +%F_%H%M)" \
+            --transfers 4 --checkers 8 --stats 1m --stats-one-line -v
+          echo "Arquivos: $total no bucket" | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Enviar o banco
+        run: rclone copy banco "${DESTINO}/banco" -v
+
+      - name: Limpar o que passou de ${{ env.DIAS_GUARDADOS }} dias
+        run: |
+          rclone delete "${DESTINO}/banco" --min-age "${DIAS_GUARDADOS}d" -v
+          limite=$(date -u -d "-${DIAS_GUARDADOS} days" +%F)
+          # As pastas de excluidos/ têm o nome da data em que o arquivo saiu.
+          rclone lsf --dirs-only "${DESTINO}/excluidos" 2>/dev/null | tr -d / | while read -r pasta; do
+            if [[ "$pasta" < "$limite" ]]; then
+              rclone purge "${DESTINO}/excluidos/${pasta}" -v
+            fi
+          done
+
+      - name: Resumo
+        if: always()
+        run: |
+          {
+            echo
+            echo "No SharePoint:"
+            for p in arquivos excluidos banco; do
+              echo "- $p: $(rclone size "${DESTINO}/$p" 2>/dev/null | tr '\n' ' ')"
+            done
+          } | tee -a "$GITHUB_STEP_SUMMARY"

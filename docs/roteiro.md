@@ -207,6 +207,7 @@ justamente como o BCF já funciona.
 | Hospedagem | ~~Render~~ → **Vercel** (Pro), para centralizar os sistemas da empresa em subdomínios; Render e VPS ficam como alternativa | 28/09/2026 |
 | Banco em produção | Supabase, schema próprio `treele`. Começou numa conta pessoal (Free); em 09/10/2026 o projeto foi transferido para a organização da TREELE — mesmo endereço e mesmas chaves, nada mudou na Vercel | 30/09/2026 |
 | Arquivos em produção | **Supabase Storage** (R2 dispensado): envio direto do navegador testado, sem configurar CORS | 30/09/2026 |
+| Backup fora do Supabase | Diário pelo GitHub Actions para um site privado do SharePoint da TREELE: arquivos (espelho + excluídos por 90 dias) e `pg_dump` do banco (90 dias). Ver [backup.md](backup.md) | 09/10/2026 |
 | Em produção | `projetos.treele.com.br` desde 30/09/2026. **Provisório:** Vercel no plano Hobby, que não permite uso comercial — passar para Pro antes do uso pela equipe | 30/09/2026 |
 | Identidade visual | Cores, símbolo e site da treèle; carimbo de liberação redondo | 25/09/2026 |
 | Visual dos painéis | Linguagem dos painéis da treèle (creme, cartões com bisel); títulos em IBM Plex Sans — reta, de engenharia; cada obra com a cor da sua identidade na capa | 01/10/2026 |
