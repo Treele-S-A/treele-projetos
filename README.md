@@ -225,10 +225,9 @@ de `treele.com.br`.
 ### Vercel — `projetos.treele.com.br` *(escolhido)*
 
 **[docs/vercel.md](docs/vercel.md)** — importar o repositório, preencher as
-senhas e publicar. Cerca de 30 minutos. O sistema roda como uma função: a Vercel
-reconhece a aplicação FastAPI pelo [`index.py`](index.py) da raiz, e o build
-([`vercel.json`](vercel.json)) compila a interface junto — a API sob `/api`,
-as telas sob `/`, no mesmo endereço.
+senhas e publicar. A Vercel compila a interface Vite e a API FastAPI como
+serviços separados, no mesmo domínio: `/api/*` vai para a API e o restante
+para a interface. A configuração está em [`vercel.json`](vercel.json).
 
 O banco é o **Supabase da TREELE** (plano Pro, com backup diário), num schema
 próprio (`treele`) — as tabelas deste sistema não se misturam com as de outros.
@@ -236,7 +235,7 @@ próprio (`treele`) — as tabelas deste sistema não se misturam com as de outr
 Custo: o Pro da Vercel (US$ 20/mês por pessoa que publica) e o do Supabase
 (US$ 25/mês) são **divididos entre todos os sistemas** da empresa.
 
-Várias instâncias da função podem ligar ao mesmo tempo; a preparação do banco
+Várias instâncias da API podem ligar ao mesmo tempo; a preparação do banco
 na subida é travada no próprio Postgres — uma instância prepara, as outras
 esperam ([`app/migracoes.py`](backend/app/migracoes.py)).
 

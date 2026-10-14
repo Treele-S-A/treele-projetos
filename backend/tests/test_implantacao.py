@@ -26,19 +26,26 @@ def test_dependencias_da_vercel_iguais_as_do_backend():
 def test_vercel_compila_a_interface_apontando_para_a_api_na_mesma_origem():
     config = json.loads((RAIZ / "vercel.json").read_text(encoding="utf-8"))
     # Sem isto a interface compilada procuraria a API em localhost:8000.
-    assert "VITE_API=/api" in config["buildCommand"]
-    # A função é o index.py da raiz — o mesmo arquivo que a Vercel executa.
-    assert "index.py" in config["functions"]
-    assert (RAIZ / "index.py").is_file()
+    frontend = config["services"]["frontend"]
+    assert "VITE_API=/api" in frontend["buildCommand"]
+    assert frontend["root"] == "frontend"
+    # A API é o serviço FastAPI independente.
+    api = config["services"]["api"]
+    assert api["entrypoint"] == "vercel:app"
+    assert (RAIZ / "backend" / "vercel.py").is_file()
+    assert config["rewrites"] == [
+        {"source": "/api/(.*)", "destination": {"service": "api"}},
+        {"source": "/(.*)", "destination": {"service": "frontend"}},
+    ]
 
 
 def test_entrada_da_vercel_entrega_a_aplicacao():
-    """O index.py da raiz tem que expor a mesma aplicação de backend/app."""
+    """O entrypoint do serviço tem que expor a aplicação de backend/app."""
     import runpy
 
     from app.main import app as esperado
 
-    modulo = runpy.run_path(str(RAIZ / "index.py"))
+    modulo = runpy.run_path(str(RAIZ / "backend" / "vercel.py"))
     assert modulo["app"] is esperado
 
 

@@ -17,8 +17,8 @@ Leva uns 30 minutos, quase tudo espera de build. Sem servidor para administrar.
     │
     ├──── https://projetos.treele.com.br ─────┐
     │                                         │
-    │                              Vercel (uma função)
-    │                              interface + API sob /api
+    │                              Vercel (dois serviços)
+    │                              interface Vite + API FastAPI
     │                                         │
     │                                         └──── Postgres (Supabase, schema treele)
     │
@@ -26,10 +26,11 @@ Leva uns 30 minutos, quase tudo espera de build. Sem servidor para administrar.
                                                      (Cloudflare R2 ou Supabase Storage)
 ```
 
-O sistema roda na Vercel como **uma função**: a Vercel reconhece a aplicação
-FastAPI pelo `index.py` da raiz, e o build compila a interface junto
-([`vercel.json`](../vercel.json)). Os arquivos de projeto nunca passam por ela —
-vão do navegador direto para o armazenamento.
+O sistema roda na Vercel como dois serviços ([`vercel.json`](../vercel.json)):
+`frontend` publica a interface Vite em `/`, e `api` publica o FastAPI em `/api`.
+As rotas da API são acessadas pelo navegador no mesmo domínio. Não há chamada
+servidor-a-servidor entre os serviços, portanto não há binding interno. Os
+arquivos de projeto vão do navegador direto para o armazenamento.
 
 ## O que vai custar
 
@@ -47,16 +48,12 @@ uso comercial.
 
 ## 1. Código no GitHub
 
-Já está: `viniciusbordini/treele-projetos`, privado, na conta pessoal. Passou
-pela organização `treele-construtora` e pelas contas `titreele` e
-`sistemastreele` (02 a 05/10/2026) e voltou. No plano Hobby a Vercel só
-publica repositório privado de **conta pessoal**, com commits cujo **autor é o
-dono da conta Vercel**; fora disso o deploy sai bloqueado ("Cannot deploy from
-a private GitHub organization repository on the Hobby plan" / "the commit
-author did not have contributing access"). Só mudar o repositório de conta
-depois de passar a Vercel para o Pro. A Vercel lê de lá — cada
-envio para a branch `main` vira um deploy novo, sozinho.
-
+O repositório está na organização `Treele-S-A` como `treele-projetos`. A
+integração com a Vercel já cria deployments quando há commits; para publicar,
+a conta/equipe Vercel conectada precisa ter acesso à organização e ao autor do
+commit, conforme o plano e as regras da equipe. A configuração do repositório
+define dois serviços e suas rotas; as credenciais continuam no painel da
+Vercel, nunca no GitHub.
 ## 2. Armazenamento dos arquivos
 
 Duas opções, e o sistema funciona igual nas duas:
@@ -132,12 +129,11 @@ Production** em cada uma.
 | `S3_ACCESS_KEY` | Access Key ID do passo 2 |
 | `S3_SECRET_KEY` | Secret Access Key do passo 2 |
 
-Não precisa cadastrar `API_PREFIX`, `DB_SCHEMA`, `AMBIENTE`, `STORAGE_BACKEND`
-nem `ESTATICOS_DIR`: o [`index.py`](../index.py) já define os padrões desta
-implantação — de propósito, porque esquecer `DB_SCHEMA` não daria erro
-nenhum, só jogaria as tabelas no `public` do Supabase que os outros sistemas
-também usam.
-
+Não precisa cadastrar `API_PREFIX`, `DB_SCHEMA`, `AMBIENTE` nem
+`STORAGE_BACKEND`: o entrypoint [`backend/vercel.py`](../backend/vercel.py)
+define os padrões desta implantação — de propósito, porque esquecer `DB_SCHEMA`
+não daria erro nenhum, só jogaria as tabelas no `public` do Supabase que os
+outros sistemas também usam.
 Clique em **Deploy**. O build leva uns 2 minutos.
 
 ## 6. Conferir
