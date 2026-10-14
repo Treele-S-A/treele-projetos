@@ -5,8 +5,9 @@ vale é CANCELADA — continua no histórico dizendo que não vale. O coordenado
 cancela a que está em revisão; o administrador, qualquer uma, a qualquer
 tempo. A obra nunca fica sem revisão válida por causa de um cancelamento.
 
-Arquivo avulso o administrador ainda exclui: é a saída para o arquivo que
-entrou trocado.
+Arquivo avulso o administrador ainda exclui, mas só de revisão em revisão
+(14/10/2026): é a saída para o arquivo que entrou trocado durante a análise.
+Depois dela, o arquivo é histórico.
 """
 
 import pytest
@@ -93,8 +94,8 @@ def test_obra_nao_se_exclui_nem_pelo_administrador(cliente, admin, obra):
 # ------------------------------------------------------------ arquivos
 
 
-def test_admin_exclui_arquivo_de_revisao_liberada(cliente, admin, obra):
-    arquivo, revisao, nome = _enviar(cliente, admin, obra, "002", "00", liberar=True)
+def test_admin_exclui_arquivo_de_revisao_em_revisao(cliente, admin, obra):
+    arquivo, revisao, nome = _enviar(cliente, admin, obra, "002", "00")
     assert _no_armazenamento("002", "00", nome)
 
     r = cliente.delete(f"/arquivos/{arquivo['id']}", headers=admin)
@@ -107,7 +108,23 @@ def test_admin_exclui_arquivo_de_revisao_liberada(cliente, admin, obra):
     evento = _ultimo_evento(cliente, admin, obra)
     assert evento["acao"] == "arquivo_removido"
     assert evento["detalhes"]["arquivo"] == nome
-    assert evento["detalhes"]["situacao_revisao"] == "liberado_para_obra"
+    assert evento["detalhes"]["situacao_revisao"] == "em_revisao"
+
+
+def test_arquivo_de_revisao_ja_analisada_nao_se_exclui(cliente, admin, obra):
+    """Liberada, reprovada, obsoleta ou cancelada: o arquivo é histórico."""
+    arquivo, revisao, nome = _enviar(cliente, admin, obra, "008", "00", liberar=True)
+
+    r = cliente.delete(f"/arquivos/{arquivo['id']}", headers=admin)
+
+    assert r.status_code == 409
+    assert "cancele" in r.json()["detail"]
+    assert len(cliente.get(f"/revisoes/{revisao['id']}", headers=admin).json()["arquivos"]) == 1
+    assert _no_armazenamento("008", "00", nome)
+
+    cancelada, rc, _ = _enviar(cliente, admin, obra, "009", "00")
+    assert cliente.post(f"/revisoes/{rc['id']}/cancelar", headers=admin).status_code == 200
+    assert cliente.delete(f"/arquivos/{cancelada['id']}", headers=admin).status_code == 409
 
 
 # ------------------------------------------------------------ cancelar

@@ -25,7 +25,8 @@ Obra A e projetista na Obra B. Além disso existe o perfil global de
 O administrador tem todas as permissões em todas as obras — e duas a mais,
 que nenhum papel de obra tem: **cancelar revisão em qualquer status, a
 qualquer tempo** (inclusive a liberada) e **excluir um arquivo avulso** que
-entrou trocado. **Revisões e obras não se excluem** (09/10/2026, PBQP-H): o
+entrou trocado — só enquanto a revisão está em revisão (14/10/2026); depois
+da análise, o arquivo é histórico. **Revisões e obras não se excluem** (09/10/2026, PBQP-H): o
 controle de documentos guarda o histórico. Além disso,
 **todo administrador é coordenador de todas as obras** (02/10/2026),
 inclusive as criadas depois, e todo administrador criado depois também passa

@@ -181,11 +181,13 @@ def remover(
     usuario: Usuario = Depends(usuario_atual),
     db: Session = Depends(get_db),
 ):
-    """Exclui o arquivo de vez — banco e armazenamento. Só administrador.
+    """Exclui o arquivo de vez — banco e armazenamento. Só administrador, e só
+    de revisão ainda em revisão (TREELE, 14/10/2026).
 
-    Vale para qualquer revisão, inclusive a liberada: é a saída para arquivo
-    enviado na obra errada ou com conteúdo que não podia estar ali. Por isso
-    mesmo fica restrito, e o registro de atividades guarda o que saiu.
+    É a saída para o arquivo que entrou trocado enquanto a revisão está em
+    análise. Depois da análise — liberada, reprovada, obsoleta, cancelada — o
+    arquivo é histórico e não sai mais: o que não vale se resolve cancelando
+    a revisão. O registro de atividades guarda o que saiu.
     """
     arquivo, ctx = _carregar(db, usuario, arquivo_id)
     if not usuario.admin:
@@ -194,6 +196,13 @@ def remover(
         )
 
     revisao = arquivo.revisao
+    if revisao.status != StatusRevisao.em_revisao:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            f"A R{revisao.numero} está {revisao.status.rotulo.lower()}: o arquivo faz "
+            "parte do histórico e não pode ser excluído. Se a revisão não deve valer, "
+            "cancele-a.",
+        )
     chave = arquivo.storage_key
 
     db.delete(arquivo)

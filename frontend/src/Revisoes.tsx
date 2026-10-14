@@ -345,7 +345,8 @@ Isto não pode ser desfeito.`)) {
                 >
                   Baixar
                 </button>
-                {admin && (
+                {/* Só durante a análise: depois dela o arquivo é histórico. */}
+                {admin && emRevisao && (
                   <button
                     className="botao perigo pequeno"
                     disabled={ocupado}
