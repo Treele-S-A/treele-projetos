@@ -1661,3 +1661,53 @@ table.tabela {
   border-left-color: var(--liberado-marca);
   background: var(--liberado-fundo);
 }
+
+/* --------------------------------------------------------------------------
+   Avisos opcionais e liberação em lote (15/10/2026)
+   -------------------------------------------------------------------------- */
+
+.opcao-aviso {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  font-size: 13px;
+  cursor: pointer;
+}
+.opcao-aviso .silencioso {
+  font-size: 12px;
+}
+
+.col-marca {
+  width: 34px;
+  text-align: center;
+}
+.tabela tr.marcada td {
+  background: var(--azul-claro);
+}
+
+.dica-lote {
+  margin: 0 0 8px;
+  padding: 0 4px;
+  font-size: 12.5px;
+}
+
+.barra-lote {
+  position: sticky;
+  bottom: 12px;
+  z-index: 5;
+  margin: 12px;
+  padding: 12px 16px;
+  border: 1px solid var(--traco-medio);
+  border-left: 4px solid var(--petroleo);
+  border-radius: 10px;
+  background: var(--folha);
+  box-shadow: 0 6px 20px rgba(0, 48, 63, 0.15);
+}
+.barra-lote textarea {
+  width: 100%;
+  margin-top: 6px;
+  font: inherit;
+  resize: vertical;
+}

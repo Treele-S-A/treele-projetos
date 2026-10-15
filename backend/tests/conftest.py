@@ -78,7 +78,7 @@ def autorizar(cliente, coordenador, obra_id: int, codigo: str,
 
 def enviar_arquivo(cliente, cabecalhos, obra_id: int, nome: str, conteudo: bytes,
                    substituir: bool = False, titulo="Prancha de teste",
-                   descricao="Emissão para teste", autorizar_com=None):
+                   descricao="Emissão para teste", autorizar_com=None, avisar=None):
     """Executa os três passos do envio e devolve a resposta da confirmação.
 
     Manda um título e uma descrição por padrão, porque documento novo exige
@@ -87,6 +87,9 @@ def enviar_arquivo(cliente, cabecalhos, obra_id: int, nome: str, conteudo: bytes
 
     ``autorizar_com`` (cabeçalhos de um coordenador) autoriza antes a revisão
     nova de um documento já liberado — o código vem do nome, antes do "-R".
+
+    ``avisar`` vai no corpo da confirmação; sem ele, a confirmação sai sem
+    corpo, como nas telas antigas.
     """
     from urllib.parse import urlsplit
 
@@ -112,5 +115,6 @@ def enviar_arquivo(cliente, cabecalhos, obra_id: int, nome: str, conteudo: bytes
     assert envio.status_code == 200, envio.text
 
     return cliente.post(
-        f"/arquivos/{dados['arquivo_id']}/confirmar", headers=cabecalhos
+        f"/arquivos/{dados['arquivo_id']}/confirmar", headers=cabecalhos,
+        **({"json": {"avisar": avisar}} if avisar is not None else {}),
     )

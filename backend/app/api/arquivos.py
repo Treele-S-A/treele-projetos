@@ -5,7 +5,7 @@ from ..db import get_db
 from ..deps import ContextoObra, montar_contexto, usuario_atual
 from ..enums import StatusArquivo, StatusRevisao, TipoArquivo
 from ..models import Arquivo, Usuario
-from ..schemas import ArquivoOut, DownloadSaida, RevisaoOut, UploadConfirmarSaida
+from ..schemas import ArquivoOut, ConfirmarEntrada, DownloadSaida, RevisaoOut, UploadConfirmarSaida
 from ..services import auditoria, notificacoes
 from ..services.revisoes import remover_do_armazenamento
 from ..services.storage import armazenamento
@@ -27,6 +27,7 @@ def _carregar(db: Session, usuario: Usuario, arquivo_id: int) -> tuple[Arquivo, 
 def confirmar(
     arquivo_id: int,
     request: Request,
+    dados: ConfirmarEntrada | None = None,
     usuario: Usuario = Depends(usuario_atual),
     db: Session = Depends(get_db),
 ):
@@ -55,7 +56,10 @@ def confirmar(
     # Revisão em andamento recebeu arquivo: os coordenadores sabem da revisão
     # nova — uma vez só, no primeiro arquivo (o serviço confere).
     avisos = []
-    if arquivo.revisao.status == StatusRevisao.em_revisao:
+    # Só coordenador (ou administrador) pode calar o aviso; o envio do
+    # projetista sempre avisa os coordenadores (TREELE, 15/10/2026).
+    avisar = (dados.avisar if dados else True) or not ctx.pode("publicar")
+    if avisar and arquivo.revisao.status == StatusRevisao.em_revisao:
         db.flush()
         avisos = notificacoes.ao_enviar_revisao(db, arquivo.revisao, usuario)
     db.commit()

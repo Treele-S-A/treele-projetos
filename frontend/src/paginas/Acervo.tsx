@@ -15,10 +15,28 @@ import { MarcaSolicitada } from "../Solicitacoes";
 import { Aviso, CapaObra, Carregando, Estado, Vazio } from "../componentes";
 import { useSessao } from "../sessao";
 
-const POR_PAGINA = 50;
+const TAMANHOS_PAGINA = [50, 100, 200];
 const CHAVE_VISAO = "treele.acervo.visao";
 
 type Visao = "lista" | "arvore";
+
+/** Revisão marcada para liberar em lote — guarda o que a tela mostra dela. */
+interface Marcada {
+  documento: string;
+  numero: string;
+}
+
+interface ItemLote {
+  revisao_id: number;
+  documento: string | null;
+  revisao: string | null;
+  motivos: string[];
+}
+
+interface ResultadoLote {
+  liberadas: ItemLote[];
+  recusadas: ItemLote[];
+}
 
 export default function Acervo() {
   const { obraId } = useParams();
@@ -37,6 +55,16 @@ export default function Acervo() {
   const [status, setStatus] = useState<StatusRevisao | "">("");
   const [tipo, setTipo] = useState<TipoArquivo | "">("");
   const [pagina, setPagina] = useState(1);
+  const [porPagina, setPorPagina] = useState(TAMANHOS_PAGINA[0]);
+  // Liberação em lote (TREELE, 15/10/2026): a seleção sobrevive à troca de
+  // página e de filtro — dá para marcar de várias páginas e liberar de uma vez.
+  const podeLiberar = obra?.permissoes.includes("publicar") ?? false;
+  const [marcadas, setMarcadas] = useState<Map<number, Marcada>>(new Map());
+  const [painelLote, setPainelLote] = useState(false);
+  const [observacaoLote, setObservacaoLote] = useState("");
+  const [avisarLote, setAvisarLote] = useState(true);
+  const [liberando, setLiberando] = useState(false);
+  const [resultadoLote, setResultadoLote] = useState<ResultadoLote | null>(null);
   // Vindo de um link de pasta (?pasta=ARQ/PE): abre nas pastas, com ela aberta.
   const [parametros] = useSearchParams();
   const pastaPedida = parametros.get("pasta") ?? undefined;
@@ -61,7 +89,7 @@ export default function Acervo() {
     if (!obraId || visao !== "lista") return;
     setCarregando(true);
     setErro(null);
-    const p = new URLSearchParams({ pagina: String(pagina), por_pagina: String(POR_PAGINA) });
+    const p = new URLSearchParams({ pagina: String(pagina), por_pagina: String(porPagina) });
     if (buscaAplicada.trim()) p.set("busca", buscaAplicada.trim());
     if (disciplina) p.set("disciplina_id", disciplina);
     if (fase) p.set("fase_id", fase);
@@ -75,7 +103,62 @@ export default function Acervo() {
     } finally {
       setCarregando(false);
     }
-  }, [obraId, visao, pagina, buscaAplicada, disciplina, fase, status, tipo]);
+  }, [obraId, visao, pagina, porPagina, buscaAplicada, disciplina, fase, status, tipo]);
+
+  /** Linha que pode entrar no lote: a revisão atual está em análise. */
+  function liberavel(d: Documento): boolean {
+    return podeLiberar && d.revisao_atual?.status === "em_revisao";
+  }
+
+  function alternar(d: Documento) {
+    const rev = d.revisao_atual;
+    if (!rev) return;
+    setMarcadas((m) => {
+      const novo = new Map(m);
+      if (novo.has(rev.id)) novo.delete(rev.id);
+      else novo.set(rev.id, { documento: d.codigo, numero: rev.numero });
+      return novo;
+    });
+  }
+
+  function alternarPagina(marcar: boolean) {
+    if (!dados) return;
+    setMarcadas((m) => {
+      const novo = new Map(m);
+      for (const d of dados.itens) {
+        if (!liberavel(d) || !d.revisao_atual) continue;
+        if (marcar) novo.set(d.revisao_atual.id, { documento: d.codigo, numero: d.revisao_atual.numero });
+        else novo.delete(d.revisao_atual.id);
+      }
+      return novo;
+    });
+  }
+
+  async function liberarLote() {
+    setLiberando(true);
+    setErro(null);
+    try {
+      const r = await api.post<ResultadoLote>("/revisoes/liberar-lote", {
+        revisao_ids: [...marcadas.keys()],
+        observacao: observacaoLote.trim() || null,
+        avisar: avisarLote,
+      });
+      setResultadoLote(r);
+      // Ficam marcadas só as que não saíram, para corrigir e tentar de novo.
+      setMarcadas((m) => {
+        const novo = new Map(m);
+        for (const x of r.liberadas) novo.delete(x.revisao_id);
+        return novo;
+      });
+      setPainelLote(false);
+      setObservacaoLote("");
+      await consultar();
+    } catch (ex) {
+      setErro(ex instanceof ErroApi ? ex.message : "Não foi possível liberar as revisões.");
+    } finally {
+      setLiberando(false);
+    }
+  }
 
   useEffect(() => {
     consultar();
@@ -156,6 +239,33 @@ export default function Acervo() {
       </div>
 
       {erro && <Aviso tom="erro">{erro}</Aviso>}
+
+      {resultadoLote && (
+        <Aviso
+          tom={resultadoLote.recusadas.length ? "atencao" : "ok"}
+          titulo={`${resultadoLote.liberadas.length} revis${resultadoLote.liberadas.length === 1 ? "ão liberada" : "ões liberadas"} para obra${
+            resultadoLote.recusadas.length
+              ? ` · ${resultadoLote.recusadas.length} não ${resultadoLote.recusadas.length === 1 ? "pôde" : "puderam"} ser liberada${resultadoLote.recusadas.length === 1 ? "" : "s"}`
+              : ""
+          }`}
+          itens={resultadoLote.recusadas.map(
+            (x) => `${x.documento ?? "Revisão " + x.revisao_id}${x.revisao ? ` R${x.revisao}` : ""}: ${x.motivos.join(" ")}`,
+          )}
+        >
+          {resultadoLote.recusadas.length > 0 && (
+            <div style={{ marginTop: 4, fontSize: 12.5 }}>
+              As que não saíram continuam marcadas: corrija e libere de novo.
+            </div>
+          )}
+          <button
+            className="botao secundario pequeno"
+            style={{ marginTop: 8 }}
+            onClick={() => setResultadoLote(null)}
+          >
+            Fechar
+          </button>
+        </Aviso>
+      )}
 
       {visao === "arvore" ? (
         <div className="folha">
@@ -253,10 +363,36 @@ export default function Acervo() {
           </Vazio>
         ) : (
           <>
+            {podeLiberar && status !== "em_revisao" && marcadas.size === 0 && (
+              <p className="silencioso dica-lote">
+                Para liberar várias revisões de uma vez, filtre <strong>Status: Em revisão</strong> e
+                marque as linhas.
+              </p>
+            )}
             <div className="tabela-rolagem">
               <table className="tabela">
                 <thead>
                   <tr>
+                    {podeLiberar && (
+                      <th className="col-marca">
+                        {(() => {
+                          const elegiveis = dados.itens.filter(liberavel);
+                          const todas =
+                            elegiveis.length > 0 &&
+                            elegiveis.every((d) => d.revisao_atual && marcadas.has(d.revisao_atual.id));
+                          return (
+                            <input
+                              type="checkbox"
+                              aria-label="Marcar todas as revisões em revisão desta página"
+                              title="Marcar todas as revisões em revisão desta página"
+                              disabled={elegiveis.length === 0}
+                              checked={todas}
+                              onChange={() => alternarPagina(!todas)}
+                            />
+                          );
+                        })()}
+                      </th>
+                    )}
                     <th>Documento</th>
                     <th>Título</th>
                     <th>Disc.</th>
@@ -269,7 +405,22 @@ export default function Acervo() {
                 </thead>
                 <tbody>
                   {dados.itens.map((d) => (
-                    <tr key={d.id}>
+                    <tr
+                      key={d.id}
+                      className={d.revisao_atual && marcadas.has(d.revisao_atual.id) ? "marcada" : undefined}
+                    >
+                      {podeLiberar && (
+                        <td className="col-marca">
+                          {liberavel(d) && d.revisao_atual && (
+                            <input
+                              type="checkbox"
+                              aria-label={`Marcar ${d.codigo} R${d.revisao_atual.numero} para liberar`}
+                              checked={marcadas.has(d.revisao_atual.id)}
+                              onChange={() => alternar(d)}
+                            />
+                          )}
+                        </td>
+                      )}
                       <td>
                         <Link className="link-doc" to={`/documentos/${d.id}`}>
                           {d.codigo}
@@ -307,6 +458,22 @@ export default function Acervo() {
                 {dados.total} documento{dados.total === 1 ? "" : "s"}
                 {totalPaginas > 1 && ` · página ${dados.pagina} de ${totalPaginas}`}
               </span>
+              <label className="linha" style={{ gap: 6, fontSize: 12.5 }}>
+                <span className="silencioso">Por página</span>
+                <select
+                  value={porPagina}
+                  onChange={(e) => {
+                    setPorPagina(Number(e.target.value));
+                    setPagina(1);
+                  }}
+                >
+                  {TAMANHOS_PAGINA.map((n) => (
+                    <option key={n} value={n}>
+                      {n}
+                    </option>
+                  ))}
+                </select>
+              </label>
               {totalPaginas > 1 && (
                 <div className="linha">
                   <button
@@ -327,6 +494,79 @@ export default function Acervo() {
               )}
             </div>
           </>
+        )}
+
+        {podeLiberar && marcadas.size > 0 && (
+          <div className="barra-lote" role="region" aria-label="Liberação em lote">
+            {!painelLote ? (
+              <div className="linha">
+                <strong>
+                  {marcadas.size} revis{marcadas.size === 1 ? "ão marcada" : "ões marcadas"}
+                </strong>
+                <span className="silencioso" style={{ fontSize: 12 }}>
+                  {[...marcadas.values()]
+                    .slice(0, 4)
+                    .map((m) => `${m.documento} R${m.numero}`)
+                    .join(", ")}
+                  {marcadas.size > 4 && "…"}
+                </span>
+                <div className="espaco" />
+                <button
+                  className="botao secundario pequeno"
+                  onClick={() => setMarcadas(new Map())}
+                >
+                  Desmarcar
+                </button>
+                <button className="botao" onClick={() => setPainelLote(true)}>
+                  Liberar para obra…
+                </button>
+              </div>
+            ) : (
+              <div>
+                <strong>
+                  Liberar {marcadas.size} revis{marcadas.size === 1 ? "ão" : "ões"} para obra
+                </strong>
+                <p className="silencioso" style={{ fontSize: 12.5, margin: "4px 0 8px" }}>
+                  Cada uma passa pelas mesmas conferências da liberação avulsa (o DWG precisa do PDF,
+                  por exemplo); as que não puderem sair voltam com o motivo, e as outras são
+                  liberadas. Pedidos de revisão autorizados desses documentos fecham como atendidos.
+                </p>
+                <label className="campo" style={{ display: "block" }}>
+                  <span className="rotulo">Observação (opcional, vale para todas)</span>
+                  <textarea
+                    value={observacaoLote}
+                    onChange={(e) => setObservacaoLote(e.target.value)}
+                    maxLength={4000}
+                    rows={2}
+                    disabled={liberando}
+                    placeholder="Ex.: Liberação do acervo migrado do Mobuss."
+                  />
+                </label>
+                <label className="opcao-aviso">
+                  <input
+                    type="checkbox"
+                    checked={avisarLote}
+                    onChange={(e) => setAvisarLote(e.target.checked)}
+                    disabled={liberando}
+                  />
+                  Avisar a obra (uma notificação e um e-mail por revisão)
+                  <span className="silencioso">— desmarque para liberar em volume sem e-mails</span>
+                </label>
+                <div className="linha" style={{ marginTop: 10 }}>
+                  <button className="botao" disabled={liberando} onClick={liberarLote}>
+                    {liberando ? "Liberando…" : `Liberar ${marcadas.size} para obra`}
+                  </button>
+                  <button
+                    className="botao secundario pequeno"
+                    disabled={liberando}
+                    onClick={() => setPainelLote(false)}
+                  >
+                    Voltar
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         )}
       </div>
       )}

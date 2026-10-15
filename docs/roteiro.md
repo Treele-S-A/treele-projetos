@@ -194,6 +194,7 @@ justamente como o BCF já funciona.
 | Disciplina Comercial | `COM`, a pedido da TREELE | 02/10/2026 |
 | Pastas no acervo | A fase abre na própria árvore (disciplina → fase → documentos) e o documento abre direto a tela dele; a tela própria de pasta saiu, e o endereço antigo leva à árvore com a pasta aberta | 06/10/2026 |
 | Excluir obra | ~~Só administrador, com o código da obra digitado e a própria senha~~ → **não se exclui** obra nem revisão (09/10/2026, PBQP-H) | 06/10/2026 |
+| Avisos e liberação em lote | Coordenador escolhe se avisa (notificação e e-mail) ao enviar arquivo e ao liberar; projetista e obra avisam sempre. No acervo (lista), o coordenador marca revisões em revisão — de várias páginas — e libera todas de uma vez; as que não passam nas conferências voltam com o motivo | 15/10/2026 |
 | Análise crítica | Revisão em revisão é a análise crítica do PBQP-H: o coordenador libera (observação opcional) ou reprova (observação obrigatória, vai por e-mail a quem enviou). A reprovada fica no histórico; a correção vem numa revisão nova, sem outra autorização. O administrador cancela revisão em qualquer status | 09/10/2026 |
 | Painel de solicitações | Administrador vê no menu os pedidos de revisão de todas as obras, com filtro e contador dos que aguardam autorização; o item abre o documento no pedido | 06/10/2026 |
 | Manter conectado | Opção no login: sessão de 30 dias na máquina (sem marcar, 12 horas). Trocar ou redefinir a senha derruba todas as sessões abertas; quem trocou a própria segue logado | 07/10/2026 |

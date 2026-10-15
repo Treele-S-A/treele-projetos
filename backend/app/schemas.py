@@ -441,9 +441,36 @@ class PublicarEntrada(BaseModel):
     descricao: str | None = None
     # Observação da análise crítica. Opcional ao liberar.
     observacao: str | None = Field(default=None, max_length=4000)
+    # Avisar a obra (notificação e e-mail). O coordenador escolhe: em volume,
+    # não vale mandar centenas de e-mails (TREELE, 15/10/2026).
+    avisar: bool = True
     # Pedidos de revisão abertos que esta revisão atende, marcados por quem
     # libera. Fecham na liberação; os não marcados seguem abertos.
     solicitacoes_atendidas: list[int] = []
+
+
+class LiberarLoteEntrada(BaseModel):
+    revisao_ids: list[int] = Field(min_length=1, max_length=500)
+    observacao: str | None = Field(default=None, max_length=4000)
+    avisar: bool = True
+
+
+class ItemLote(BaseModel):
+    revisao_id: int
+    documento: str | None = None
+    revisao: str | None = None
+    motivos: list[str] = []
+
+
+class LiberarLoteSaida(BaseModel):
+    liberadas: list[ItemLote]
+    recusadas: list[ItemLote]
+
+
+class ConfirmarEntrada(BaseModel):
+    # Coordenador enviando arquivo escolhe se os outros coordenadores são
+    # avisados da revisão nova. Projetista: sempre avisa (o servidor ignora).
+    avisar: bool = True
 
 
 class ReprovarEntrada(BaseModel):

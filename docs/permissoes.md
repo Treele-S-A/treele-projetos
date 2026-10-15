@@ -79,7 +79,10 @@ Revisão **em revisão** é a análise crítica que o PBQP-H exige (TREELE,
 09/10/2026). O coordenador tem duas saídas, cada uma com uma caixa
 **Observação**:
 
-- **Liberar para obra** — observação opcional. Fica na revisão ("Observação
+- **Liberar para obra** — observação opcional. Dá para liberar várias de uma
+  vez: no acervo (lista), marcar as revisões em revisão e usar *Liberar para
+  obra…*; cada uma passa pelas mesmas conferências, e as que não podem sair
+  voltam com o motivo. Fica na revisão ("Observação
   da liberação") e no registro de atividades.
 - **Reprovar** — observação **obrigatória**. A revisão vira *Reprovada* e
   fica no histórico, com arquivos, quem reprovou, quando e o motivo: é o

@@ -14,6 +14,15 @@ por e-mail, quando o e-mail está configurado.
 | **Revisão liberada para obra** | As pessoas com papel **obra**. É o único aviso que a obra recebe. Um por revisão, nunca por arquivo. |
 | **Revisão reprovada** na análise crítica (09/10/2026) | **Quem enviou a revisão** — quem a criou ou mandou arquivo dela —, com a observação do coordenador. |
 
+**O coordenador escolhe** (15/10/2026). Quando quem envia arquivo ou libera
+para obra é coordenador (ou administrador), a tela pergunta, numa caixa já
+marcada, se avisa: "Avisar os outros coordenadores das revisões novas" no
+envio e "Avisar a obra" na liberação — avulsa ou em lote. Em volume, como na
+migração do acervo, desmarca-se e ninguém recebe centenas de e-mails; o
+registro de atividades guarda a escolha. O envio do projetista e o pedido de
+revisão da obra avisam sempre: o servidor ignora o pedido de silêncio de quem
+não coordena.
+
 Detalhes:
 
 - **"Última revisão"** é a mais recente que não foi cancelada, mesmo que ainda

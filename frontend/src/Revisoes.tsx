@@ -150,6 +150,8 @@ function LinhaRevisao({
   const [erro, setErro] = useState<ErroApi | null>(null);
   const [decisao, setDecisao] = useState<Decisao>(null);
   const [observacao, setObservacao] = useState("");
+  // O coordenador escolhe se a obra é avisada (TREELE, 15/10/2026).
+  const [avisar, setAvisar] = useState(true);
 
   const emRevisao = revisao.status === "em_revisao";
   const cancelavel =
@@ -181,6 +183,7 @@ function LinhaRevisao({
         await api.post(`/revisoes/${revisao.id}/publicar`, {
           solicitacoes_atendidas: atendidos,
           observacao: texto || null,
+          avisar,
         });
       } else {
         await api.post(`/revisoes/${revisao.id}/reprovar`, { observacao: texto });
@@ -433,6 +436,17 @@ Isto não pode ser desfeito.`)) {
                       disabled={ocupado}
                     />
                   </label>
+                  {decisao === "liberar" && (
+                    <label className="opcao-aviso">
+                      <input
+                        type="checkbox"
+                        checked={avisar}
+                        onChange={(e) => setAvisar(e.target.checked)}
+                        disabled={ocupado}
+                      />
+                      Avisar a obra desta liberação (notificação e e-mail)
+                    </label>
+                  )}
                   <div className="linha" style={{ marginTop: 10 }}>
                     <button
                       className={decisao === "liberar" ? "botao" : "botao perigo"}

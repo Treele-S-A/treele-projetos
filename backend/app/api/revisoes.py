@@ -5,7 +5,16 @@ from ..db import get_db
 from ..deps import montar_contexto, status_visiveis, usuario_atual
 from ..models import Revisao, Usuario
 from ..enums import StatusRevisao
-from ..schemas import PublicarEntrada, ReprovarEntrada, RevisaoAtualizar, RevisaoOut
+from ..enums import StatusSolicitacao
+from ..schemas import (
+    ItemLote,
+    LiberarLoteEntrada,
+    LiberarLoteSaida,
+    PublicarEntrada,
+    ReprovarEntrada,
+    RevisaoAtualizar,
+    RevisaoOut,
+)
 from ..services import auditoria
 from ..services import revisoes as servico
 from ..services import notificacoes
@@ -122,26 +131,83 @@ def publicar(
     if dados.descricao:
         revisao.descricao = dados.descricao.strip()
 
-    obsoletas = servico.publicar(db, revisao, usuario.id, dados.observacao)
-    servico_solicitacoes.atender(db, revisao, atendidos)
-
-    auditoria.registrar(
-        db, acao="revisao_publicada", entidade="revisao", entidade_id=revisao.id,
-        usuario=usuario, obra_id=ctx.obra.id,
-        detalhes={
-            "documento": revisao.documento.codigo,
-            "revisao": revisao.numero,
-            "obsoletadas": [r.numero for r in obsoletas],
-            "solicitacoes_atendidas": [s.id for s in atendidos],
-            "observacao": revisao.observacao,
-        },
-        request=request,
-    )
-    avisos = notificacoes.ao_liberar(db, revisao, usuario, obsoletas)
+    avisos = _liberar(db, revisao, ctx, usuario, atendidos, dados.observacao, dados.avisar, request)
     db.commit()
     notificacoes.enviar_emails(db, avisos)
     db.refresh(revisao)
     return revisao
+
+
+def _liberar(db, revisao, ctx, usuario, atendidos, observacao, avisar, request, lote=False):
+    """Libera uma revisão já conferida. Não faz commit. Devolve os avisos."""
+    obsoletas = servico.publicar(db, revisao, usuario.id, observacao)
+    servico_solicitacoes.atender(db, revisao, atendidos)
+    detalhes = {
+        "documento": revisao.documento.codigo,
+        "revisao": revisao.numero,
+        "obsoletadas": [r.numero for r in obsoletas],
+        "solicitacoes_atendidas": [s.id for s in atendidos],
+        "observacao": revisao.observacao,
+        "avisos": avisar,
+    }
+    if lote:
+        detalhes["lote"] = True
+    auditoria.registrar(
+        db, acao="revisao_publicada", entidade="revisao", entidade_id=revisao.id,
+        usuario=usuario, obra_id=ctx.obra.id, detalhes=detalhes, request=request,
+    )
+    return notificacoes.ao_liberar(db, revisao, usuario, obsoletas) if avisar else []
+
+
+@router.post("/liberar-lote", response_model=LiberarLoteSaida)
+def liberar_lote(
+    dados: LiberarLoteEntrada,
+    request: Request,
+    usuario: Usuario = Depends(usuario_atual),
+    db: Session = Depends(get_db),
+):
+    """Libera várias revisões de uma vez (TREELE, 15/10/2026).
+
+    Cada uma passa pelas mesmas conferências da liberação avulsa. As que não
+    podem ser liberadas voltam com o motivo, e as outras seguem — uma prancha
+    sem o PDF não segura as outras cem. Os pedidos de revisão autorizados de
+    cada documento fecham como atendidos, como na tela avulsa (lá vêm todos
+    marcados). A observação, se houver, vale para todas.
+    """
+    liberadas: list[ItemLote] = []
+    recusadas: list[ItemLote] = []
+    carregadas = []
+    for revisao_id in dict.fromkeys(dados.revisao_ids):
+        try:
+            revisao, ctx = _carregar(db, usuario, revisao_id)
+        except HTTPException:
+            recusadas.append(ItemLote(revisao_id=revisao_id, motivos=["Revisão não encontrada."]))
+            continue
+        carregadas.append((revisao, ctx))
+    # A mais antiga primeiro: R00 e R01 do mesmo documento no mesmo lote
+    # terminam com a R01 valendo, como se liberadas uma depois da outra.
+    carregadas.sort(key=lambda rc: (rc[0].documento_id, rc[0].ordem))
+
+    avisos = []
+    for revisao, ctx in carregadas:
+        item = ItemLote(revisao_id=revisao.id, documento=revisao.documento.codigo, revisao=revisao.numero)
+        if not ctx.pode("publicar"):
+            item.motivos = ["Somente o coordenador da obra pode liberar revisões."]
+            recusadas.append(item)
+            continue
+        impedimentos = servico.conferir_publicacao(db, revisao, ctx.obra.regra_companheiro)
+        if impedimentos:
+            item.motivos = impedimentos
+            recusadas.append(item)
+            continue
+        autorizados = [s.id for s in revisao.documento.solicitacoes if s.status == StatusSolicitacao.autorizada]
+        atendidos = servico_solicitacoes.pedidos_marcados(db, revisao, autorizados) or []
+        avisos += _liberar(db, revisao, ctx, usuario, atendidos, dados.observacao, dados.avisar, request, lote=True)
+        db.flush()
+        liberadas.append(item)
+    db.commit()
+    notificacoes.enviar_emails(db, avisos)
+    return LiberarLoteSaida(liberadas=liberadas, recusadas=recusadas)
 
 
 @router.post("/{revisao_id}/reprovar", response_model=RevisaoOut)

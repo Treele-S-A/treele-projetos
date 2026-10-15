@@ -80,6 +80,10 @@ export default function Enviar() {
   // "O que mudou" é por revisão nova, não por arquivo: PDF e DWG da mesma
   // revisão dividem o campo. Chave: "CÓDIGO|REVISÃO".
   const [descricoes, setDescricoes] = useState<Record<string, string>>({});
+  // Coordenador escolhe se avisa os outros coordenadores das revisões novas;
+  // o envio do projetista sempre avisa (TREELE, 15/10/2026).
+  const coordena = obra?.permissoes.includes("publicar") ?? false;
+  const [avisar, setAvisar] = useState(true);
   const entradaRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -141,7 +145,7 @@ export default function Enviar() {
           atualizar(i, { progresso: f }),
         );
 
-        await api.post(`/arquivos/${inicio.arquivo_id}/confirmar`);
+        await api.post(`/arquivos/${inicio.arquivo_id}/confirmar`, coordena ? { avisar } : undefined);
         atualizar(i, {
           estado: "concluido",
           progresso: 1,
@@ -383,6 +387,19 @@ export default function Enviar() {
                     );
                   })}
                 </div>
+              )}
+
+              {coordena && (
+                <label className="opcao-aviso" style={{ marginTop: 14 }}>
+                  <input
+                    type="checkbox"
+                    checked={avisar}
+                    onChange={(e) => setAvisar(e.target.checked)}
+                    disabled={enviando}
+                  />
+                  Avisar os outros coordenadores das revisões novas (notificação e e-mail)
+                  <span className="silencioso">— desmarque ao subir arquivos em volume</span>
+                </label>
               )}
 
               <div className="linha" style={{ marginTop: 14 }}>
