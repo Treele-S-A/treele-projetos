@@ -47,3 +47,12 @@ def test_pci_desativado_nao_aceita_envio(cliente, admin, obra):
     assert r.status_code >= 400
     inativas = {d["codigo"]: d for d in cliente.get("/disciplinas?incluir_inativas=true", headers=admin).json()}
     assert inativas["PCI"]["ativa"] is False
+
+
+def test_disciplinas_da_migracao_existem_separadas(cliente, admin):
+    """CTL, LUM e SPD são disciplinas próprias, não pranchas de ARQ ou ELE
+    (TREELE, 15/10/2026)."""
+    codigos = {d["codigo"]: d for d in cliente.get("/disciplinas", headers=admin).json()}
+    for codigo in ("CTL", "LUM", "SPD"):
+        assert codigo in codigos, codigo
+        assert codigos[codigo]["ativa"] is True

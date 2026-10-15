@@ -90,7 +90,7 @@ Na lista e na pasta, o título é a linha em destaque: ninguém procura
 
 ## Catálogos
 
-### Disciplinas (26)
+### Disciplinas (29)
 
 | | | |
 |---|---|---|
@@ -102,11 +102,15 @@ Na lista e na pasta, o título é a linha em destaque: ninguém procura
 | `TEL` Telecomunicações | `GAS` Gás | `AUT` Automação |
 | `TOP` Topografia | `TER` Terraplenagem | `PAV` Pavimentação |
 | `URB` Implantação e Urbanismo | `PAI` Paisagismo | `INT` Interiores |
-| `COO` Coordenação e Compatibilização | `COM` Comercial | |
+| `COO` Coordenação e Compatibilização | `COM` Comercial | `CTL` Conforto Térmico e Lumínico |
+| `LUM` Luminotécnico | `SPD` SPDA | |
 
 As nove confirmadas por vocês em 17/09/2026 — COB, CON, DRE, ESC, ESQ, FUN,
 IMP, MUR e PAT — já estão cadastradas. `COM` (Comercial) entrou em 02/10/2026,
 a pedido da TREELE: é a única disciplina que o perfil comercial enxerga.
+`CTL` (Conforto Térmico e Lumínico), `LUM` (Luminotécnico) e `SPD` (SPDA)
+entraram em 15/10/2026, na migração do acervo, a pedido da TREELE: são
+disciplinas próprias, separadas de Arquitetura e Elétrica.
 `INC` (Incêndio) entrou em 05/10/2026, também a pedido da TREELE, no lugar do
 `PCI` (Prevenção e Combate a Incêndio) da proposta inicial — que foi
 **desativado** e não aceita arquivo novo. Nenhum documento usava `PCI`.

@@ -54,6 +54,11 @@ DISCIPLINAS = [
     ("COO", "Coordenação e Compatibilização"),
     # Material comercial (01/10/2026): é o que o perfil comercial enxerga.
     ("COM", "Comercial"),
+    # Pedidas pela TREELE na migração do acervo (15/10/2026): disciplinas
+    # próprias, separadas de ARQ e ELE.
+    ("CTL", "Conforto Térmico e Lumínico"),
+    ("LUM", "Luminotécnico"),
+    ("SPD", "SPDA"),
 ]
 
 # Em ordem cronológica de projeto, não na ordem em que foram ditadas: é essa a
