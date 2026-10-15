@@ -59,6 +59,8 @@ DISCIPLINAS = [
     ("CTL", "Conforto Térmico e Lumínico"),
     ("LUM", "Luminotécnico"),
     ("SPD", "SPDA"),
+    # Canteiro de obras (15/10/2026): sai de COO, onde a migração o pôs.
+    ("CAN", "Canteiro de Obras"),
 ]
 
 # Em ordem cronológica de projeto, não na ordem em que foram ditadas: é essa a

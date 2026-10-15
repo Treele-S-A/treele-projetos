@@ -53,6 +53,6 @@ def test_disciplinas_da_migracao_existem_separadas(cliente, admin):
     """CTL, LUM e SPD são disciplinas próprias, não pranchas de ARQ ou ELE
     (TREELE, 15/10/2026)."""
     codigos = {d["codigo"]: d for d in cliente.get("/disciplinas", headers=admin).json()}
-    for codigo in ("CTL", "LUM", "SPD"):
+    for codigo in ("CTL", "LUM", "SPD", "CAN"):
         assert codigo in codigos, codigo
         assert codigos[codigo]["ativa"] is True
