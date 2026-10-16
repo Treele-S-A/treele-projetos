@@ -1,9 +1,9 @@
-"""A conversa com o modelo de IA — hoje o Gemini, pela API nativa.
+"""A conversa com o modelo de IA: o Gemini, pela API nativa, ou o Claude
+(chat_claude.py), conforme a configuração (`Settings.chat_fornecedor_ativo`).
 
-Tudo que é específico do fornecedor mora aqui: o formato da chamada, das
-ferramentas e da resposta. Trocar de fornecedor (Claude, Gemini pago, outro)
-é reescrever este arquivo; as ferramentas (chat_ferramentas.py) e a rota não
-mudam.
+Tudo que é específico do fornecedor mora aqui e em chat_claude.py: o formato
+da chamada, das ferramentas e da resposta. As ferramentas
+(chat_ferramentas.py) e a rota não mudam.
 
 API nativa, e não a "compatível com OpenAI": nesta, o Gemini 3 tem problemas
 conhecidos justamente com várias rodadas de consulta, que é o uso aqui.
@@ -28,7 +28,8 @@ from .chat_ferramentas import DECLARACOES, Ferramentas
 log = logging.getLogger("treele.chat")
 
 URL = "https://generativelanguage.googleapis.com/v1beta/models/{modelo}:generateContent"
-# A função tem 60 s na Vercel; a soma das rodadas precisa caber nisso.
+# A função tem 300 s na Vercel (era 60 até 16/10/2026); cada chamada tem
+# limite próprio para uma resposta travada não prender a pessoa esperando.
 TEMPO_POR_CHAMADA = 20
 # Ler um PDF de prancha leva mais.
 TEMPO_LEITURA_PDF = 35
@@ -165,6 +166,10 @@ def _chamar(corpo: dict, tempo: float = TEMPO_POR_CHAMADA, modelo: str | None = 
 def conversar(sistema: str, historico: list[Turno], ferramentas: Ferramentas) -> str:
     """A conversa inteira recomeça no modelo reserva, se for o caso: as
     assinaturas de pensamento de um modelo não valem no outro."""
+    if settings.chat_fornecedor_ativo == "claude":
+        from . import chat_claude
+
+        return chat_claude.conversar(sistema, historico, ferramentas)
     return _com_reserva(lambda modelo: _conversar(modelo, sistema, historico, ferramentas))
 
 
@@ -212,7 +217,6 @@ def _conversar(modelo: str, sistema: str, historico: list[Turno], ferramentas: F
     )
 
 
-
 LEITURA = """Você está lendo o PDF de uma prancha de projeto de construção civil
 ({codigo}). Responda, em português, só com o que estiver no PDF: {pergunta}
 
@@ -225,6 +229,10 @@ quando a leitura for incerta."""
 def ler_pdf(dados: bytes, pergunta: str, codigo: str) -> str:
     """Uma chamada à parte, com o PDF junto. Volta só o texto lido — o PDF não
     entra no resto da conversa, que ficaria pesada a cada pergunta seguinte."""
+    if settings.chat_fornecedor_ativo == "claude":
+        from . import chat_claude
+
+        return chat_claude.ler_pdf(dados, pergunta, codigo)
     resposta = _com_reserva(lambda modelo: _chamar(
         {
             "contents": [{

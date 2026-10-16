@@ -35,6 +35,14 @@ def _enviar(cliente, admin, obra, nome, liberar, titulo):
         cliente.post(f"/revisoes/{r.json()['revisao']['id']}/publicar", json={}, headers=admin)
 
 
+@pytest.fixture(autouse=True)
+def _gemini(monkeypatch):
+    """Estes testes são do caminho do Gemini: chave da Anthropic no ambiente
+    de quem roda mandaria as perguntas para o Claude."""
+    monkeypatch.setattr(settings, "anthropic_api_key", "")
+    monkeypatch.setattr(settings, "chat_fornecedor", "")
+
+
 @pytest.fixture(scope="module")
 def cenario(cliente, admin):
     a = cliente.post("/obras", json={"codigo": "CHA", "nome": "Obra chat A"}, headers=admin).json()
@@ -186,7 +194,8 @@ def test_obra_da_tela_que_a_pessoa_nao_ve_nao_entra_no_contexto(cliente, cenario
 
 def test_desligado_sem_chave(cliente, admin, monkeypatch):
     monkeypatch.setattr(settings, "gemini_api_key", "")
-    assert cliente.get("/chat/estado", headers=admin).json() == {"ligado": False}
+    monkeypatch.setattr(settings, "anthropic_api_key", "")
+    assert cliente.get("/chat/estado", headers=admin).json() == {"ligado": False, "fornecedor": None}
     r = cliente.post("/chat", json={"mensagens": [{"papel": "usuario", "texto": "Oi"}]}, headers=admin)
     assert r.status_code == 503
 

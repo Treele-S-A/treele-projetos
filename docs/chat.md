@@ -55,12 +55,35 @@ sobrecarga. Administrador vê, junto da mensagem de erro, o motivo técnico.
 
 Limites e condições do plano gratuito:
 
-- Algo como 10 a 15 perguntas por minuto e 1.000 a 1.500 por dia. Passou do
-  limite, o chat avisa e pede para esperar um minuto.
+- **20 chamadas por dia por modelo** (medido em 16/10/2026; antes eram 1.000 a
+  1.500). Cada pergunta usa de 1 a 5 chamadas, então o gratuito aguenta umas
+  10 a 15 perguntas por dia somando os três modelos. Passou do limite, o chat
+  avisa e pede para esperar.
 - **O Google pode usar o que é enviado** (pergunta, resposta e o resultado das
   consultas: códigos, títulos, nomes da equipe) para melhorar os produtos
   dele. No plano pago isso não acontece. Para uso pela empresa, migrar para um
   plano pago (Gemini pago ou Claude).
+
+## Claude (Anthropic), em teste desde 16/10/2026
+
+O chat também funciona com o Claude, pela API da Anthropic
+(`backend/app/services/chat_claude.py`), com as mesmas consultas e as mesmas
+regras. Modelo padrão: `claude-haiku-5-5` (`CHAT_MODELO_CLAUDE`).
+
+- **Qual fornecedor responde:** com `ANTHROPIC_API_KEY` configurada, o Claude;
+  sem ela, o Gemini. `CHAT_FORNECEDOR=gemini` (ou `claude`) força um dos dois
+  quando as duas chaves estão configuradas. A nota no rodapé do chat diz qual
+  está respondendo.
+- **Custo:** a API é paga por uso, com crédito pré-pago no console da
+  Anthropic. Acabou o crédito, o chat para e avisa "Os créditos do assistente
+  acabaram"; não há conta surpresa. A API não usa o que é enviado para
+  treinar modelos.
+- **Sobrecarga (529) ou limite por minuto (429) com espera curta:** repete uma
+  vez depois de uma pausa. Não há modelo reserva.
+- As instruções e as consultas vão com cache: da segunda rodada em diante,
+  essa parte custa um décimo.
+- A API do Claude não vem com a assinatura do Claude da empresa: é cobrada à
+  parte.
 
 ## Ligar
 
@@ -69,3 +92,15 @@ Limites e condições do plano gratuito:
 2. Na Vercel (Settings → Environment Variables, só Production):
    `GEMINI_API_KEY` = a chave. Opcional: `CHAT_MODELO` para outro modelo.
 3. Redeploy. Sem a chave, o botão nem aparece.
+
+Com o Claude: em [console.anthropic.com](https://console.anthropic.com),
+**API Keys → Create Key**, e na Vercel `ANTHROPIC_API_KEY` = a chave (a do
+Gemini pode ficar, como volta rápida: basta apagar a do Claude). Crie a
+chave **dentro de um workspace**; chave da organização, fora de workspace,
+exige também `ANTHROPIC_WORKSPACE_ID` (o ID do workspace, `wrkspc_...`).
+
+Teste com o acervo real (16/10/2026, Haiku 5.5, cópia local do banco): 21
+perguntas em quatro papéis, todas certas conferidas com o banco e com o texto
+do PDF; nenhuma vazou o que o papel não vê. Média de US$ 0,0008 por pergunta
+(a mais cara, leitura de um descritivo de personalização, US$ 0,004) e de 3 a
+25 segundos.

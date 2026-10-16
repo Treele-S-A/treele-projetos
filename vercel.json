@@ -19,7 +19,7 @@
       "entrypoint": "vercel:app",
       "functions": {
         "vercel.py": {
-          "maxDuration": 60,
+          "maxDuration": 300,
           "regions": ["gru1"]
         }
       }

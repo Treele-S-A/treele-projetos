@@ -91,6 +91,7 @@ function Markdown({ texto }: { texto: string }) {
 export default function Assistente({ obraId }: { obraId: number | null }) {
   const { usuario, obras } = useSessao();
   const [ligado, setLigado] = useState(false);
+  const [fornecedor, setFornecedor] = useState<string | null>(null);
   const [aberto, setAberto] = useState(false);
   const [turnos, setTurnos] = useState<Turno[]>([]);
   const [texto, setTexto] = useState("");
@@ -101,8 +102,11 @@ export default function Assistente({ obraId }: { obraId: number | null }) {
 
   useEffect(() => {
     api
-      .get<{ ligado: boolean }>("/chat/estado")
-      .then((r) => setLigado(r.ligado))
+      .get<{ ligado: boolean; fornecedor: string | null }>("/chat/estado")
+      .then((r) => {
+        setLigado(r.ligado);
+        setFornecedor(r.fornecedor);
+      })
       .catch(() => setLigado(false));
   }, []);
 
@@ -235,7 +239,7 @@ export default function Assistente({ obraId }: { obraId: number | null }) {
             </button>
           </form>
           <p className="assistente-nota">
-            Respostas geradas por IA (Google Gemini) a partir do acervo e, quando preciso, do
+            Respostas geradas por IA{fornecedor ? ` (${fornecedor})` : ""} a partir do acervo e, quando preciso, do
             PDF da prancha. Confira no documento antes de executar.
           </p>
         </aside>

@@ -107,6 +107,15 @@ class Settings(BaseSettings):
     # Maior PDF que o assistente lê. O PDF vai junto da chamada ao modelo; acima
     # disto a chamada passa do tamanho aceito ou do tempo da função.
     chat_pdf_max_mb: int = 14
+    # Claude (Anthropic), em teste desde 16/10/2026: com ANTHROPIC_API_KEY o
+    # chat usa o Claude no lugar do Gemini. CHAT_FORNECEDOR ("claude" ou
+    # "gemini") força um dos dois quando as duas chaves estão configuradas.
+    anthropic_api_key: str = ""
+    # Só para chave criada fora de um workspace: a Anthropic pede o ID do
+    # workspace (wrkspc_...) em cada chamada. Chave de workspace dispensa.
+    anthropic_workspace_id: str = ""
+    chat_modelo_claude: str = "claude-haiku-5-5"
+    chat_fornecedor: str = ""
 
     # Endereço das telas, para os links dos e-mails. Vazio = descobre sozinho
     # (ver endereco_site).
@@ -159,8 +168,20 @@ class Settings(BaseSettings):
         return self.s3_endpoint_interno or self.s3_endpoint
 
     @property
+    def chat_fornecedor_ativo(self) -> str | None:
+        """"claude", "gemini" ou None (chat desligado)."""
+        chaves = {
+            "claude": self.anthropic_api_key.strip(),
+            "gemini": self.gemini_api_key.strip(),
+        }
+        escolhido = self.chat_fornecedor.strip().lower()
+        if escolhido in chaves:
+            return escolhido if chaves[escolhido] else None
+        return next((nome for nome, chave in chaves.items() if chave), None)
+
+    @property
     def chat_ligado(self) -> bool:
-        return bool(self.gemini_api_key.strip())
+        return self.chat_fornecedor_ativo is not None
 
     @property
     def email_ligado(self) -> bool:

@@ -20,7 +20,7 @@ from ..services.chat_ferramentas import Ferramentas, catalogo
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 
-# Conversa longa custa cota do plano gratuito e confunde o modelo.
+# Conversa longa custa mais (cota ou crédito) e confunde o modelo.
 MAX_TURNOS = 12
 MAX_CARACTERES = 2000
 
@@ -42,11 +42,19 @@ class RespostaSaida(BaseModel):
 
 class EstadoSaida(BaseModel):
     ligado: bool
+    # Nome para a nota da tela: quem gera as respostas.
+    fornecedor: str | None = None
+
+
+FORNECEDORES = {"claude": "Claude, da Anthropic", "gemini": "Google Gemini"}
 
 
 @router.get("/estado", response_model=EstadoSaida)
 def estado(usuario: Usuario = Depends(usuario_atual)):
-    return EstadoSaida(ligado=settings.chat_ligado)
+    return EstadoSaida(
+        ligado=settings.chat_ligado,
+        fornecedor=FORNECEDORES.get(settings.chat_fornecedor_ativo or ""),
+    )
 
 
 def _papeis(db: Session, usuario: Usuario) -> str:
@@ -79,7 +87,7 @@ Regras:
   diga qual revisão foi lida e lembre que medidas e cotas devem ser
   conferidas no PDF.
 - Você só consulta. Para alterar algo (enviar, liberar, autorizar), diga onde
-  a pessoa faz isso na tela.
+  a pessoa faz isso na tela, conforme o guia abaixo.
 - Se a pergunta for sobre outra coisa que não o acervo de projetos, diga com
   gentileza que só ajuda com o acervo.
 - Listas longas: mostre os mais relevantes e diga quantos são no total.
@@ -93,7 +101,21 @@ Contexto:
   Liberado para obra (vale para execução), Reprovada (reprovada na análise,
   com observação; a correção vem numa revisão nova), Obsoleto (substituído),
   Cancelado.
-- {catalogo(db)}"""
+- {catalogo(db)}
+
+Onde cada coisa fica na tela (cada pessoa só vê o que o papel dela permite):
+- Menu da obra: Acervo (lista dos documentos, com filtros), Enviar arquivos,
+  Configurações da obra e Registro de atividades (estes dois, coordenador).
+- Enviar revisão nova: menu Enviar arquivos. O nome do arquivo segue o padrão
+  de nomenclatura, e o sistema confere ao enviar.
+- Liberar para obra ou reprovar uma revisão em análise: na página do
+  documento, no quadro da revisão. Várias de uma vez: no Acervo, filtrar por
+  status Em revisão, marcar as linhas e usar "Liberar para obra…".
+- Solicitar revisão de um projeto liberado: na página do documento, botão
+  "Solicitar revisão", descrevendo o que deve mudar (dá para anexar arquivos).
+  O coordenador autoriza ou recusa ali mesmo.
+- Cancelar uma revisão: na página do documento (coordenador, enquanto está em
+  análise; administrador, a qualquer tempo). Nada é excluído do histórico."""
 
 
 @router.post("", response_model=RespostaSaida)
