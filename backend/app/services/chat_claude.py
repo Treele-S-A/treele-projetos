@@ -18,15 +18,16 @@ from typing import Any
 import httpx
 
 from ..config import settings
+from . import pdf_leitura
 from .chat_ferramentas import DECLARACOES, Ferramentas
 from .chat_modelo import (
-    LEITURA,
     MAX_RODADAS,
     TEMPO_LEITURA_PDF,
     TEMPO_POR_CHAMADA,
     ChatIndisponivel,
     Sobrecarga,
     Turno,
+    instrucao_leitura,
 )
 
 log = logging.getLogger("treele.chat")
@@ -216,22 +217,27 @@ def conversar(sistema: str, historico: list[Turno], ferramentas: Ferramentas) ->
 
 
 def ler_pdf(dados: bytes, pergunta: str, codigo: str) -> str:
-    """Uma chamada à parte, com o PDF junto; volta só o texto lido."""
+    """Uma chamada à parte, com o PDF, o texto extraído dele e, se for o caso,
+    os recortes ampliados (ver pdf_leitura.py); volta só o texto lido."""
+    preparado = pdf_leitura.preparar(dados)
+    conteudo: list[dict] = [{"type": "document", "source": {
+        "type": "base64", "media_type": "application/pdf",
+        "data": base64.b64encode(dados).decode("ascii"),
+    }}]
+    for r in preparado.recortes:
+        conteudo += [
+            {"type": "text", "text": f"Recorte ampliado: página {r.pagina}, linha {r.linha}, coluna {r.coluna}."},
+            {"type": "image", "source": {
+                "type": "base64", "media_type": "image/jpeg",
+                "data": base64.b64encode(r.jpeg).decode("ascii"),
+            }},
+        ]
+    conteudo.append({"type": "text", "text": instrucao_leitura(codigo, pergunta, preparado)})
     resposta = _com_repeticao(lambda: _chamar(
         {
             "model": settings.chat_modelo_claude,
             "max_tokens": MAX_TOKENS_LEITURA,
-            "messages": [{
-                "role": "user",
-                "content": [
-                    {"type": "document", "source": {
-                        "type": "base64",
-                        "media_type": "application/pdf",
-                        "data": base64.b64encode(dados).decode("ascii"),
-                    }},
-                    {"type": "text", "text": LEITURA.format(codigo=codigo, pergunta=pergunta)},
-                ],
-            }],
+            "messages": [{"role": "user", "content": conteudo}],
         },
         tempo=TEMPO_LEITURA_PDF,
     ))

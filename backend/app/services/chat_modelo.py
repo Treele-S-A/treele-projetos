@@ -23,6 +23,7 @@ from dataclasses import dataclass
 import httpx
 
 from ..config import settings
+from . import pdf_leitura
 from .chat_ferramentas import DECLARACOES, Ferramentas
 
 log = logging.getLogger("treele.chat")
@@ -225,6 +226,28 @@ tabela de revisões). Se algo não estiver legível ou não aparecer, diga isso 
 não complete por conta própria. Medidas e cotas: transcreva como estão e avise
 quando a leitura for incerta."""
 
+TEXTO_EXTRAIDO = """
+
+Abaixo, o TEXTO extraído da própria prancha ({paginas} página(s)). Ele é exato
+(é o texto gravado no PDF, não uma leitura da imagem), mas não diz onde cada
+trecho fica no desenho: use a imagem para situar e o texto para ler anotações,
+legendas, quantidades e o carimbo. Quando a imagem e o texto divergirem,
+vale o texto.
+
+<texto_da_prancha>
+{texto}
+</texto_da_prancha>"""
+
+
+def instrucao_leitura(codigo: str, pergunta: str, preparado) -> str:
+    """O pedido de leitura com o texto extraído e o aviso dos recortes."""
+    instrucao = LEITURA.format(codigo=codigo, pergunta=pergunta)
+    if preparado.texto:
+        instrucao += TEXTO_EXTRAIDO.format(paginas=preparado.paginas, texto=preparado.texto)
+    if preparado.recortes:
+        instrucao += "\n\n" + preparado.descricao_recortes()
+    return instrucao
+
 
 def ler_pdf(dados: bytes, pergunta: str, codigo: str) -> str:
     """Uma chamada à parte, com o PDF junto. Volta só o texto lido — o PDF não
@@ -233,19 +256,18 @@ def ler_pdf(dados: bytes, pergunta: str, codigo: str) -> str:
         from . import chat_claude
 
         return chat_claude.ler_pdf(dados, pergunta, codigo)
+    preparado = pdf_leitura.preparar(dados)
+    partes = [{"inlineData": {
+        "mimeType": "application/pdf", "data": base64.b64encode(dados).decode("ascii"),
+    }}]
+    for r in preparado.recortes:
+        partes += [
+            {"text": f"Recorte ampliado: página {r.pagina}, linha {r.linha}, coluna {r.coluna}."},
+            {"inlineData": {"mimeType": "image/jpeg", "data": base64.b64encode(r.jpeg).decode("ascii")}},
+        ]
+    partes.append({"text": instrucao_leitura(codigo, pergunta, preparado)})
     resposta = _com_reserva(lambda modelo: _chamar(
-        {
-            "contents": [{
-                "role": "user",
-                "parts": [
-                    {"inlineData": {
-                        "mimeType": "application/pdf",
-                        "data": base64.b64encode(dados).decode("ascii"),
-                    }},
-                    {"text": LEITURA.format(codigo=codigo, pergunta=pergunta)},
-                ],
-            }],
-        },
+        {"contents": [{"role": "user", "parts": partes}]},
         tempo=TEMPO_LEITURA_PDF,
         modelo=modelo,
     ))

@@ -27,6 +27,15 @@ pedir) e o lê numa chamada à parte, que devolve só o texto lido.
 - Segue a regra do download: só lê o que a pessoa poderia baixar. Cada
   leitura fica no registro de atividades como *Arquivo lido pelo assistente*.
 - Lê PDF até 14 MB (`CHAT_PDF_MAX_MB`). DWG e RVT não: só o PDF que vai junto.
+- **Letra miúda de prancha grande (16/10/2026):** o modelo vê a página como
+  imagem reduzida, e numa A0 a anotação some — "Caixa d'água de polietileno,
+  1000 litros" não era lida no MIL-HID-PE-AF. Por isso a leitura leva junto
+  (`backend/app/services/pdf_leitura.py`, com o PDFium):
+  - o **texto** gravado no PDF, exato (80% das pranchas do acervo têm);
+  - nas páginas maiores que A3 **sem texto** (o CAD exportou as letras como
+    desenho, comum na estrutura), **recortes ampliados** numa grade de 4 x 3,
+    sem os pedaços em branco. Assim ele leu a tabela de aço inteira de uma
+    prancha de armação. Custo da leitura: de US$ 0,001 a 0,005 no Haiku.
 - **Medidas e cotas lidas do desenho podem ter erro.** O assistente avisa, e
   a conferência é sempre no PDF.
 - No plano gratuito, **o conteúdo do PDF lido também vai para o Google** e
