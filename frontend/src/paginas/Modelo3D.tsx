@@ -9,9 +9,18 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { api, ErroApi, type StatusRevisao } from "../api";
+import { api, ErroApi, formatarData, type StatusRevisao, type Usuario } from "../api";
 import { Estado } from "../componentes";
-import { converter, criarMotor, type Motor, type Propriedades, type Valor } from "../modelo3d/motor";
+import Marcacao from "../modelo3d/Marcacao";
+import {
+  converter,
+  criarMotor,
+  type EstadoCena,
+  type Motor,
+  type Propriedades,
+  type Valor,
+} from "../modelo3d/motor";
+import { useSessao } from "../sessao";
 
 interface ModeloSaida {
   arquivo_id: number;
@@ -30,6 +39,24 @@ interface ModeloSaida {
   tamanho_modelo: number | null;
   ifc_url: string | null;
   envio: { url: string; metodo: string; headers: Record<string, string> } | null;
+}
+
+interface VistaOut extends EstadoCena {
+  id: number;
+  obra_id: number;
+  titulo: string;
+  arquivos: number[];
+  ocultos: number[];
+  modelos: { arquivo_id: number; documento: string; documento_id: number; revisao: string; disciplina: string }[];
+  imagem_url: string | null;
+  criada_por: Usuario | null;
+  criada_em: string;
+}
+
+/** A vista sendo criada: a foto da tela e a cena no momento do clique. */
+interface RascunhoVista {
+  foto: Blob;
+  cena: EstadoCena;
 }
 
 type Etapa = "buscando" | "baixando" | "convertendo" | "carregando" | "pronto" | "erro";
@@ -93,11 +120,19 @@ function Linha({ nome, valor }: { nome: string; valor: Valor }) {
 
 export default function Modelo3D() {
   const [parametros, setParametros] = useSearchParams();
-  const ids = (parametros.get("arquivos") ?? "")
+  // Vista guardada (?vista=ID): os modelos vêm dela, e a cena volta como era.
+  const vistaId = Number(parametros.get("vista")) || null;
+  const [vista, setVista] = useState<VistaOut | null>(null);
+  const [falhaVista, setFalhaVista] = useState<string | null>(null);
+  const idsDaUrl = (parametros.get("arquivos") ?? "")
     .split(",")
     .map(Number)
     .filter((n) => Number.isInteger(n) && n > 0);
+  const ids = vistaId ? (vista?.arquivos ?? []) : idsDaUrl;
   const chaveIds = ids.join(",");
+  const { obras } = useSessao();
+  const [rascunho, setRascunho] = useState<RascunhoVista | null>(null);
+  const [vistas, setVistas] = useState<VistaOut[]>([]);
 
   const palco = useRef<HTMLDivElement>(null);
   const motor = useRef<Motor | null>(null);
@@ -131,6 +166,14 @@ export default function Modelo3D() {
     };
   }, []);
 
+  useEffect(() => {
+    if (!vistaId) return;
+    api
+      .get<VistaOut>(`/vistas/${vistaId}`)
+      .then(setVista)
+      .catch((e) => setFalhaVista(e instanceof ErroApi ? e.message : "Não foi possível abrir a vista."));
+  }, [vistaId]);
+
   // Abre, um por vez, os modelos pedidos que ainda não estão na cena.
   useEffect(() => {
     if (!pronto) return;
@@ -146,7 +189,16 @@ export default function Modelo3D() {
     (async () => {
       for (const id of novos) {
         await abrir(id);
-        if (id === novos[0]) void motor.current?.enquadrar();
+        if (id === novos[0] && !vista) void motor.current?.enquadrar();
+      }
+      // Vista guardada: desliga o que estava desligado e volta câmera, cortes
+      // e seleção.
+      if (vista && motor.current) {
+        for (const id of vista.ocultos) {
+          atualizar(id, { visivel: false });
+          await motor.current.mostrarModelo(String(id), false);
+        }
+        await motor.current.aplicar(vista);
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -207,9 +259,31 @@ export default function Modelo3D() {
   }
 
   const modeloDaSelecao = selecao ? modelos.find((m) => String(m.id) === selecao.modelId) : null;
-  const obraId = modelos.find((m) => m.info)?.info?.obra_id;
+  const obraId = vista?.obra_id ?? modelos.find((m) => m.info)?.info?.obra_id;
+  const obra = obras.find((o) => o.id === obraId);
+  const todosProntos = modelos.length > 0 && modelos.every((m) => m.etapa === "pronto" || m.etapa === "erro");
 
-  if (!ids.length) {
+  const carregarVistas = () => {
+    if (!obraId) return;
+    api
+      .get<VistaOut[]>(`/obras/${obraId}/vistas`)
+      .then(setVistas)
+      .catch(() => setVistas([]));
+  };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(carregarVistas, [obraId]);
+
+  async function novaVista() {
+    if (!motor.current) return;
+    const cena = await motor.current.estado();
+    const foto = await motor.current.fotografar();
+    setRascunho({ foto, cena });
+  }
+
+  if (vistaId && falhaVista) {
+    return <p className="erro-modelo">{falhaVista}</p>;
+  }
+  if (!ids.length && !vistaId) {
     return <p className="silencioso">Nenhum modelo pedido. Abra um IFC pela página do documento.</p>;
   }
 
@@ -283,6 +357,14 @@ export default function Modelo3D() {
         </ul>
 
         <div className="ferramentas-modelo">
+          <button
+            className="botao pequeno"
+            disabled={!todosProntos || !obraId}
+            onClick={novaVista}
+            title="Fotografa a tela para marcar e guardar, ou pedir correção"
+          >
+            Nova vista
+          </button>
           <button className="botao secundario pequeno" onClick={() => motor.current?.enquadrar()}>
             Enquadrar
           </button>
@@ -313,6 +395,37 @@ export default function Modelo3D() {
           ver as propriedades.
           {corte && " Com o corte ligado, dê um duplo clique numa face para cortar ali."}
         </p>
+
+        {vista && (
+          <div className="vista-aberta">
+            <span className="rotulo">Vista aberta</span>
+            <strong>{vista.titulo}</strong>
+            <span className="silencioso" style={{ fontSize: 12 }}>
+              {vista.criada_por?.nome} · {formatarData(vista.criada_em)}
+            </span>
+          </div>
+        )}
+
+        {vistas.length > 0 && (
+          <div>
+            <span className="rotulo">Vistas da obra</span>
+            <ul className="lista-vistas">
+              {vistas.slice(0, 30).map((v) => (
+                <li key={v.id} className={v.id === vista?.id ? "atual" : undefined}>
+                  <a href={`/modelos?vista=${v.id}`} title={v.modelos.map((m) => m.documento).join(", ")}>
+                    {v.imagem_url && <img src={v.imagem_url} alt="" loading="lazy" />}
+                    <span>
+                      <strong>{v.titulo}</strong>
+                      <span className="silencioso">
+                        {v.criada_por?.nome} · {formatarData(v.criada_em, false)}
+                      </span>
+                    </span>
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </aside>
 
       <div className="visualizador-palco" ref={palco}>
@@ -322,6 +435,21 @@ export default function Modelo3D() {
           </p>
         )}
       </div>
+
+      {rascunho && obraId && (
+        <PainelVista
+          rascunho={rascunho}
+          obraId={obraId}
+          modelos={modelos}
+          documentoSugerido={modeloDaSelecao?.info?.documento_id ?? null}
+          podePedir={obra?.permissoes.includes("solicitar_revisao") ?? false}
+          podeMarcar={obra?.permissoes.includes("autorizar_revisao") ?? false}
+          aoFechar={(criou) => {
+            setRascunho(null);
+            if (criou) carregarVistas();
+          }}
+        />
+      )}
 
       {selecao && (
         <aside className="visualizador-propriedades" aria-label="Propriedades do elemento">
@@ -362,6 +490,245 @@ export default function Modelo3D() {
           ))}
         </aside>
       )}
+    </div>
+  );
+}
+
+/* ------------------------------------------------------- vista e correção */
+
+interface Membro {
+  usuario_id: number;
+  papel: string;
+  usuario: Usuario;
+}
+
+/** Marcar a foto, dar um título e guardar a vista — e, se for o caso, pedir a
+ *  correção do documento com a vista anexada e os projetistas marcados. */
+function PainelVista({
+  rascunho,
+  obraId,
+  modelos,
+  documentoSugerido,
+  podePedir,
+  podeMarcar,
+  aoFechar,
+}: {
+  rascunho: RascunhoVista;
+  obraId: number;
+  modelos: ItemModelo[];
+  documentoSugerido: number | null;
+  podePedir: boolean;
+  podeMarcar: boolean;
+  aoFechar: (criou: boolean) => void;
+}) {
+  const gerarPng = useRef<() => Promise<Blob>>(async () => rascunho.foto);
+  const [titulo, setTitulo] = useState("");
+  const [pedir, setPedir] = useState(podePedir);
+  const documentos = modelos
+    .filter((m) => m.info && m.etapa === "pronto")
+    .map((m) => m.info!)
+    .filter((d, i, todos) => todos.findIndex((x) => x.documento_id === d.documento_id) === i);
+  const [documentoId, setDocumentoId] = useState<number | null>(
+    documentoSugerido ?? documentos[0]?.documento_id ?? null,
+  );
+  const [descricao, setDescricao] = useState("");
+  const [projetistas, setProjetistas] = useState<Membro[]>([]);
+  const [marcados, setMarcados] = useState<Set<number>>(new Set());
+  const [enviando, setEnviando] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
+  const [feito, setFeito] = useState<{ vistaId: number; documentoId: number | null } | null>(null);
+
+  useEffect(() => {
+    if (!podeMarcar) return;
+    api
+      .get<Membro[]>(`/obras/${obraId}/membros`)
+      .then((ms) => setProjetistas(ms.filter((m) => m.papel === "projetista" && m.usuario.ativo)))
+      .catch(() => setProjetistas([]));
+  }, [obraId, podeMarcar]);
+
+  const documento = documentos.find((d) => d.documento_id === documentoId);
+  const naoLiberado = pedir && documento && documento.status_revisao !== "liberado_para_obra";
+
+  async function concluir() {
+    if (!titulo.trim()) return setErro("Dê um título à vista (ex.: Pilar P12 invade a porta da sala).");
+    if (pedir && !documentoId) return setErro("Escolha o documento a corrigir.");
+    if (pedir && descricao.trim().length < 10) return setErro("Descreva o que deve mudar.");
+    setEnviando(true);
+    setErro(null);
+    try {
+      const png = await gerarPng.current();
+      const criada = await api.post<{
+        vista: VistaOut;
+        envio_imagem: { url: string; metodo: string; headers: Record<string, string> };
+      }>(`/obras/${obraId}/vistas`, {
+        titulo: titulo.trim(),
+        arquivos: modelos.map((m) => m.id),
+        ocultos: modelos.filter((m) => !m.visivel).map((m) => m.id),
+        ...rascunho.cena,
+      });
+      const envio = await fetch(criada.envio_imagem.url, {
+        method: criada.envio_imagem.metodo,
+        headers: criada.envio_imagem.headers,
+        body: png,
+      });
+      if (!envio.ok) throw new Error("A imagem da vista não subiu. Tente de novo.");
+      await api.post(`/vistas/${criada.vista.id}/imagem`);
+      if (pedir && documentoId) {
+        await api.post(`/documentos/${documentoId}/solicitacoes`, {
+          descricao: descricao.trim(),
+          vista_id: criada.vista.id,
+          mencionados: [...marcados],
+        });
+      }
+      setFeito({ vistaId: criada.vista.id, documentoId: pedir ? documentoId : null });
+    } catch (e) {
+      setErro(e instanceof ErroApi || e instanceof Error ? e.message : "Não foi possível guardar a vista.");
+    } finally {
+      setEnviando(false);
+    }
+  }
+
+  if (feito) {
+    return (
+      <div className="painel-vista-fundo">
+        <div className="painel-vista" role="dialog" aria-label="Vista guardada">
+          <strong>{feito.documentoId ? "Vista guardada e correção pedida" : "Vista guardada"}</strong>
+          <p className="silencioso" style={{ fontSize: 13 }}>
+            {feito.documentoId
+              ? podeMarcar
+                ? "A revisão já está autorizada. O projetista da última revisão e os marcados foram avisados, com a imagem marcada como anexo e o link para abrir esta vista no 3D."
+                : "O pedido foi para o coordenador autorizar, com a imagem marcada como anexo e o link para abrir esta vista no 3D."
+              : "Ela aparece na lista de vistas da obra, para qualquer pessoa da equipe reabrir."}
+          </p>
+          <div className="linha" style={{ gap: 8 }}>
+            {feito.documentoId && (
+              <Link className="botao pequeno" to={`/documentos/${feito.documentoId}`}>
+                Ver o pedido no documento
+              </Link>
+            )}
+            <button className="botao secundario pequeno" onClick={() => aoFechar(true)}>
+              Voltar ao modelo
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="painel-vista-fundo">
+      <div className="painel-vista" role="dialog" aria-label="Nova vista">
+        <div className="linha">
+          <strong>Nova vista</strong>
+          <div className="espaco" />
+          <button
+            className="assistente-fechar"
+            onClick={() => aoFechar(false)}
+            aria-label="Fechar"
+            disabled={enviando}
+          >
+            ×
+          </button>
+        </div>
+        <Marcacao imagem={rascunho.foto} aoMudar={(f) => (gerarPng.current = f)} />
+        <label className="campo" style={{ display: "block", marginTop: 10 }}>
+          <span className="rotulo">Título da vista</span>
+          <input
+            value={titulo}
+            maxLength={200}
+            onChange={(e) => setTitulo(e.target.value)}
+            placeholder="Ex.: Pilar P12 invade a porta da sala"
+            disabled={enviando}
+          />
+        </label>
+
+        {podePedir && (
+          <label className="opcao-aviso" style={{ marginTop: 8 }}>
+            <input
+              type="checkbox"
+              checked={pedir}
+              onChange={(e) => setPedir(e.target.checked)}
+              disabled={enviando}
+            />
+            Pedir correção de um projeto com esta vista
+            <span className="silencioso">— vira solicitação de revisão, com a imagem anexada</span>
+          </label>
+        )}
+
+        {pedir && (
+          <div className="pedido-vista">
+            <label className="campo" style={{ display: "block" }}>
+              <span className="rotulo">Documento a corrigir</span>
+              <select
+                value={documentoId ?? ""}
+                onChange={(e) => setDocumentoId(Number(e.target.value) || null)}
+                disabled={enviando}
+              >
+                {documentos.map((d) => (
+                  <option key={d.documento_id} value={d.documento_id}>
+                    {d.documento} R{d.revisao} · {d.disciplina}
+                    {d.titulo ? ` · ${d.titulo}` : ""}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {naoLiberado && (
+              <p className="aviso-modelo">
+                Este documento ainda não tem revisão liberada para obra, e o pedido de revisão não vai passar.
+                Se ele está em análise, reprove a revisão na página do documento, com a observação.
+              </p>
+            )}
+            <label className="campo" style={{ display: "block", marginTop: 8 }}>
+              <span className="rotulo">O que deve mudar</span>
+              <textarea
+                value={descricao}
+                onChange={(e) => setDescricao(e.target.value)}
+                rows={3}
+                maxLength={4000}
+                disabled={enviando}
+                placeholder="Ex.: O pilar P12 invade o vão da porta da sala do 2º pavimento. Ajustar a porta ou o pilar."
+              />
+            </label>
+            {podeMarcar && projetistas.length > 0 && (
+              <div style={{ marginTop: 8 }}>
+                <span className="rotulo">Marcar projetistas</span>
+                <div className="linha" style={{ gap: 12, flexWrap: "wrap", marginTop: 4 }}>
+                  {projetistas.map((p) => (
+                    <label key={p.usuario_id} className="opcao-aviso" style={{ margin: 0 }}>
+                      <input
+                        type="checkbox"
+                        checked={marcados.has(p.usuario_id)}
+                        disabled={enviando}
+                        onChange={(e) => {
+                          const novo = new Set(marcados);
+                          if (e.target.checked) novo.add(p.usuario_id);
+                          else novo.delete(p.usuario_id);
+                          setMarcados(novo);
+                        }}
+                      />
+                      {p.usuario.nome}
+                    </label>
+                  ))}
+                </div>
+                <p className="silencioso" style={{ fontSize: 12, margin: "4px 0 0" }}>
+                  O projetista que subiu a última revisão é avisado sempre; os marcados também recebem o aviso
+                  e o e-mail.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {erro && <p className="erro-modelo">{erro}</p>}
+        <div className="linha" style={{ gap: 8, marginTop: 12 }}>
+          <button className="botao" disabled={enviando} onClick={concluir}>
+            {enviando ? "Guardando…" : pedir ? "Guardar e pedir correção" : "Guardar vista"}
+          </button>
+          <button className="botao secundario pequeno" disabled={enviando} onClick={() => aoFechar(false)}>
+            Cancelar
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

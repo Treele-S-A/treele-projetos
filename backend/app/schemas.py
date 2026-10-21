@@ -282,6 +282,8 @@ class SolicitacaoOut(BaseModel):
     decidida_por: UsuarioOut | None = None
     motivo_recusa: str | None = None
     anexos: list[AnexoOut] = []
+    vista_id: int | None = None
+    mencionados: list[UsuarioOut] = []
 
 
 class NotificacaoOut(BaseModel):
@@ -323,6 +325,10 @@ class SolicitacoesContagem(BaseModel):
 
 class SolicitacaoCriar(BaseModel):
     descricao: str
+    # Pedido saído do visualizador 3D: a imagem marcada da vista vira anexo.
+    vista_id: int | None = None
+    # Projetistas marcados para a correção (só o coordenador marca).
+    mencionados: list[int] = Field(default=[], max_length=30)
 
 
 class SolicitacaoRecusar(BaseModel):
@@ -589,3 +595,59 @@ class EventoOut(Modelo):
     ip: str | None
     criado_em: datetime
     usuario: UsuarioOut | None = None
+
+
+# --------------------------------------------------------------------------
+# Vistas do modelo 3D (21/10/2026)
+# --------------------------------------------------------------------------
+
+Ponto3 = list[float]
+
+
+class CameraVista(BaseModel):
+    posicao: Ponto3 = Field(min_length=3, max_length=3)
+    alvo: Ponto3 = Field(min_length=3, max_length=3)
+
+
+class CorteVista(BaseModel):
+    normal: Ponto3 = Field(min_length=3, max_length=3)
+    ponto: Ponto3 = Field(min_length=3, max_length=3)
+
+
+class VistaCriar(BaseModel):
+    titulo: str = Field(min_length=1, max_length=200)
+    arquivos: list[int] = Field(min_length=1, max_length=30)
+    camera: CameraVista
+    cortes: list[CorteVista] = Field(default=[], max_length=6)
+    # {"<arquivo_id>": ["<GlobalId>", ...]}
+    selecao: dict[str, list[str]] = {}
+    ocultos: list[int] = []
+
+
+class ModeloDaVista(BaseModel):
+    arquivo_id: int
+    documento: str
+    documento_id: int
+    revisao: str
+    disciplina: str
+
+
+class VistaOut(BaseModel):
+    id: int
+    obra_id: int
+    titulo: str
+    arquivos: list[int]
+    camera: CameraVista
+    cortes: list[CorteVista]
+    selecao: dict[str, list[str]]
+    ocultos: list[int]
+    modelos: list[ModeloDaVista] = []
+    imagem_url: str | None = None
+    criada_por: UsuarioOut | None = None
+    criada_em: datetime
+
+
+class VistaCriada(BaseModel):
+    vista: VistaOut
+    # Para onde a tela envia a imagem marcada (PNG); depois, POST .../imagem.
+    envio_imagem: EnvioModelo

@@ -14,6 +14,7 @@ Trocar de um para o outro é uma variável de ambiente; nenhum outro arquivo mud
 """
 
 import hashlib
+import shutil
 import hmac
 import re
 import time
@@ -211,6 +212,11 @@ class ArmazenamentoLocal:
     def ler_bytes(self, chave: str) -> bytes:
         return self.caminho(chave).read_bytes()
 
+    def copiar(self, origem: str, destino: str) -> None:
+        alvo = self.caminho(destino)
+        alvo.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(self.caminho(origem), alvo)
+
 
 class ArmazenamentoS3:
     """Dois clientes, de propósito.
@@ -364,6 +370,13 @@ class ArmazenamentoS3:
 
     def remover(self, chave: str) -> None:
         self.cliente.delete_object(Bucket=self.bucket, Key=chave)
+
+    def copiar(self, origem: str, destino: str) -> None:
+        """Cópia dentro do bucket, sem passar pela API (a imagem de uma vista
+        vira anexo de cada solicitação que sai dela)."""
+        self.cliente.copy_object(
+            Bucket=self.bucket, Key=destino, CopySource={"Bucket": self.bucket, "Key": origem}
+        )
 
     def ler_bytes(self, chave: str) -> bytes:
         """O arquivo inteiro na memória — só para o que é pequeno o bastante

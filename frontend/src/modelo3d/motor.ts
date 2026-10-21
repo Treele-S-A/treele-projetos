@@ -24,8 +24,24 @@ export interface Propriedades {
   grupos: { titulo: string; linhas: [string, Valor][] }[];
 }
 
+type Ponto3 = [number, number, number];
+
+/** O que uma vista guarda da cena (o resto — modelos, ocultos — a tela sabe). */
+export interface EstadoCena {
+  camera: { posicao: Ponto3; alvo: Ponto3 };
+  cortes: { normal: Ponto3; ponto: Ponto3 }[];
+  /** modelId → GlobalIds selecionados. */
+  selecao: Record<string, string[]>;
+}
+
 export interface Motor {
   carregar(modelId: string, frag: ArrayBuffer | Uint8Array): Promise<void>;
+  /** A cena agora: câmera, cortes e seleção. */
+  estado(): Promise<EstadoCena>;
+  /** Volta a uma cena guardada. */
+  aplicar(cena: EstadoCena): Promise<void>;
+  /** A tela como PNG, do jeito que está (com a seleção em destaque). */
+  fotografar(): Promise<Blob>;
   mostrarModelo(modelId: string, visivel: boolean): Promise<void>;
   enquadrar(): Promise<void>;
   isolarSelecao(): Promise<void>;
@@ -128,6 +144,58 @@ export async function criarMotor(
   return {
     async carregar(modelId, frag) {
       await fragments.core.load(frag, { modelId });
+    },
+    async estado() {
+      const posicao = world.camera.controls.getPosition(new THREE.Vector3());
+      const alvo = world.camera.controls.getTarget(new THREE.Vector3());
+      const cortes = [...clipper.list.values()].map((p) => ({
+        normal: p.normal.toArray() as Ponto3,
+        ponto: p.origin.toArray() as Ponto3,
+      }));
+      const marcados = highlighter.selection.select ?? {};
+      const porModelo: Record<string, string[]> = {};
+      for (const [modelId, ids] of Object.entries(marcados)) {
+        const model = fragments.list.get(modelId);
+        if (!model || !ids.size) continue;
+        const guids = (await model.getGuidsByLocalIds([...ids])).filter((g): g is string => !!g);
+        if (guids.length) porModelo[modelId] = guids;
+      }
+      return {
+        camera: { posicao: posicao.toArray() as Ponto3, alvo: alvo.toArray() as Ponto3 },
+        cortes,
+        selecao: porModelo,
+      };
+    },
+    async aplicar(cena) {
+      const [px, py, pz] = cena.camera.posicao;
+      const [ax, ay, az] = cena.camera.alvo;
+      await world.camera.controls.setLookAt(px, py, pz, ax, ay, az, false);
+      clipper.deleteAll();
+      for (const c of cena.cortes) {
+        clipper.createFromNormalAndCoplanarPoint(
+          world,
+          new THREE.Vector3(...c.normal),
+          new THREE.Vector3(...c.ponto),
+        );
+      }
+      const mapa: OBC.ModelIdMap = {};
+      for (const [modelId, guids] of Object.entries(cena.selecao)) {
+        const model = fragments.list.get(modelId);
+        if (!model) continue;
+        const ids = (await model.getLocalIdsByGuids(guids)).filter((i): i is number => i !== null);
+        if (ids.length) mapa[modelId] = new Set(ids);
+      }
+      if (Object.keys(mapa).length) await highlighter.highlightByID("select", mapa, true, false);
+      await fragments.core.update(true);
+    },
+    async fotografar() {
+      // Sem preserveDrawingBuffer o WebGL limpa a tela depois de mostrar:
+      // desenha agora e lê na mesma hora.
+      await fragments.core.update(true);
+      const renderer = world.renderer!.three;
+      renderer.render(world.scene.three, world.camera.three);
+      const dados = renderer.domElement.toDataURL("image/png");
+      return await (await fetch(dados)).blob();
     },
     async mostrarModelo(modelId, visivel) {
       const model = fragments.list.get(modelId);

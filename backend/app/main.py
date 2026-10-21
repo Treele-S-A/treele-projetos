@@ -25,6 +25,7 @@ from .api import (
     storage_local,
     uploads,
     usuarios,
+    vistas,
 )
 from .config import settings
 from .db import engine
@@ -90,6 +91,7 @@ for modulo in (
     solicitacoes,
     notificacoes,
     chat,
+    vistas,
     storage_local,
 ):
     app.include_router(modulo.router, prefix=settings.api_prefix)

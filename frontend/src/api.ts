@@ -231,6 +231,10 @@ export interface Solicitacao {
   decidida_por: Usuario | null;
   motivo_recusa: string | null;
   anexos: Anexo[];
+  /** Pedido saído do visualizador 3D: a vista reabre a cena marcada. */
+  vista_id: number | null;
+  /** Projetistas que o coordenador marcou para a correção. */
+  mencionados: Usuario[];
 }
 
 /** Pedido na lista de todas as obras (administrador): leva junto onde está. */

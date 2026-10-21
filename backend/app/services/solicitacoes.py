@@ -96,6 +96,8 @@ def saida(solicitacao: SolicitacaoRevisao) -> SolicitacaoOut:
             for a in solicitacao.anexos
             if a.status == StatusArquivo.disponivel
         ],
+        vista_id=solicitacao.vista_id,
+        mencionados=[UsuarioOut.model_validate(u) for u in solicitacao.mencionados],
     )
 
 

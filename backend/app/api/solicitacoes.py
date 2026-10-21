@@ -14,8 +14,16 @@ from sqlalchemy.orm import Session, selectinload
 
 from ..db import get_db
 from ..deps import ContextoObra, montar_contexto, status_visiveis, usuario_atual
-from ..enums import StatusArquivo, StatusRevisao, StatusSolicitacao
-from ..models import AnexoSolicitacao, Documento, Obra, SolicitacaoRevisao, Usuario
+from ..enums import PapelObra, StatusArquivo, StatusRevisao, StatusSolicitacao
+from ..models import (
+    AnexoSolicitacao,
+    Documento,
+    Obra,
+    ObraMembro,
+    SolicitacaoRevisao,
+    Usuario,
+    VistaModelo,
+)
 from ..schemas import (
     AnexoIniciar,
     AnexoIniciarSaida,
@@ -186,23 +194,66 @@ def solicitar(
     if problema:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, problema)
 
+    # Pedido saído do visualizador 3D (21/10/2026): a vista tem de ser desta
+    # obra e já ter a imagem marcada, que vira anexo do pedido.
+    vista = None
+    if dados.vista_id is not None:
+        vista = db.get(VistaModelo, dados.vista_id)
+        if vista is None or vista.obra_id != ctx.obra.id or not vista.imagem_tamanho:
+            raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Vista do modelo 3D não encontrada.")
+    # Projetistas marcados: só o coordenador marca, e só quem é projetista
+    # desta obra.
+    mencionados: list[Usuario] = []
+    if dados.mencionados:
+        if not autoriza:
+            raise HTTPException(
+                status.HTTP_403_FORBIDDEN, "Somente o coordenador marca projetistas para a correção."
+            )
+        projetistas = {
+            m.usuario_id: m.usuario
+            for m in db.scalars(select(ObraMembro).where(
+                ObraMembro.obra_id == ctx.obra.id, ObraMembro.papel == PapelObra.projetista
+            ))
+        }
+        fora = [i for i in dados.mencionados if i not in projetistas]
+        if fora:
+            raise HTTPException(
+                status.HTTP_422_UNPROCESSABLE_ENTITY,
+                "Só dá para marcar projetistas desta obra.",
+            )
+        mencionados = [projetistas[i] for i in dict.fromkeys(dados.mencionados)]
+
     solicitacao = SolicitacaoRevisao(
         documento_id=documento.id,
         revisao_id=liberada.id,
         descricao=descricao,
         criada_por_id=usuario.id,
+        vista_id=vista.id if vista else None,
     )
+    solicitacao.mencionados = mencionados
     if autoriza:
         solicitacao.status = StatusSolicitacao.autorizada
         solicitacao.decidida_em = datetime.now(timezone.utc)
         solicitacao.decidida_por_id = usuario.id
     db.add(solicitacao)
     db.flush()
+    if vista is not None:
+        chave = chave_anexo(documento.obra.codigo, documento.codigo, solicitacao.id, "vista-3d.png")
+        armazenamento.copiar(vista.imagem_key, chave)
+        solicitacao.anexos.append(AnexoSolicitacao(
+            nome_original=f"Vista 3D - {vista.titulo[:150]}.png", storage_key=chave,
+            content_type="image/png", tamanho=vista.imagem_tamanho, status=StatusArquivo.disponivel,
+        ))
+        db.flush()
     auditoria.registrar(
         db, acao="revisao_autorizada" if autoriza else "revisao_solicitada",
         entidade="solicitacao", entidade_id=solicitacao.id,
         usuario=usuario, obra_id=ctx.obra.id,
-        detalhes={"documento": documento.codigo, "revisao": liberada.numero, "sem_pedido": autoriza},
+        detalhes={
+            "documento": documento.codigo, "revisao": liberada.numero, "sem_pedido": autoriza,
+            **({"vista": vista.titulo} if vista else {}),
+            **({"mencionados": [u.nome for u in mencionados]} if mencionados else {}),
+        },
         request=request,
     )
     avisos = (

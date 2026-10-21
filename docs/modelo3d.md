@@ -59,9 +59,36 @@ abriram em 3,6 s.
 - Servidor: `GET /api/arquivos/{id}/modelo` devolve o modelo convertido, ou o
   IFC e o endereço para guardar a conversão.
 
+## Vistas e pedido de correção (21/10/2026)
+
+**Nova vista** fotografa a tela e abre o painel de marcações:
+
+- Caneta, seta, retângulo, elipse e texto, em quatro cores, com desfazer.
+- A vista guarda os modelos da cena (e quais estavam desligados), a câmera,
+  os cortes e os elementos selecionados, pelo GlobalId, que não muda entre
+  conversões. A imagem marcada fica no Storage
+  (`obras/<obra>/_vistas/...png`).
+- **Pedir correção** (coordenador e obra): escolhe o documento (vem
+  sugerido o do elemento selecionado), descreve o que deve mudar e, se for
+  coordenador, marca os projetistas. Vira solicitação de revisão com a imagem
+  marcada como anexo (uma cópia: a mesma vista pode servir a pedidos de
+  várias disciplinas) e com o link **Abrir a vista no 3D**.
+  - Pedido do coordenador já nasce autorizado: o projetista da última
+    revisão e os marcados recebem o aviso e o e-mail, que cita a vista.
+  - Pedido da obra vai para o coordenador autorizar, como os outros.
+  - Vale a regra de sempre: só se pede revisão de documento liberado. Para
+    o que está em análise, a correção é a reprovação, com a observação.
+- **Vistas da obra**, na lateral do visualizador, com miniatura: qualquer
+  pessoa da obra reabre (`/modelos?vista=ID`) e vê a cena como foi marcada.
+  Quem abre só vê modelos que poderia abrir sozinho.
+
+Servidor: `POST /obras/{id}/vistas` (devolve o envio da imagem), `POST
+/vistas/{id}/imagem` (confirma), `GET /vistas/{id}`, `GET /obras/{id}/vistas`;
+`POST /documentos/{id}/solicitacoes` aceita `vista_id` e `mencionados`.
+
 ## Próximos passos
 
-1. Apontamentos para os projetistas no modelo (to-dos no padrão BCF), com foto da
-   vista, elemento marcado e prazo.
-2. Importar os conflitos do Navisworks (relatório XML) como apontamentos.
+1. Prazo e situação por apontamento (aberto, em correção, resolvido), no
+   padrão BCF, para exportar e importar de outros programas.
+2. Importar os conflitos do Navisworks (relatório XML) como vistas.
 3. Medidas e árvore por pavimento.

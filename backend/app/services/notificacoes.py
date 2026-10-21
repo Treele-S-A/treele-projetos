@@ -136,9 +136,16 @@ def ao_autorizar(db: Session, solicitacao: SolicitacaoRevisao, autor: Usuario) -
         + f"{_nome_documento(documento)}, na obra {obra.codigo} · {obra.nome}"
         + (f", pedida por {solicitacao.criada_por.nome}" if pedido_da_obra else "")
         + f".\n\nO que deve mudar:\n{_resumo(solicitacao.descricao)}"
+        + (
+            "\n\nO pedido traz uma vista marcada do modelo 3D: veja a imagem e abra a "
+            "vista na tela do documento."
+            if solicitacao.vista_id
+            else ""
+        )
     )
+    # Quem subiu a última revisão e os projetistas que o coordenador marcou.
     return _criar(
-        db, projetista_da_ultima(db, documento), autor,
+        db, [*projetista_da_ultima(db, documento), *solicitacao.mencionados], autor,
         tipo=TipoNotificacao.revisao_autorizada,
         documento=documento,
         titulo=f"Revisão autorizada · {documento.codigo}",

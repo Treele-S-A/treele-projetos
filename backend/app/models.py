@@ -362,6 +362,11 @@ class SolicitacaoRevisao(Base):
         ForeignKey("usuarios.id"), nullable=True
     )
     motivo_recusa: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Vista do modelo 3D de onde o pedido saiu (21/10/2026): a imagem marcada
+    # vai como anexo, e a vista reabre a cena como estava.
+    vista_id: Mapped[int | None] = mapped_column(
+        ForeignKey("vistas_modelo.id", ondelete="SET NULL"), nullable=True
+    )
 
     documento: Mapped["Documento"] = relationship(back_populates="solicitacoes")
     revisao: Mapped["Revisao | None"] = relationship(foreign_keys=[revisao_id])
@@ -374,6 +379,12 @@ class SolicitacaoRevisao(Base):
         back_populates="solicitacao",
         cascade="all, delete-orphan",
         order_by="AnexoSolicitacao.id",
+    )
+    vista: Mapped["VistaModelo | None"] = relationship()
+    # Projetistas que o coordenador marcou para a correção: avisados junto com
+    # o da última revisão.
+    mencionados: Mapped[list["Usuario"]] = relationship(
+        secondary="mencoes_solicitacao", order_by="Usuario.nome"
     )
 
 
@@ -494,3 +505,46 @@ class AvaliacaoChat(Base):
     atualizada_em: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     usuario: Mapped["Usuario | None"] = relationship()
+
+
+class VistaModelo(Base):
+    """Uma vista do modelo 3D (TREELE, 21/10/2026), no espírito do BCF: quais
+    modelos estavam na cena, a câmera, os cortes, os elementos selecionados
+    (pelo GlobalId, que não muda entre conversões) e a imagem da tela com as
+    marcações desenhadas por cima."""
+
+    __tablename__ = "vistas_modelo"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    obra_id: Mapped[int] = mapped_column(ForeignKey("obras.id", ondelete="CASCADE"), index=True)
+    titulo: Mapped[str] = mapped_column(String(200))
+    # Ids dos arquivos IFC na cena, na ordem.
+    arquivos: Mapped[list] = mapped_column(JSON, default=list)
+    # {"posicao": [x, y, z], "alvo": [x, y, z]}
+    camera: Mapped[dict] = mapped_column(JSON, default=dict)
+    # [{"normal": [x, y, z], "ponto": [x, y, z]}]
+    cortes: Mapped[list] = mapped_column(JSON, default=list)
+    # {"<arquivo_id>": ["<GlobalId>", ...]}
+    selecao: Mapped[dict] = mapped_column(JSON, default=dict)
+    # Arquivos desligados na cena (visíveis = arquivos - ocultos).
+    ocultos: Mapped[list] = mapped_column(JSON, default=list)
+    imagem_key: Mapped[str] = mapped_column(String(500), unique=True)
+    # 0 enquanto a imagem não chegou ao armazenamento.
+    imagem_tamanho: Mapped[int] = mapped_column(BigInteger, default=0)
+    criada_por_id: Mapped[int | None] = mapped_column(
+        ForeignKey("usuarios.id", ondelete="SET NULL"), nullable=True
+    )
+    criada_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=agora)
+
+    criada_por: Mapped["Usuario | None"] = relationship()
+
+
+class MencaoSolicitacao(Base):
+    __tablename__ = "mencoes_solicitacao"
+    __table_args__ = (UniqueConstraint("solicitacao_id", "usuario_id", name="uq_mencao"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    solicitacao_id: Mapped[int] = mapped_column(
+        ForeignKey("solicitacoes_revisao.id", ondelete="CASCADE"), index=True
+    )
+    usuario_id: Mapped[int] = mapped_column(ForeignKey("usuarios.id", ondelete="CASCADE"))

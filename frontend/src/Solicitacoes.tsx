@@ -7,6 +7,7 @@
  */
 
 import { useRef, useState, type FormEvent } from "react";
+import { Link } from "react-router-dom";
 import { api, ErroApi, formatarData, formatarTamanho, type Anexo, type Solicitacao } from "./api";
 import { Aviso } from "./componentes";
 
@@ -395,9 +396,25 @@ function ItemSolicitacao({
               onClick={() => abrirAnexo(a, aoErro)}
               title="Abrir numa aba nova"
             >
-              {a.content_type === "application/pdf" ? "PDF" : "Foto"} · {a.nome_original}
+              {a.content_type === "application/pdf" ? "PDF" : a.nome_original.startsWith("Vista 3D") ? "Imagem" : "Foto"}{" "}
+              · {a.nome_original}
             </button>
           ))}
+        </div>
+      )}
+      {(s.vista_id || s.mencionados?.length > 0) && (
+        <div className="linha" style={{ gap: 8, marginTop: 6, fontSize: 12.5 }}>
+          {s.vista_id && (
+            <Link className="botao pequeno" to={`/modelos?vista=${s.vista_id}`}>
+              Abrir a vista no 3D
+            </Link>
+          )}
+          {s.mencionados?.length > 0 && (
+            <span className="silencioso">
+              Projetista{s.mencionados.length > 1 ? "s" : ""} marcado{s.mencionados.length > 1 ? "s" : ""}:{" "}
+              {s.mencionados.map((u) => u.nome).join(", ")}
+            </span>
+          )}
         </div>
       )}
 
