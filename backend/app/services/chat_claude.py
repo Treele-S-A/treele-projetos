@@ -197,6 +197,8 @@ def conversar(sistema: str, historico: list[Turno], ferramentas: Ferramentas) ->
                 )
             return _texto(resposta).strip() or "Não encontrei uma resposta para isso."
 
+        # O que a IA diz antes de consultar ("Vou buscar...") é etapa na tela.
+        ferramentas.anunciar(_texto(resposta))
         # A resposta do modelo volta intacta; os resultados vão juntos, na ordem.
         mensagens.append({"role": "assistant", "content": blocos})
         resultados = []

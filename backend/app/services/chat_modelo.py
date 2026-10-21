@@ -201,6 +201,7 @@ def _conversar(modelo: str, sistema: str, historico: list[Turno], ferramentas: F
             texto = "".join(p.get("text", "") for p in partes if not p.get("thought"))
             return texto.strip() or "Não encontrei uma resposta para isso."
 
+        ferramentas.anunciar("".join(p.get("text", "") for p in partes if not p.get("thought")))
         # A parte do modelo volta intacta (com as assinaturas de pensamento).
         conteudos.append({"role": "model", "parts": partes})
         respostas = []

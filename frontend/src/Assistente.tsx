@@ -4,12 +4,67 @@
 
 import { Fragment, useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { Link } from "react-router-dom";
-import { api, ErroApi } from "./api";
+import { api, ErroApi, lerToken } from "./api";
 import { useSessao } from "./sessao";
 
 interface Turno {
   papel: "usuario" | "assistente";
   texto: string;
+  /** O que o assistente fez para chegar na resposta (só para mostrar). */
+  etapas?: string[];
+}
+
+type Evento = { tipo: "etapa" | "resposta" | "erro"; texto: string };
+
+/** Pergunta pela rota com etapas: cada linha da resposta é um evento, e as
+ *  etapas aparecem enquanto o assistente trabalha (TREELE, 21/10/2026). */
+async function perguntarComEtapas(
+  corpo: { mensagens: { papel: string; texto: string }[]; obra_id: number | null },
+  aoEvento: (e: Evento) => void,
+): Promise<void> {
+  const r = await fetch(`${api.base}/chat/fluxo`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${lerToken()}` },
+    body: JSON.stringify(corpo),
+  });
+  if (!r.ok || !r.body) {
+    let mensagem = "Não foi possível falar com o assistente.";
+    try {
+      const d = await r.json();
+      if (typeof d.detail === "string") mensagem = d.detail;
+    } catch {
+      /* corpo sem JSON: fica a mensagem geral */
+    }
+    throw new ErroApi(r.status, mensagem);
+  }
+  const leitor = r.body.getReader();
+  const decodificador = new TextDecoder();
+  let resto = "";
+  for (;;) {
+    const { value, done } = await leitor.read();
+    resto += decodificador.decode(value ?? new Uint8Array(), { stream: !done });
+    const linhas = resto.split("\n");
+    resto = linhas.pop() ?? "";
+    for (const linha of linhas) if (linha.trim()) aoEvento(JSON.parse(linha) as Evento);
+    if (done) break;
+  }
+  if (resto.trim()) aoEvento(JSON.parse(resto) as Evento);
+}
+
+function Etapas({ etapas }: { etapas: string[] }) {
+  if (!etapas.length) return null;
+  return (
+    <details className="assistente-etapas">
+      <summary>
+        Ver etapas ({etapas.length})
+      </summary>
+      <ol>
+        {etapas.map((e, i) => (
+          <li key={i}>{e}</li>
+        ))}
+      </ol>
+    </details>
+  );
 }
 
 const SUGESTOES_EQUIPE = [
@@ -96,6 +151,7 @@ export default function Assistente({ obraId }: { obraId: number | null }) {
   const [turnos, setTurnos] = useState<Turno[]>([]);
   const [texto, setTexto] = useState("");
   const [pensando, setPensando] = useState(false);
+  const [etapas, setEtapas] = useState<string[]>([]);
   const [erro, setErro] = useState<string | null>(null);
   const fim = useRef<HTMLDivElement>(null);
   const campo = useRef<HTMLTextAreaElement>(null);
@@ -112,7 +168,7 @@ export default function Assistente({ obraId }: { obraId: number | null }) {
 
   useEffect(() => {
     fim.current?.scrollIntoView({ block: "end" });
-  }, [turnos, pensando, aberto]);
+  }, [turnos, pensando, aberto, etapas]);
 
   useEffect(() => {
     if (aberto) campo.current?.focus();
@@ -132,20 +188,36 @@ export default function Assistente({ obraId }: { obraId: number | null }) {
     setTexto("");
     setErro(null);
     setPensando(true);
+    setEtapas([]);
+    const feitas: string[] = [];
+    let resposta: string | null = null;
+    let falha: string | null = null;
     try {
-      const r = await api.post<{ resposta: string }>("/chat", {
-        mensagens: conversa,
-        obra_id: obraId,
-      });
-      setTurnos([...conversa, { papel: "assistente", texto: r.resposta }]);
+      await perguntarComEtapas(
+        // Para o servidor vai só a conversa; as etapas ficam na tela.
+        { mensagens: conversa.map(({ papel, texto }) => ({ papel, texto })), obra_id: obraId },
+        (e) => {
+          if (e.tipo === "etapa") {
+            feitas.push(e.texto);
+            setEtapas([...feitas]);
+          } else if (e.tipo === "resposta") resposta = e.texto;
+          else falha = e.texto;
+        },
+      );
+      if (resposta === null && falha === null) falha = "O assistente não terminou de responder. Tente de novo.";
     } catch (ex) {
-      setErro(ex instanceof ErroApi ? ex.message : "Não foi possível falar com o assistente.");
+      falha = ex instanceof ErroApi ? ex.message : "Não foi possível falar com o assistente.";
+    }
+    if (resposta !== null) {
+      setTurnos([...conversa, { papel: "assistente", texto: resposta, etapas: feitas }]);
+    } else {
+      setErro(falha);
       // A pergunta volta para o campo: dá para tentar de novo sem redigitar.
       setTurnos(turnos);
       setTexto(limpa);
-    } finally {
-      setPensando(false);
     }
+    setPensando(false);
+    setEtapas([]);
   }
 
   function enviar(e: FormEvent) {
@@ -207,11 +279,30 @@ export default function Assistente({ obraId }: { obraId: number | null }) {
             )}
             {turnos.map((t, i) => (
               <div key={i} className={`assistente-msg ${t.papel}`}>
-                {t.papel === "assistente" ? <Markdown texto={t.texto} /> : t.texto}
+                {t.papel === "assistente" ? (
+                  <>
+                    {t.etapas && <Etapas etapas={t.etapas} />}
+                    <Markdown texto={t.texto} />
+                  </>
+                ) : (
+                  t.texto
+                )}
               </div>
             ))}
             {pensando && (
-              <div className="assistente-msg assistente pensando">Consultando o acervo…</div>
+              <div className="assistente-msg assistente pensando" aria-live="polite">
+                {etapas.length === 0 ? (
+                  "Pensando…"
+                ) : (
+                  <ol className="assistente-etapas-vivas">
+                    {etapas.map((e, i) => (
+                      <li key={i} className={i === etapas.length - 1 ? "atual" : undefined}>
+                        {e}
+                      </li>
+                    ))}
+                  </ol>
+                )}
+              </div>
             )}
             {erro && <div className="assistente-erro">{erro}</div>}
             <div ref={fim} />

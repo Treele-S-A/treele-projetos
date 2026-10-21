@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { downloadZip } from "client-zip";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import {
   api,
@@ -20,11 +21,58 @@ const CHAVE_VISAO = "treele.acervo.visao";
 
 type Visao = "lista" | "arvore";
 
-/** Revisão marcada para liberar em lote — guarda o que a tela mostra dela. */
+/** Revisão marcada para baixar ou liberar em lote — guarda o que a tela
+ *  mostra dela. */
 interface Marcada {
   documento: string;
   numero: string;
+  status: StatusRevisao;
 }
+
+/** Arquivo que pode entrar no download em lote (POST /revisoes/arquivos-lote). */
+interface ArquivoLote {
+  id: number;
+  nome: string;
+  tipo: string;
+  tamanho: number | null;
+  documento: string;
+  revisao: string;
+  pasta: string;
+  aviso: string | null;
+}
+
+interface ListaDownload {
+  arquivos: ArquivoLote[];
+  recusadas: ItemLote[];
+}
+
+interface Progresso {
+  feitos: number;
+  total: number;
+  bytes: number;
+}
+
+const ROTULO_TIPO: Record<string, string> = {
+  pdf: "PDF",
+  dwg: "DWG",
+  ifc: "IFC",
+  rvt: "RVT",
+  outro: "Outros",
+};
+const ORDEM_TIPO = ["pdf", "dwg", "ifc", "rvt", "outro"];
+
+function tamanhoLegivel(bytes: number): string {
+  if (bytes >= 1024 ** 3) return `${(bytes / 1024 ** 3).toFixed(1).replace(".", ",")} GB`;
+  if (bytes >= 1024 ** 2) return `${Math.round(bytes / 1024 ** 2)} MB`;
+  return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+}
+
+type JanelaComSalvar = Window & {
+  showSaveFilePicker?: (opcoes: {
+    suggestedName: string;
+    types: { description: string; accept: Record<string, string[]> }[];
+  }) => Promise<{ createWritable: () => Promise<WritableStream<Uint8Array>> }>;
+};
 
 interface ItemLote {
   revisao_id: number;
@@ -60,7 +108,18 @@ export default function Acervo() {
   // página e de filtro — dá para marcar de várias páginas e liberar de uma vez.
   const podeLiberar = obra?.permissoes.includes("publicar") ?? false;
   const [marcadas, setMarcadas] = useState<Map<number, Marcada>>(new Map());
-  const [painelLote, setPainelLote] = useState(false);
+  const [painelLote, setPainelLote] = useState<"liberar" | "baixar" | null>(null);
+  // Download em lote (TREELE, 21/10/2026): marca as linhas, escolhe os
+  // formatos e baixa um ZIP com obra/disciplina/arquivo.
+  const [listaDownload, setListaDownload] = useState<ListaDownload | null>(null);
+  const [tiposMarcados, setTiposMarcados] = useState<Set<string>>(new Set());
+  const [baixando, setBaixando] = useState<Progresso | null>(null);
+  const [resultadoDownload, setResultadoDownload] = useState<{
+    baixados: number;
+    falhas: string[];
+    cancelado: boolean;
+  } | null>(null);
+  const cancelarDownload = useRef<AbortController | null>(null);
   const [observacaoLote, setObservacaoLote] = useState("");
   const [avisarLote, setAvisarLote] = useState(true);
   const [liberando, setLiberando] = useState(false);
@@ -105,18 +164,13 @@ export default function Acervo() {
     }
   }, [obraId, visao, pagina, porPagina, buscaAplicada, disciplina, fase, status, tipo]);
 
-  /** Linha que pode entrar no lote: a revisão atual está em análise. */
-  function liberavel(d: Documento): boolean {
-    return podeLiberar && d.revisao_atual?.status === "em_revisao";
-  }
-
   function alternar(d: Documento) {
     const rev = d.revisao_atual;
     if (!rev) return;
     setMarcadas((m) => {
       const novo = new Map(m);
       if (novo.has(rev.id)) novo.delete(rev.id);
-      else novo.set(rev.id, { documento: d.codigo, numero: rev.numero });
+      else novo.set(rev.id, { documento: d.codigo, numero: rev.numero, status: rev.status });
       return novo;
     });
   }
@@ -126,12 +180,124 @@ export default function Acervo() {
     setMarcadas((m) => {
       const novo = new Map(m);
       for (const d of dados.itens) {
-        if (!liberavel(d) || !d.revisao_atual) continue;
-        if (marcar) novo.set(d.revisao_atual.id, { documento: d.codigo, numero: d.revisao_atual.numero });
-        else novo.delete(d.revisao_atual.id);
+        const rev = d.revisao_atual;
+        if (!rev) continue;
+        if (marcar) novo.set(rev.id, { documento: d.codigo, numero: rev.numero, status: rev.status });
+        else novo.delete(rev.id);
       }
       return novo;
     });
+  }
+
+  // Só as marcadas em análise entram na liberação; as outras (já liberadas,
+  // obsoletas) servem só para o download.
+  const marcadasEmRevisao = [...marcadas.entries()].filter(([, m]) => m.status === "em_revisao");
+
+  async function abrirDownload() {
+    setPainelLote("baixar");
+    setListaDownload(null);
+    setResultadoDownload(null);
+    setErro(null);
+    try {
+      const r = await api.post<ListaDownload>("/revisoes/arquivos-lote", {
+        revisao_ids: [...marcadas.keys()],
+      });
+      setListaDownload(r);
+      setTiposMarcados(new Set(r.arquivos.map((a) => a.tipo)));
+    } catch (ex) {
+      setErro(ex instanceof ErroApi ? ex.message : "Não foi possível listar os arquivos.");
+      setPainelLote(null);
+    }
+  }
+
+  async function baixarLote() {
+    if (!listaDownload) return;
+    const escolhidos = listaDownload.arquivos.filter((a) => tiposMarcados.has(a.tipo));
+    if (!escolhidos.length) return;
+    const nomeZip = `${obra?.codigo ?? "obra"}-projetos-${new Date().toISOString().slice(0, 10)}.zip`;
+
+    // Chrome e Edge gravam o ZIP direto no disco, à medida que chega; nos
+    // outros navegadores ele é montado na memória. O seletor de arquivo tem
+    // de abrir antes de qualquer espera, ainda no clique.
+    const janela = window as JanelaComSalvar;
+    let destino: WritableStream<Uint8Array> | null = null;
+    if (janela.showSaveFilePicker) {
+      try {
+        const arquivo = await janela.showSaveFilePicker({
+          suggestedName: nomeZip,
+          types: [{ description: "Arquivo ZIP", accept: { "application/zip": [".zip"] } }],
+        });
+        destino = await arquivo.createWritable();
+      } catch {
+        return; // a pessoa fechou a janela de salvar
+      }
+    }
+
+    const controle = new AbortController();
+    cancelarDownload.current = controle;
+    const falhas: string[] = [];
+    const progresso: Progresso = { feitos: 0, total: escolhidos.length, bytes: 0 };
+    setBaixando({ ...progresso });
+    setResultadoDownload(null);
+
+    // Um arquivo por vez: cada um passa pelo download avulso, que confere a
+    // permissão de novo e registra quem baixou.
+    async function* entradas() {
+      for (const a of escolhidos) {
+        if (controle.signal.aborted) return;
+        try {
+          const d = await api.get<{ url: string }>(`/arquivos/${a.id}/download`);
+          const r = await fetch(d.url, { signal: controle.signal });
+          if (!r.ok || !r.body) throw new Error(String(r.status));
+          const contador = new TransformStream<Uint8Array, Uint8Array>({
+            transform(pedaco, saida) {
+              progresso.bytes += pedaco.byteLength;
+              setBaixando({ ...progresso });
+              saida.enqueue(pedaco);
+            },
+          });
+          yield { name: `${a.pasta}/${a.nome}`, input: r.body.pipeThrough(contador) };
+        } catch {
+          if (controle.signal.aborted) return;
+          falhas.push(a.nome);
+        }
+        progresso.feitos += 1;
+        setBaixando({ ...progresso });
+      }
+    }
+
+    try {
+      const zip = downloadZip(entradas());
+      if (destino) {
+        await zip.body!.pipeTo(destino, { signal: controle.signal });
+      } else {
+        const blob = await zip.blob();
+        if (!controle.signal.aborted) {
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement("a");
+          link.href = url;
+          link.download = nomeZip;
+          link.click();
+          URL.revokeObjectURL(url);
+        }
+      }
+      setResultadoDownload({
+        baixados: progresso.feitos - falhas.length,
+        falhas,
+        cancelado: controle.signal.aborted,
+      });
+      if (!controle.signal.aborted) setPainelLote(null);
+    } catch {
+      setResultadoDownload({
+        baixados: progresso.feitos - falhas.length,
+        falhas,
+        cancelado: controle.signal.aborted,
+      });
+      if (!controle.signal.aborted) setErro("O download foi interrompido. Tente de novo.");
+    } finally {
+      setBaixando(null);
+      cancelarDownload.current = null;
+    }
   }
 
   async function liberarLote() {
@@ -139,7 +305,7 @@ export default function Acervo() {
     setErro(null);
     try {
       const r = await api.post<ResultadoLote>("/revisoes/liberar-lote", {
-        revisao_ids: [...marcadas.keys()],
+        revisao_ids: marcadasEmRevisao.map(([id]) => id),
         observacao: observacaoLote.trim() || null,
         avisar: avisarLote,
       });
@@ -150,7 +316,7 @@ export default function Acervo() {
         for (const x of r.liberadas) novo.delete(x.revisao_id);
         return novo;
       });
-      setPainelLote(false);
+      setPainelLote(null);
       setObservacaoLote("");
       await consultar();
     } catch (ex) {
@@ -267,6 +433,30 @@ export default function Acervo() {
         </Aviso>
       )}
 
+      {resultadoDownload && (
+        <Aviso
+          tom={resultadoDownload.falhas.length || resultadoDownload.cancelado ? "atencao" : "ok"}
+          titulo={
+            resultadoDownload.cancelado
+              ? `Download cancelado · ${resultadoDownload.baixados} arquivo${resultadoDownload.baixados === 1 ? "" : "s"} já baixado${resultadoDownload.baixados === 1 ? "" : "s"}`
+              : `${resultadoDownload.baixados} arquivo${resultadoDownload.baixados === 1 ? " baixado" : "s baixados"} no ZIP${
+                  resultadoDownload.falhas.length
+                    ? ` · ${resultadoDownload.falhas.length} não ${resultadoDownload.falhas.length === 1 ? "veio" : "vieram"}`
+                    : ""
+                }`
+          }
+          itens={resultadoDownload.falhas}
+        >
+          <button
+            className="botao secundario pequeno"
+            style={{ marginTop: 8 }}
+            onClick={() => setResultadoDownload(null)}
+          >
+            Fechar
+          </button>
+        </Aviso>
+      )}
+
       {visao === "arvore" ? (
         <div className="folha">
           <Arvore obraId={Number(obraId)} abrir={pastaPedida} />
@@ -363,36 +553,40 @@ export default function Acervo() {
           </Vazio>
         ) : (
           <>
-            {podeLiberar && status !== "em_revisao" && marcadas.size === 0 && (
+            {marcadas.size === 0 && (
               <p className="silencioso dica-lote">
-                Para liberar várias revisões de uma vez, filtre <strong>Status: Em revisão</strong> e
-                marque as linhas.
+                Marque as linhas para baixar vários projetos de uma vez
+                {podeLiberar && (
+                  <>
+                    {" "}ou liberá-los para obra (filtre <strong>Status: Em revisão</strong> para achar
+                    os que aguardam análise)
+                  </>
+                )}
+                .
               </p>
             )}
             <div className="tabela-rolagem">
               <table className="tabela">
                 <thead>
                   <tr>
-                    {podeLiberar && (
-                      <th className="col-marca">
-                        {(() => {
-                          const elegiveis = dados.itens.filter(liberavel);
-                          const todas =
-                            elegiveis.length > 0 &&
-                            elegiveis.every((d) => d.revisao_atual && marcadas.has(d.revisao_atual.id));
-                          return (
-                            <input
-                              type="checkbox"
-                              aria-label="Marcar todas as revisões em revisão desta página"
-                              title="Marcar todas as revisões em revisão desta página"
-                              disabled={elegiveis.length === 0}
-                              checked={todas}
-                              onChange={() => alternarPagina(!todas)}
-                            />
-                          );
-                        })()}
-                      </th>
-                    )}
+                    <th className="col-marca">
+                      {(() => {
+                        const elegiveis = dados.itens.filter((d) => d.revisao_atual);
+                        const todas =
+                          elegiveis.length > 0 &&
+                          elegiveis.every((d) => d.revisao_atual && marcadas.has(d.revisao_atual.id));
+                        return (
+                          <input
+                            type="checkbox"
+                            aria-label="Marcar todos os documentos desta página"
+                            title="Marcar todos os documentos desta página"
+                            disabled={elegiveis.length === 0}
+                            checked={todas}
+                            onChange={() => alternarPagina(!todas)}
+                          />
+                        );
+                      })()}
+                    </th>
                     <th>Documento</th>
                     <th>Título</th>
                     <th>Disc.</th>
@@ -409,18 +603,16 @@ export default function Acervo() {
                       key={d.id}
                       className={d.revisao_atual && marcadas.has(d.revisao_atual.id) ? "marcada" : undefined}
                     >
-                      {podeLiberar && (
-                        <td className="col-marca">
-                          {liberavel(d) && d.revisao_atual && (
-                            <input
-                              type="checkbox"
-                              aria-label={`Marcar ${d.codigo} R${d.revisao_atual.numero} para liberar`}
-                              checked={marcadas.has(d.revisao_atual.id)}
-                              onChange={() => alternar(d)}
-                            />
-                          )}
-                        </td>
-                      )}
+                      <td className="col-marca">
+                        {d.revisao_atual && (
+                          <input
+                            type="checkbox"
+                            aria-label={`Marcar ${d.codigo} R${d.revisao_atual.numero}`}
+                            checked={marcadas.has(d.revisao_atual.id)}
+                            onChange={() => alternar(d)}
+                          />
+                        )}
+                      </td>
                       <td>
                         <Link className="link-doc" to={`/documentos/${d.id}`}>
                           {d.codigo}
@@ -496,12 +688,12 @@ export default function Acervo() {
           </>
         )}
 
-        {podeLiberar && marcadas.size > 0 && (
-          <div className="barra-lote" role="region" aria-label="Liberação em lote">
-            {!painelLote ? (
+        {marcadas.size > 0 && (
+          <div className="barra-lote" role="region" aria-label="Ações em lote">
+            {painelLote === null ? (
               <div className="linha">
                 <strong>
-                  {marcadas.size} revis{marcadas.size === 1 ? "ão marcada" : "ões marcadas"}
+                  {marcadas.size} documento{marcadas.size === 1 ? " marcado" : "s marcados"}
                 </strong>
                 <span className="silencioso" style={{ fontSize: 12 }}>
                   {[...marcadas.values()]
@@ -517,15 +709,44 @@ export default function Acervo() {
                 >
                   Desmarcar
                 </button>
-                <button className="botao" onClick={() => setPainelLote(true)}>
-                  Liberar para obra…
+                <button className="botao secundario" onClick={abrirDownload}>
+                  Baixar…
                 </button>
+                {podeLiberar && (
+                  <button
+                    className="botao"
+                    disabled={marcadasEmRevisao.length === 0}
+                    title={
+                      marcadasEmRevisao.length === 0 ? "Nenhuma das marcadas está em revisão" : undefined
+                    }
+                    onClick={() => setPainelLote("liberar")}
+                  >
+                    Liberar para obra…
+                  </button>
+                )}
               </div>
+            ) : painelLote === "baixar" ? (
+              <PainelDownload
+                lista={listaDownload}
+                tipos={tiposMarcados}
+                aoMudarTipos={setTiposMarcados}
+                baixando={baixando}
+                aoBaixar={baixarLote}
+                aoCancelar={() => cancelarDownload.current?.abort()}
+                aoVoltar={() => setPainelLote(null)}
+              />
             ) : (
               <div>
                 <strong>
-                  Liberar {marcadas.size} revis{marcadas.size === 1 ? "ão" : "ões"} para obra
+                  Liberar {marcadasEmRevisao.length} revis{marcadasEmRevisao.length === 1 ? "ão" : "ões"} para
+                  obra
                 </strong>
+                {marcadasEmRevisao.length < marcadas.size && (
+                  <p className="silencioso" style={{ fontSize: 12.5, margin: "4px 0 0" }}>
+                    Só as marcadas em revisão entram; as outras{" "}
+                    {marcadas.size - marcadasEmRevisao.length} continuam marcadas.
+                  </p>
+                )}
                 <p className="silencioso" style={{ fontSize: 12.5, margin: "4px 0 8px" }}>
                   Cada uma passa pelas mesmas conferências da liberação avulsa (o DWG precisa do PDF,
                   por exemplo); as que não puderem sair voltam com o motivo, e as outras são
@@ -554,12 +775,12 @@ export default function Acervo() {
                 </label>
                 <div className="linha" style={{ marginTop: 10 }}>
                   <button className="botao" disabled={liberando} onClick={liberarLote}>
-                    {liberando ? "Liberando…" : `Liberar ${marcadas.size} para obra`}
+                    {liberando ? "Liberando…" : `Liberar ${marcadasEmRevisao.length} para obra`}
                   </button>
                   <button
                     className="botao secundario pequeno"
                     disabled={liberando}
-                    onClick={() => setPainelLote(false)}
+                    onClick={() => setPainelLote(null)}
                   >
                     Voltar
                   </button>
@@ -571,5 +792,151 @@ export default function Acervo() {
       </div>
       )}
     </>
+  );
+}
+
+/** Escolha dos formatos e andamento do download em lote. */
+function PainelDownload({
+  lista,
+  tipos,
+  aoMudarTipos,
+  baixando,
+  aoBaixar,
+  aoCancelar,
+  aoVoltar,
+}: {
+  lista: ListaDownload | null;
+  tipos: Set<string>;
+  aoMudarTipos: (t: Set<string>) => void;
+  baixando: Progresso | null;
+  aoBaixar: () => void;
+  aoCancelar: () => void;
+  aoVoltar: () => void;
+}) {
+  if (!lista) {
+    return (
+      <p className="silencioso" style={{ margin: 0 }}>
+        Listando os arquivos…
+      </p>
+    );
+  }
+  const porTipo = new Map<string, { quantidade: number; bytes: number }>();
+  for (const a of lista.arquivos) {
+    const t = porTipo.get(a.tipo) ?? { quantidade: 0, bytes: 0 };
+    t.quantidade += 1;
+    t.bytes += a.tamanho ?? 0;
+    porTipo.set(a.tipo, t);
+  }
+  const presentes = ORDEM_TIPO.filter((t) => porTipo.has(t));
+  const escolhidos = lista.arquivos.filter((a) => tipos.has(a.tipo));
+  const totalBytes = escolhidos.reduce((s, a) => s + (a.tamanho ?? 0), 0);
+  const comAviso = new Set(escolhidos.filter((a) => a.aviso).map((a) => a.documento)).size;
+  const naMemoria = !(window as JanelaComSalvar).showSaveFilePicker;
+
+  if (baixando) {
+    const parte = totalBytes
+      ? Math.min(1, baixando.bytes / totalBytes)
+      : baixando.feitos / Math.max(1, baixando.total);
+    return (
+      <div>
+        <strong>
+          Baixando {Math.min(baixando.feitos + 1, baixando.total)} de {baixando.total} arquivos
+        </strong>
+        <div
+          className="progresso-lote"
+          role="progressbar"
+          aria-valuenow={Math.round(parte * 100)}
+          aria-valuemin={0}
+          aria-valuemax={100}
+        >
+          <span style={{ width: `${parte * 100}%` }} />
+        </div>
+        <div className="linha">
+          <span className="silencioso" style={{ fontSize: 12.5 }}>
+            {tamanhoLegivel(baixando.bytes)} de {tamanhoLegivel(totalBytes)}
+          </span>
+          <div className="espaco" />
+          <button className="botao secundario pequeno" onClick={aoCancelar}>
+            Cancelar
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <strong>Baixar os projetos marcados</strong>
+      {lista.arquivos.length === 0 ? (
+        <p className="silencioso" style={{ fontSize: 12.5, margin: "4px 0 8px" }}>
+          Nenhum arquivo disponível nos documentos marcados.
+        </p>
+      ) : (
+        <>
+          <p className="silencioso" style={{ fontSize: 12.5, margin: "4px 0 8px" }}>
+            Escolha os formatos. Sai um ZIP com uma pasta por disciplina; cada arquivo baixado fica
+            no registro de atividades, como no download avulso.
+          </p>
+          <div className="linha" style={{ gap: 14, flexWrap: "wrap" }}>
+            {presentes.map((t) => {
+              const info = porTipo.get(t)!;
+              return (
+                <label key={t} className="opcao-aviso" style={{ margin: 0 }}>
+                  <input
+                    type="checkbox"
+                    checked={tipos.has(t)}
+                    onChange={(e) => {
+                      const novo = new Set(tipos);
+                      if (e.target.checked) novo.add(t);
+                      else novo.delete(t);
+                      aoMudarTipos(novo);
+                    }}
+                  />
+                  <strong>{ROTULO_TIPO[t] ?? t.toUpperCase()}</strong>
+                  <span className="silencioso">
+                    {info.quantidade} arquivo{info.quantidade === 1 ? "" : "s"} ·{" "}
+                    {tamanhoLegivel(info.bytes)}
+                  </span>
+                </label>
+              );
+            })}
+          </div>
+        </>
+      )}
+      {comAviso > 0 && (
+        <p style={{ fontSize: 12.5, margin: "8px 0 0" }}>
+          <strong>Atenção:</strong>{" "}
+          {comAviso === 1
+            ? "1 documento marcado não está liberado para obra"
+            : `${comAviso} documentos marcados não estão liberados para obra`}{" "}
+          (em revisão, reprovado ou obsoleto). Não use para execução.
+        </p>
+      )}
+      {lista.recusadas.length > 0 && (
+        <p className="silencioso" style={{ fontSize: 12.5, margin: "8px 0 0" }}>
+          Fora do download:{" "}
+          {lista.recusadas
+            .map(
+              (r) =>
+                `${r.documento ?? "revisão " + r.revisao_id}${r.revisao ? ` R${r.revisao}` : ""} (${r.motivos.join(" ")})`,
+            )
+            .join("; ")}
+        </p>
+      )}
+      {naMemoria && totalBytes > 1024 ** 3 && (
+        <p style={{ fontSize: 12.5, margin: "8px 0 0" }}>
+          Este navegador monta o ZIP na memória: para mais de 1 GB, prefira o Chrome ou o Edge.
+        </p>
+      )}
+      <div className="linha" style={{ marginTop: 10 }}>
+        <button className="botao" disabled={escolhidos.length === 0} onClick={aoBaixar}>
+          Baixar {escolhidos.length} arquivo{escolhidos.length === 1 ? "" : "s"}
+          {totalBytes > 0 && ` (${tamanhoLegivel(totalBytes)})`}
+        </button>
+        <button className="botao secundario pequeno" onClick={aoVoltar}>
+          Voltar
+        </button>
+      </div>
+    </div>
   );
 }

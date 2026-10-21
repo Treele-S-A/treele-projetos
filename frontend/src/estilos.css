@@ -1711,3 +1711,17 @@ table.tabela {
   font: inherit;
   resize: vertical;
 }
+/* Andamento do download em lote (21/10/2026). */
+.progresso-lote {
+  height: 6px;
+  margin: 8px 0 6px;
+  border-radius: 3px;
+  background: var(--traco-fino);
+  overflow: hidden;
+}
+.progresso-lote span {
+  display: block;
+  height: 100%;
+  background: var(--petroleo);
+  transition: width 0.2s;
+}

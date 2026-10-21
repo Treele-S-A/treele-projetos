@@ -467,6 +467,30 @@ class LiberarLoteSaida(BaseModel):
     recusadas: list[ItemLote]
 
 
+class ArquivosLoteEntrada(BaseModel):
+    revisao_ids: list[int] = Field(min_length=1, max_length=1000)
+
+
+class ArquivoLote(BaseModel):
+    """Um arquivo que a pessoa pode baixar no lote. O download em si é o
+    avulso (GET /arquivos/{id}/download), que registra quem baixou."""
+
+    id: int
+    nome: str
+    tipo: str
+    tamanho: int | None = None
+    documento: str
+    revisao: str
+    # Pasta dentro do ZIP: obra/disciplina.
+    pasta: str
+    aviso: str | None = None
+
+
+class ArquivosLoteSaida(BaseModel):
+    arquivos: list[ArquivoLote]
+    recusadas: list[ItemLote]
+
+
 class ConfirmarEntrada(BaseModel):
     # Coordenador enviando arquivo escolhe se os outros coordenadores são
     # avisados da revisão nova. Projetista: sempre avisa (o servidor ignora).

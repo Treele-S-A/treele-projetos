@@ -171,12 +171,20 @@ class Ferramentas:
         db: Session,
         usuario: Usuario,
         leitor: Callable[[bytes, str, str], str] | None = None,
+        etapa: Callable[[str], None] | None = None,
     ):
         self.db = db
         self.usuario = usuario
         # Quem lê o PDF (chat_modelo.ler_pdf). Injetado: os testes trocam por um
         # leitor de mentira, e este módulo não depende do fornecedor de IA.
         self.leitor = leitor
+        # Quem mostra na tela o que o assistente está fazendo (21/10/2026):
+        # cada consulta, o resultado dela e o que a IA diz entre uma e outra.
+        self.etapa = etapa
+
+    def anunciar(self, texto: str) -> None:
+        if self.etapa and texto and texto.strip():
+            self.etapa(texto.strip())
 
     # ------------------------------------------------------------- obras
 
@@ -225,12 +233,15 @@ class Ferramentas:
         }.get(nome)
         if metodo is None:
             return {"erro": f"Consulta desconhecida: {nome}."}
+        self.anunciar(descrever(nome, argumentos or {}))
         try:
-            return metodo(**(argumentos or {}))
+            resultado = metodo(**(argumentos or {}))
         except LookupError as erro:
-            return {"erro": str(erro)}
+            resultado = {"erro": str(erro)}
         except TypeError:
-            return {"erro": "Parâmetros inválidos para a consulta."}
+            resultado = {"erro": "Parâmetros inválidos para a consulta."}
+        self.anunciar(resumir(resultado))
+        return resultado
 
     # ------------------------------------------------------------- consultas
 
@@ -514,3 +525,68 @@ def catalogo(db: Session) -> str:
         for f in db.scalars(select(Fase).where(Fase.ativa.is_(True)).order_by(Fase.ordem))
     )
     return f"Disciplinas: {disciplinas}.\nFases: {fases}."
+
+
+# ------------------------------------------------------------- etapas na tela
+
+
+def descrever(nome: str, args: dict[str, Any]) -> str:
+    """A consulta em português, para a tela mostrar enquanto ela roda."""
+    def onde() -> str:
+        partes = []
+        if args.get("disciplina"):
+            partes.append(f"de {args['disciplina']}")
+        if args.get("status"):
+            partes.append(f"com status {ROTULO_STATUS.get(args['status'], args['status'])}")
+        if args.get("texto"):
+            partes.append(f"com “{args['texto']}”")
+        if args.get("fase"):
+            partes.append(f"na fase {args['fase']}")
+        if args.get("obra"):
+            partes.append(f"na obra {args['obra']}")
+        return (" " + " ".join(partes)) if partes else ""
+
+    match nome:
+        case "listar_obras":
+            return "Vendo as obras que você acompanha"
+        case "buscar_documentos":
+            return f"Buscando documentos{onde()}"
+        case "detalhar_documento":
+            return f"Abrindo o histórico de {args.get('codigo', 'um documento')}"
+        case "resumo_da_obra":
+            return f"Resumindo a obra {args.get('obra', '')}".strip()
+        case "liberacoes_recentes":
+            dias = args.get("dias") or 7
+            obra = f" na obra {args['obra']}" if args.get("obra") else ""
+            return f"Vendo as liberações dos últimos {dias} dias{obra}"
+        case "listar_solicitacoes":
+            obra = f" da obra {args['obra']}" if args.get("obra") else ""
+            return f"Consultando as solicitações de revisão{obra}"
+        case "ler_projeto":
+            rev = f" ({args['revisao']})" if args.get("revisao") else ""
+            return f"Lendo o PDF de {args.get('codigo', 'uma prancha')}{rev}"
+    return "Consultando o acervo"
+
+
+def resumir(resultado: dict[str, Any]) -> str | None:
+    """O que a consulta trouxe, em poucas palavras."""
+    if "erro" in resultado:
+        return f"Não deu certo: {resultado['erro']}"
+    if "revisoes" in resultado:  # histórico de um documento
+        n = len(resultado["revisoes"])
+        return f"{n} revis{'ão' if n == 1 else 'ões'} no histórico"
+    if "documentos" in resultado:
+        n = resultado.get("total", len(resultado["documentos"]))
+        return f"{n} documento{'' if n == 1 else 's'} encontrado{'' if n == 1 else 's'}"
+    if "liberacoes" in resultado:
+        n = resultado.get("total", 0)
+        return f"{n} libera{'ção' if n == 1 else 'ções'} no período"
+    if "solicitacoes" in resultado:
+        n = resultado.get("total", 0)
+        return f"{n} solicita{'ção' if n == 1 else 'ções'}"
+    if "obras" in resultado:
+        n = len(resultado["obras"])
+        return f"{n} obra{'' if n == 1 else 's'}"
+    if "leitura" in resultado:
+        return f"PDF lido ({resultado.get('revisao_lida', '')})".replace(" ()", "")
+    return None

@@ -42,6 +42,16 @@ pedir) e o lê numa chamada à parte, que devolve só o texto lido.
   pode ser usado para melhorar os produtos dele (decisão da TREELE em
   07/10/2026: seguir com o gratuito).
 
+### Etapas na tela (21/10/2026)
+
+Enquanto o assistente trabalha, a tela mostra o que ele está fazendo: cada
+consulta ("Buscando documentos de HID na obra CRE", "Lendo o PDF de
+MIL-HID-PE-AF (R02)"), o que ela trouxe ("12 documentos encontrados") e o
+que a IA diz entre uma consulta e outra. Depois da resposta, as etapas ficam
+recolhidas em **Ver etapas**, acima dela. A rota é `POST /chat/fluxo`, que
+responde em NDJSON (uma linha por evento: `etapa`, `resposta` ou `erro`); a
+`POST /chat` antiga continua, com a resposta só no fim.
+
 A conversa não fica guardada no servidor: a tela manda o histórico a cada
 pergunta e esquece ao fechar o navegador.
 

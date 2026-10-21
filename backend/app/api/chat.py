@@ -5,20 +5,26 @@ permissões de quem pergunta. A conversa não fica guardada no servidor: a tela
 manda o histórico a cada pergunta e esquece ao fechar.
 """
 
+import json
+import logging
+import queue
+import threading
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from ..config import settings
-from ..db import get_db
+from ..db import SessionLocal, get_db
 from ..deps import usuario_atual
 from ..models import Obra, ObraMembro, Usuario
 from ..services import chat_modelo
 from ..services.chat_ferramentas import Ferramentas, catalogo
 
 router = APIRouter(prefix="/chat", tags=["chat"])
+log = logging.getLogger("treele.chat")
 
 # Conversa longa custa mais (cota ou crédito) e confunde o modelo.
 MAX_TURNOS = 12
@@ -118,18 +124,25 @@ Onde cada coisa fica na tela (cada pessoa só vê o que o papel dela permite):
   análise; administrador, a qualquer tempo). Nada é excluído do histórico."""
 
 
-@router.post("", response_model=RespostaSaida)
-def perguntar(
-    dados: PerguntaEntrada,
-    usuario: Usuario = Depends(usuario_atual),
-    db: Session = Depends(get_db),
-):
-    if not settings.chat_ligado:
-        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, "O assistente está desligado.")
-    if dados.mensagens[-1].papel != "usuario":
-        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "A última mensagem é a pergunta.")
+class Recusa(Exception):
+    """Pedido que não chega ao modelo: chat desligado ou conversa mal formada."""
 
-    ferramentas = Ferramentas(db, usuario, leitor=chat_modelo.ler_pdf)
+    def __init__(self, codigo: int, mensagem: str):
+        super().__init__(mensagem)
+        self.codigo = codigo
+
+
+def _conferir_pedido(dados: PerguntaEntrada) -> None:
+    if not settings.chat_ligado:
+        raise Recusa(status.HTTP_503_SERVICE_UNAVAILABLE, "O assistente está desligado.")
+    if dados.mensagens[-1].papel != "usuario":
+        raise Recusa(status.HTTP_422_UNPROCESSABLE_ENTITY, "A última mensagem é a pergunta.")
+
+
+def _responder(db: Session, usuario: Usuario, dados: PerguntaEntrada, etapa=None) -> str:
+    """A conversa inteira. Falha do modelo sai como ChatIndisponivel, com a
+    mensagem para a pessoa (e o motivo técnico, se ela for administrador)."""
+    ferramentas = Ferramentas(db, usuario, leitor=chat_modelo.ler_pdf, etapa=etapa)
     # Só entra no contexto a obra que a pessoa pode ver — o id vem da tela.
     obra = next((o for o in ferramentas._obras_visiveis() if o.id == dados.obra_id), None)
     historico = [
@@ -147,6 +160,71 @@ def perguntar(
         # O motivo técnico só para administrador: é quem configura o chat.
         if usuario.admin and erro.detalhe:
             mensagem += f" (Detalhe técnico: {erro.detalhe})"
-        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, mensagem) from erro
+        raise chat_modelo.ChatIndisponivel(mensagem) from erro
     db.commit()  # registro das leituras de PDF
-    return RespostaSaida(resposta=resposta)
+    return resposta
+
+
+@router.post("", response_model=RespostaSaida)
+def perguntar(
+    dados: PerguntaEntrada,
+    usuario: Usuario = Depends(usuario_atual),
+    db: Session = Depends(get_db),
+):
+    try:
+        _conferir_pedido(dados)
+        return RespostaSaida(resposta=_responder(db, usuario, dados))
+    except Recusa as erro:
+        raise HTTPException(erro.codigo, str(erro)) from erro
+    except chat_modelo.ChatIndisponivel as erro:
+        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, str(erro)) from erro
+
+
+@router.post("/fluxo")
+def perguntar_com_etapas(dados: PerguntaEntrada, usuario: Usuario = Depends(usuario_atual)):
+    """A mesma pergunta, com as etapas na tela enquanto o assistente trabalha
+    (TREELE, 21/10/2026): cada consulta, o que ela trouxe e o que a IA diz
+    entre uma e outra.
+
+    Resposta em NDJSON, uma linha por evento:
+    {"tipo": "etapa" | "resposta" | "erro", "texto": "..."}.
+    A conversa roda numa thread com sessão de banco própria; a resposta vai
+    saindo à medida que as etapas acontecem.
+    """
+    try:
+        _conferir_pedido(dados)
+    except Recusa as erro:
+        raise HTTPException(erro.codigo, str(erro)) from erro
+
+    fila: queue.Queue = queue.Queue()
+    usuario_id = usuario.id
+
+    def trabalhar() -> None:
+        db = SessionLocal()
+        try:
+            pessoa = db.get(Usuario, usuario_id)
+            resposta = _responder(db, pessoa, dados, etapa=lambda t: fila.put({"tipo": "etapa", "texto": t}))
+            fila.put({"tipo": "resposta", "texto": resposta})
+        except chat_modelo.ChatIndisponivel as erro:
+            fila.put({"tipo": "erro", "texto": str(erro)})
+        except Exception:  # noqa: BLE001 — a tela precisa de um fim, sempre
+            log.exception("Chat: falha inesperada na conversa com etapas.")
+            db.rollback()
+            fila.put({"tipo": "erro", "texto": "O assistente não conseguiu responder agora. Tente de novo."})
+        finally:
+            db.close()
+            fila.put(None)
+
+    threading.Thread(target=trabalhar, daemon=True).start()
+
+    def eventos():
+        while (item := fila.get()) is not None:
+            yield json.dumps(item, ensure_ascii=False) + "\n"
+
+    return StreamingResponse(
+        eventos(),
+        media_type="application/x-ndjson",
+        # Sem isto, proxies seguram a resposta inteira e as etapas chegam
+        # todas juntas no fim.
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )

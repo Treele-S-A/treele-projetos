@@ -1241,6 +1241,72 @@ body {
   font-style: italic;
 }
 
+/* Etapas enquanto o assistente trabalha (21/10/2026): as já feitas em cinza,
+   a atual pulsando. */
+.assistente-etapas-vivas {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-style: normal;
+  font-size: 13px;
+}
+
+.assistente-etapas-vivas li {
+  position: relative;
+  padding-left: 16px;
+  margin-bottom: 3px;
+}
+
+.assistente-etapas-vivas li::before {
+  content: "✓";
+  position: absolute;
+  left: 0;
+  color: var(--tinta-2);
+}
+
+.assistente-etapas-vivas li.atual {
+  color: var(--tinta);
+}
+
+.assistente-etapas-vivas li.atual::before {
+  content: "•";
+  color: var(--petroleo);
+  animation: etapa-pulsa 1s ease-in-out infinite;
+}
+
+@keyframes etapa-pulsa {
+  50% {
+    opacity: 0.25;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .assistente-etapas-vivas li.atual::before {
+    animation: none;
+  }
+}
+
+/* Depois da resposta, as etapas ficam recolhidas acima dela. */
+.assistente-etapas {
+  margin: 0 0 8px;
+  font-size: 12.5px;
+  color: var(--tinta-2);
+}
+
+.assistente-etapas summary {
+  cursor: pointer;
+  user-select: none;
+}
+
+.assistente-msg.assistente .assistente-etapas ol {
+  margin: 4px 0 0;
+  padding-left: 18px;
+}
+
+.assistente-etapas li {
+  margin-bottom: 2px;
+}
+
 .assistente-erro {
   padding: 10px 12px;
   border-radius: 10px;

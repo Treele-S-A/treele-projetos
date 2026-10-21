@@ -6,7 +6,11 @@ from ..deps import montar_contexto, status_visiveis, usuario_atual
 from ..models import Revisao, Usuario
 from ..enums import StatusRevisao
 from ..enums import StatusSolicitacao
+from ..enums import StatusArquivo
 from ..schemas import (
+    ArquivoLote,
+    ArquivosLoteEntrada,
+    ArquivosLoteSaida,
     ItemLote,
     LiberarLoteEntrada,
     LiberarLoteSaida,
@@ -208,6 +212,51 @@ def liberar_lote(
     db.commit()
     notificacoes.enviar_emails(db, avisos)
     return LiberarLoteSaida(liberadas=liberadas, recusadas=recusadas)
+
+
+@router.post("/arquivos-lote", response_model=ArquivosLoteSaida)
+def arquivos_lote(
+    dados: ArquivosLoteEntrada,
+    usuario: Usuario = Depends(usuario_atual),
+    db: Session = Depends(get_db),
+):
+    """Arquivos das revisões marcadas, para o download em lote (TREELE,
+    21/10/2026). Só lista: a tela escolhe os formatos e baixa cada arquivo
+    pelo download avulso, que confere de novo e registra quem baixou.
+
+    A regra é a do download avulso (`_conferir_leitura`): o que a pessoa não
+    poderia baixar sozinho não entra no lote.
+    """
+    from .arquivos import _conferir_leitura
+
+    arquivos: list[ArquivoLote] = []
+    recusadas: list[ItemLote] = []
+    for revisao_id in dict.fromkeys(dados.revisao_ids):
+        try:
+            revisao, ctx = _carregar(db, usuario, revisao_id)
+        except HTTPException:
+            recusadas.append(ItemLote(revisao_id=revisao_id, motivos=["Revisão não encontrada."]))
+            continue
+        doc = revisao.documento
+        item = ItemLote(revisao_id=revisao.id, documento=doc.codigo, revisao=revisao.numero)
+        disponiveis = [a for a in revisao.arquivos if a.status == StatusArquivo.disponivel]
+        if not disponiveis:
+            item.motivos = ["A revisão não tem arquivo disponível."]
+            recusadas.append(item)
+            continue
+        try:
+            aviso = _conferir_leitura(disponiveis[0], ctx)
+        except HTTPException as erro:
+            item.motivos = [erro.detail]
+            recusadas.append(item)
+            continue
+        for a in sorted(disponiveis, key=lambda a: a.nome_original):
+            arquivos.append(ArquivoLote(
+                id=a.id, nome=a.nome_original, tipo=a.tipo.value, tamanho=a.tamanho,
+                documento=doc.codigo, revisao=revisao.numero,
+                pasta=f"{ctx.obra.codigo}/{doc.disciplina.codigo}", aviso=aviso,
+            ))
+    return ArquivosLoteSaida(arquivos=arquivos, recusadas=recusadas)
 
 
 @router.post("/{revisao_id}/reprovar", response_model=RevisaoOut)
