@@ -198,3 +198,11 @@ def test_agrupa_por_combinacao(com_indice):
         "Pav Tipo · Porta_Abrir_1F:80x210": 1,
         "Pav Tipo · Porta_Abrir_1F:90x210": 1,
     }
+
+
+def test_sem_medida_aponta_para_os_parametros(c):
+    # A porta do resumo não tem quantidades: o caso dos tubos de PVC (21/10/2026).
+    r = _ferramentas(c["coord"]).executar("quantitativos_modelo", {"obra": "QTD", "busca": "porta", "disciplina": "ARQ"})
+    assert "consultar_elementos" in r["modelos"][0]["dica"]
+    r = _ferramentas(c["coord"]).executar("quantitativos_modelo", {"obra": "QTD", "busca": "reboco", "disciplina": "ARQ"})
+    assert "dica" not in r["modelos"][0]

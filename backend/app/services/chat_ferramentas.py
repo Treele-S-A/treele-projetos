@@ -120,7 +120,9 @@ DECLARACOES = [
             "perguntas como 'qual a área de reboco', 'volume de concreto das lajes', 'quantas "
             "portas', 'área de piso cerâmico'. Busque pelo material ou pelo tipo (ex.: "
             "'reboco', 'concreto', 'porta', 'drywall', 'cerâmica'). Sem busca, devolve o que "
-            "o modelo tem (categorias, tipos e materiais), para escolher a busca certa."
+            "o modelo tem (categorias, tipos e materiais), para escolher a busca certa. "
+            "Comprimento de tubos, eletrodutos e dutos fica nos parâmetros: use "
+            "consultar_elementos com somar."
         ),
         "parameters": {
             "type": "OBJECT",
@@ -853,6 +855,18 @@ def _rotulo(nome: str, grandeza: str) -> str | None:
     return f"{nome}_{UNIDADE.get(grandeza, '')}".rstrip("_")
 
 
+# O resumo só tem as quantidades oficiais do IFC; tubo, eletroduto e conexão
+# costumam ter o comprimento só nos parâmetros (no Revit, "Dimensions/Length"),
+# e a cor ou o material só no tipo. Dois 👎 de 21/10/2026: o chat disse que não
+# havia metragem de PVC marrom, e o índice tinha 4.147 m.
+DICA_SEM_MEDIDA = (
+    "Antes de dizer que o modelo não tem a medida ou o material, use consultar_elementos: "
+    "mostrar_campos=true com a categoria (ex.: 'Tubo') mostra os parâmetros, e somar "
+    "(ex.: 'Length') dá o total; material e cor costumam estar em parâmetros do tipo "
+    "('Tipo · ...')."
+)
+
+
 def _somar_resumo(resumo: dict, termos: list[str], filtro_pav: str) -> dict[str, Any]:
     grandezas = resumo.get("grandezas", {})
     materiais = resumo.get("materiais", {})
@@ -900,13 +914,16 @@ def _somar_resumo(resumo: dict, termos: list[str], filtro_pav: str) -> dict[str,
             total[rotulo] += valor
             por_pavimento[pav][rotulo] += valor
     if not por_tipo:
-        return {"encontrados": 0, "aviso": "Nada no modelo bate com a busca. Tente sem busca para ver os materiais e tipos."}
+        return {"encontrados": 0, "aviso": "Nada no modelo bate com a busca. Tente sem busca para ver os materiais e tipos.",
+                "dica": DICA_SEM_MEDIDA}
     arred = lambda d: {k: round(v, 2) for k, v in d.items()}  # noqa: E731
     tipos = sorted(por_tipo.values(), key=lambda t: -t["elementos"])
+    sem_medida = sum(1 for t in tipos if not t["quantidades"])
     return {
         "encontrados": len(tipos),
         "tipos": [{**t, "quantidades": arred(t["quantidades"])} for t in tipos[:MAX_TIPOS]],
         **({"aviso": f"Mostrando {MAX_TIPOS} de {len(tipos)} tipos; o total soma todos."} if len(tipos) > MAX_TIPOS else {}),
+        **({"dica": f"{sem_medida} tipo(s) vieram sem medida no resumo. {DICA_SEM_MEDIDA}"} if sem_medida else {}),
         "total": arred(total),
         "por_pavimento": {p: arred(v) for p, v in por_pavimento.items()},
     }

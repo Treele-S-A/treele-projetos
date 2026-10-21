@@ -110,6 +110,20 @@ acrescentar o comentário; ninguém mexe na avaliação de outro.
 Para ler: `GET /api/chat/avaliacoes` (só administrador; `?nota=-1` para só
 os 👎), mais recentes primeiro.
 
+Cada 👎 manda um e-mail (pergunta, resposta, etapas e obra) para
+`CHAT_AVISAR_AVALIACOES` — padrão `estagio.projetos@treele.com.br`, vírgula
+separa vários, vazio desliga. O comentário vem depois do voto, então sai um
+segundo e-mail com o mesmo assunto quando ele chega. Trocar um 👍 por 👎
+também avisa. Usa o mesmo SMTP das notificações (`services/aviso_avaliacao.py`).
+
+Fora o e-mail, nada é automático e nada treina o modelo: os 👎 são lidos sob pedido,
+agrupados pela causa, e a correção vai nas instruções, nas consultas ou no
+extrator, com teste. Primeiro caso (21/10/2026): "quantos metros de PVC
+marrom/água fria" — o chat parou no resumo, que não tem comprimento de tubo,
+e disse que o modelo não tinha a medida; o índice tinha `Dimensions/Length`
+(4.147 m de PVC marrom no SER-HID-PE-AGUA R00). Agora o resumo sem medida
+aponta para `consultar_elementos`.
+
 A conversa não fica guardada no servidor: a tela manda o histórico a cada
 pergunta e esquece ao fechar o navegador. A exceção é a resposta avaliada.
 

@@ -116,6 +116,9 @@ class Settings(BaseSettings):
     anthropic_workspace_id: str = ""
     chat_modelo_claude: str = "claude-haiku-5-5"
     chat_fornecedor: str = ""
+    # Quem recebe e-mail a cada 👎 no chat (vírgula separa vários; vazio
+    # desliga). Pedido de 21/10/2026: só o estágio de projetos.
+    chat_avisar_avaliacoes: str = "estagio.projetos@treele.com.br"
 
     # Endereço das telas, para os links dos e-mails. Vazio = descobre sozinho
     # (ver endereco_site).

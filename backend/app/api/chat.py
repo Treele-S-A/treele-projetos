@@ -24,7 +24,7 @@ from ..config import settings
 from ..db import SessionLocal, get_db
 from ..deps import usuario_admin, usuario_atual
 from ..models import AvaliacaoChat, Obra, ObraMembro, Usuario
-from ..services import chat_modelo
+from ..services import aviso_avaliacao, chat_modelo
 from ..services.chat_ferramentas import Ferramentas, catalogo
 
 router = APIRouter(prefix="/chat", tags=["chat"])
@@ -104,6 +104,10 @@ Regras:
   assentamento de cerâmica não é reboco) e diga por quê. Diga de qual modelo
   e revisão vieram os números e lembre que eles saem do que o projetista
   modelou: conferir antes de orçar ou comprar.
+- Se quantitativos_modelo não trouxer a medida ou o material pedido
+  (comprimento de tubos, eletrodutos e dutos, cor, fabricante), não conclua
+  que o modelo não tem: passe para consultar_elementos, veja os campos da
+  categoria com mostrar_campos=true e some o parâmetro (ex.: 'Length').
 - Para qualquer outro parâmetro do modelo (resistência ao fogo, marca,
   fabricante, dimensões, se é externo, ambiente, fck) ou para elementos
   específicos, use consultar_elementos. Se não souber o nome exato do
@@ -317,6 +321,7 @@ def avaliar(
     )
     db.add(avaliacao)
     db.commit()
+    aviso_avaliacao.avisar(db, avaliacao)
     return AvaliacaoCriada(id=avaliacao.id)
 
 
@@ -331,12 +336,18 @@ def mudar_avaliacao(
     avaliacao = db.get(AvaliacaoChat, avaliacao_id)
     if avaliacao is None or avaliacao.usuario_id != usuario.id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Avaliação não encontrada.")
+    virou_negativa = dados.nota == -1 and avaliacao.nota != -1
+    comentario_antes = avaliacao.comentario
     if dados.nota is not None:
         avaliacao.nota = dados.nota
     if "comentario" in dados.model_fields_set:
         avaliacao.comentario = (dados.comentario or "").strip() or None
     avaliacao.atualizada_em = datetime.now(timezone.utc)
     db.commit()
+    if virou_negativa:
+        aviso_avaliacao.avisar(db, avaliacao)
+    elif avaliacao.comentario and avaliacao.comentario != comentario_antes:
+        aviso_avaliacao.avisar(db, avaliacao, so_comentario=True)
 
 
 @router.get("/avaliacoes", response_model=list[AvaliacaoOut])
