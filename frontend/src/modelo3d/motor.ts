@@ -148,9 +148,12 @@ export async function criarMotor(
     async estado() {
       const posicao = world.camera.controls.getPosition(new THREE.Vector3());
       const alvo = world.camera.controls.getTarget(new THREE.Vector3());
+      // O plano que corta de verdade é o `three`: arrastar a seta move o
+      // corte, mas o `origin` da biblioteca fica onde o plano nasceu (uma
+      // vista gravada assim reabria com os cortes fora do lugar).
       const cortes = [...clipper.list.values()].map((p) => ({
-        normal: p.normal.toArray() as Ponto3,
-        ponto: p.origin.toArray() as Ponto3,
+        normal: p.three.normal.toArray() as Ponto3,
+        ponto: p.three.coplanarPoint(new THREE.Vector3()).toArray() as Ponto3,
       }));
       const marcados = highlighter.selection.select ?? {};
       const porModelo: Record<string, string[]> = {};
