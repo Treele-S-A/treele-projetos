@@ -28,3 +28,6 @@ backend/estaticos/
 
 # Ajustes locais da Vercel (vercel link / vercel build).
 .vercel/
+
+# Copiado de node_modules no build (frontend/scripts/copiar-web-ifc.mjs).
+frontend/public/web-ifc/

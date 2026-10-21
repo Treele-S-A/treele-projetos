@@ -5,7 +5,15 @@ from ..db import get_db
 from ..deps import ContextoObra, montar_contexto, usuario_atual
 from ..enums import StatusArquivo, StatusRevisao, TipoArquivo
 from ..models import Arquivo, Usuario
-from ..schemas import ArquivoOut, ConfirmarEntrada, DownloadSaida, RevisaoOut, UploadConfirmarSaida
+from ..schemas import (
+    ArquivoOut,
+    ConfirmarEntrada,
+    DownloadSaida,
+    EnvioModelo,
+    ModeloSaida,
+    RevisaoOut,
+    UploadConfirmarSaida,
+)
 from ..services import auditoria, notificacoes
 from ..services.revisoes import remover_do_armazenamento
 from ..services.storage import armazenamento
@@ -178,6 +186,58 @@ def visualizar(
     return DownloadSaida(url=url, nome_arquivo=arquivo.nome_original, aviso=aviso)
 
 
+# Versão do formato de visualização (fragments da That Open 3.4). Sobe quando a
+# biblioteca mudar de formato: os modelos antigos deixam de ser usados e cada
+# um é convertido de novo na primeira abertura.
+VERSAO_MODELO = "v1"
+
+
+def chave_modelo(arquivo: Arquivo) -> str:
+    """O modelo convertido mora ao lado do IFC, com o mesmo nome."""
+    return f"{arquivo.storage_key}.{VERSAO_MODELO}.frag"
+
+
+@router.get("/{arquivo_id}/modelo", response_model=ModeloSaida)
+def modelo(
+    arquivo_id: int,
+    request: Request,
+    usuario: Usuario = Depends(usuario_atual),
+    db: Session = Depends(get_db),
+):
+    """Abre um IFC no visualizador 3D. Mesma regra do download, e a abertura
+    fica no registro como visualização."""
+    arquivo, ctx = _carregar(db, usuario, arquivo_id)
+    if arquivo.tipo != TipoArquivo.ifc:
+        raise HTTPException(
+            status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+            "Só IFC abre no visualizador 3D.",
+        )
+    aviso = _conferir_leitura(arquivo, ctx)
+    revisao = arquivo.revisao
+    doc = revisao.documento
+    saida = ModeloSaida(
+        arquivo_id=arquivo.id, nome=arquivo.nome_original, obra_id=ctx.obra.id,
+        obra=ctx.obra.codigo, documento=doc.codigo,
+        documento_id=doc.id, titulo=doc.titulo, disciplina=doc.disciplina.codigo,
+        revisao=revisao.numero, status_revisao=revisao.status.value, aviso=aviso,
+        tamanho_ifc=arquivo.tamanho,
+    )
+    chave = chave_modelo(arquivo)
+    pronto, tamanho = armazenamento.info(chave)
+    if pronto and tamanho > 0:
+        saida.modelo_url = armazenamento.url_download(chave, arquivo.nome_original + ".frag")
+        saida.tamanho_modelo = tamanho
+    else:
+        saida.ifc_url = armazenamento.url_download(arquivo.storage_key, arquivo.nome_original)
+        # Quem envia projetos (equipe) guarda a conversão para todos. A obra
+        # converte só para si: o modelo que os outros vão ver não vem dela.
+        if ctx.pode("enviar"):
+            destino = armazenamento.destino_upload(chave, "application/octet-stream")
+            saida.envio = EnvioModelo(url=destino.url, metodo=destino.metodo, headers=destino.headers)
+    _registrar_leitura(db, "visualizacao", arquivo, ctx, usuario, request)
+    return saida
+
+
 @router.delete("/{arquivo_id}", status_code=status.HTTP_204_NO_CONTENT)
 def remover(
     arquivo_id: int,
@@ -208,6 +268,8 @@ def remover(
             "cancele-a.",
         )
     chave = arquivo.storage_key
+    # O modelo 3D convertido vai junto (se houver; apagar o que não existe não falha).
+    chaves = [chave, chave_modelo(arquivo)] if arquivo.tipo == TipoArquivo.ifc else [chave]
 
     db.delete(arquivo)
     auditoria.registrar(
@@ -222,4 +284,4 @@ def remover(
         request=request,
     )
     db.commit()
-    remover_do_armazenamento(db, [chave])
+    remover_do_armazenamento(db, chaves)

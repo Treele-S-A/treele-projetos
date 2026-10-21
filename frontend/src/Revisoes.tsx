@@ -6,6 +6,7 @@
  */
 
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import {
   api,
   ErroApi,
@@ -340,6 +341,15 @@ Isto não pode ser desfeito.`)) {
                   >
                     Visualizar
                   </button>
+                )}
+                {a.tipo === "ifc" && a.status === "disponivel" && (
+                  <Link
+                    className="botao secundario pequeno"
+                    to={`/modelos?arquivos=${a.id}`}
+                    title="Abrir o modelo no visualizador 3D"
+                  >
+                    Ver em 3D
+                  </Link>
                 )}
                 <button
                   className="botao secundario pequeno"

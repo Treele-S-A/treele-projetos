@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import {
   Navigate,
   NavLink,
@@ -24,6 +24,10 @@ import Obras from "./paginas/Obras";
 import Registro from "./paginas/Registro";
 import SolicitacoesGerais from "./paginas/SolicitacoesGerais";
 import Usuarios from "./paginas/Usuarios";
+
+// O visualizador 3D (three.js + leitor de IFC) só carrega quando alguém abre um
+// modelo: o resto do sistema não paga o peso dele.
+const Modelo3D = lazy(() => import("./paginas/Modelo3D"));
 
 
 /** Lê a obra da URL — a moldura não tem rota própria com parâmetro. */
@@ -309,6 +313,14 @@ export default function App() {
         <Route path="/obras/:obraId/configuracoes" element={<Configuracoes />} />
         <Route path="/obras/:obraId/registro" element={<Registro />} />
         <Route path="/documentos/:documentoId" element={<Documento />} />
+        <Route
+          path="/modelos"
+          element={
+            <Suspense fallback={<Carregando texto="Abrindo o visualizador 3D" />}>
+              <Modelo3D />
+            </Suspense>
+          }
+        />
         <Route path="/usuarios" element={<Usuarios />} />
         <Route path="/conta" element={<Conta />} />
         <Route path="/notificacoes" element={<Notificacoes />} />

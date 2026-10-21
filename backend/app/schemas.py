@@ -542,6 +542,39 @@ class DownloadSaida(BaseModel):
     aviso: str | None = None
 
 
+class EnvioModelo(BaseModel):
+    url: str
+    metodo: str
+    headers: dict[str, str]
+
+
+class ModeloSaida(BaseModel):
+    """O que o visualizador 3D precisa para abrir um IFC (21/10/2026).
+
+    Com `modelo_url`, o IFC já foi convertido para o formato leve de
+    visualização e abre em segundos. Sem ele, a tela baixa o IFC (`ifc_url`),
+    converte no navegador e, se a pessoa puder (`envio`), guarda o resultado
+    para as próximas aberturas.
+    """
+
+    arquivo_id: int
+    nome: str
+    obra_id: int
+    obra: str
+    documento: str
+    documento_id: int
+    titulo: str | None = None
+    disciplina: str
+    revisao: str
+    status_revisao: str
+    aviso: str | None = None
+    tamanho_ifc: int | None = None
+    modelo_url: str | None = None
+    tamanho_modelo: int | None = None
+    ifc_url: str | None = None
+    envio: EnvioModelo | None = None
+
+
 # --------------------------------------------------------------------------
 # Auditoria
 # --------------------------------------------------------------------------

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { downloadZip } from "client-zip";
-import { Link, useParams, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import {
   api,
   ErroApi,
@@ -192,6 +192,26 @@ export default function Acervo() {
   // Só as marcadas em análise entram na liberação; as outras (já liberadas,
   // obsoletas) servem só para o download.
   const marcadasEmRevisao = [...marcadas.entries()].filter(([, m]) => m.status === "em_revisao");
+
+  // Modelos 3D (21/10/2026): os IFC dos documentos marcados abrem juntos no
+  // visualizador — cada disciplina vira um modelo da mesma cena.
+  const navegar = useNavigate();
+  async function verEm3D() {
+    setErro(null);
+    try {
+      const r = await api.post<ListaDownload>("/revisoes/arquivos-lote", {
+        revisao_ids: [...marcadas.keys()],
+      });
+      const ifcs = r.arquivos.filter((a) => a.tipo === "ifc");
+      if (!ifcs.length) {
+        setErro("Nenhum dos documentos marcados tem IFC para abrir em 3D.");
+        return;
+      }
+      navegar(`/modelos?arquivos=${ifcs.map((a) => a.id).join(",")}`);
+    } catch (ex) {
+      setErro(ex instanceof ErroApi ? ex.message : "Não foi possível abrir os modelos.");
+    }
+  }
 
   async function abrirDownload() {
     setPainelLote("baixar");
@@ -708,6 +728,9 @@ export default function Acervo() {
                   onClick={() => setMarcadas(new Map())}
                 >
                   Desmarcar
+                </button>
+                <button className="botao secundario" onClick={verEm3D}>
+                  Ver em 3D
                 </button>
                 <button className="botao secundario" onClick={abrirDownload}>
                   Baixar…
