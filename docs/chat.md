@@ -42,6 +42,30 @@ pedir) e o lê numa chamada à parte, que devolve só o texto lido.
   pode ser usado para melhorar os produtos dele (decisão da TREELE em
   07/10/2026: seguir com o gratuito).
 
+### Quantitativos dos modelos IFC (21/10/2026)
+
+Perguntas como "qual a área de reboco do prédio?", "volume de concreto das
+lajes" ou "quantas portas tem o 3º pavimento" vão para a consulta
+`quantitativos_modelo`. Ela não abre o IFC: lê o **resumo de quantitativos**
+guardado ao lado dele (`<chave do IFC>.r1.resumo.json`), gerado na conversão
+para o 3D por `frontend/src/modelo3d/resumo-ifc.ts` — para cada categoria +
+tipo + pavimento, quantos elementos, os materiais das camadas (com
+espessura) e a soma das quantidades exportadas (BaseQuantities / Qto_*), já
+em m, m² e m³.
+
+- A busca é por material, tipo ou categoria, sem acento ("reboco",
+  "ceramica argamassa"); sem busca, a consulta mostra o que o modelo tem,
+  para o assistente escolher.
+- Em parede, a **área lateral líquida** é uma face, sem as aberturas — numa
+  parede de acabamento, a área do revestimento. Elemento que veio sem área
+  nas quantidades (o Revit faz isso com IfcWall que não é reta) usa o
+  parâmetro **"Área"** do programa de projeto, e o assistente diz isso.
+- Vale a regra do download: a obra só soma o que está liberado. Cada consulta
+  fica no registro como leitura pelo assistente.
+- Teste com o SER-ARQ-PE-ESD R01 (Revit, 155 MB, resumo de 216 KB em 11 s):
+  reboco interno 15.221 m² e externo 8.942 m², com os tipos de cada um, a
+  pastilha (que tem reboco embaixo) à parte e o aviso de que é uma face.
+
 ### Etapas na tela (21/10/2026)
 
 Enquanto o assistente trabalha, a tela mostra o que ele está fazendo: cada

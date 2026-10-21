@@ -11,6 +11,7 @@ import * as FRAGS from "@thatopen/fragments";
 import CameraControls from "camera-controls";
 import * as THREE from "three";
 import type { PedidoConversao, RespostaConversao } from "./conversor.worker";
+import type { ResumoIfc } from "./resumo-ifc";
 
 export type Valor = string | number | boolean | null;
 
@@ -63,7 +64,10 @@ export interface Motor {
 const COR_SELECAO = new THREE.Color("#f0a500");
 
 /** Converte um IFC em fragments num worker, com o andamento de 0 a 1. */
-export function converter(bytes: Uint8Array, aoProgredir: (p: number) => void): Promise<Uint8Array> {
+export function converter(
+  bytes: Uint8Array,
+  aoProgredir: (p: number) => void,
+): Promise<{ frag: Uint8Array; resumo: ResumoIfc | null }> {
   return new Promise((resolver, rejeitar) => {
     const worker = new Worker(new URL("./conversor.worker.ts", import.meta.url), { type: "module" });
     worker.onmessage = (e: MessageEvent<RespostaConversao>) => {
@@ -71,7 +75,7 @@ export function converter(bytes: Uint8Array, aoProgredir: (p: number) => void): 
       if (r.tipo === "progresso") aoProgredir(r.valor);
       else {
         worker.terminate();
-        if (r.tipo === "pronto") resolver(r.frag);
+        if (r.tipo === "pronto") resolver({ frag: r.frag, resumo: r.resumo });
         else rejeitar(new Error(r.mensagem));
       }
     };

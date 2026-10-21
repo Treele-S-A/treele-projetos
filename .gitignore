@@ -31,3 +31,6 @@ backend/estaticos/
 
 # Copiado de node_modules no build (frontend/scripts/copiar-web-ifc.mjs).
 frontend/public/web-ifc/
+
+# Pacote temporário do extrator de quantitativos para rodar em Node.
+frontend/.tmp-resumo/

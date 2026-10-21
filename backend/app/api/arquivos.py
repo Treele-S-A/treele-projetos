@@ -197,6 +197,15 @@ def chave_modelo(arquivo: Arquivo) -> str:
     return f"{arquivo.storage_key}.{VERSAO_MODELO}.frag"
 
 
+# Versão do resumo de quantitativos (frontend/src/modelo3d/resumo-ifc.ts).
+VERSAO_RESUMO = "r1"
+
+
+def chave_resumo(arquivo: Arquivo) -> str:
+    """Resumo de quantitativos do IFC, para o chat (21/10/2026)."""
+    return f"{arquivo.storage_key}.{VERSAO_RESUMO}.resumo.json"
+
+
 @router.get("/{arquivo_id}/modelo", response_model=ModeloSaida)
 def modelo(
     arquivo_id: int,
@@ -234,6 +243,11 @@ def modelo(
         if ctx.pode("enviar"):
             destino = armazenamento.destino_upload(chave, "application/octet-stream")
             saida.envio = EnvioModelo(url=destino.url, metodo=destino.metodo, headers=destino.headers)
+    # O resumo sai da mesma conversão: quem guarda o modelo guarda o resumo.
+    saida.resumo_pronto = armazenamento.info(chave_resumo(arquivo))[0]
+    if not saida.resumo_pronto and ctx.pode("enviar") and saida.envio:
+        destino = armazenamento.destino_upload(chave_resumo(arquivo), "application/json")
+        saida.envio_resumo = EnvioModelo(url=destino.url, metodo=destino.metodo, headers=destino.headers)
     _registrar_leitura(db, "visualizacao", arquivo, ctx, usuario, request)
     return saida
 
@@ -269,7 +283,9 @@ def remover(
         )
     chave = arquivo.storage_key
     # O modelo 3D convertido vai junto (se houver; apagar o que não existe não falha).
-    chaves = [chave, chave_modelo(arquivo)] if arquivo.tipo == TipoArquivo.ifc else [chave]
+    chaves = (
+        [chave, chave_modelo(arquivo), chave_resumo(arquivo)] if arquivo.tipo == TipoArquivo.ifc else [chave]
+    )
 
     db.delete(arquivo)
     auditoria.registrar(

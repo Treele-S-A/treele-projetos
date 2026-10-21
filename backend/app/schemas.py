@@ -583,6 +583,9 @@ class ModeloSaida(BaseModel):
     tamanho_modelo: int | None = None
     ifc_url: str | None = None
     envio: EnvioModelo | None = None
+    # Resumo de quantitativos (para o chat): se já existe, e onde guardá-lo.
+    resumo_pronto: bool = False
+    envio_resumo: EnvioModelo | None = None
 
 
 # --------------------------------------------------------------------------

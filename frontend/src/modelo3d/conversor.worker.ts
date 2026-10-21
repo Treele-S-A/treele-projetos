@@ -4,11 +4,12 @@
  *  respondendo e mostrando o andamento (TREELE, 21/10/2026). */
 
 import { IfcImporter } from "@thatopen/fragments";
+import { resumirIfc, type ResumoIfc } from "./resumo-ifc";
 
 export type PedidoConversao = { bytes: Uint8Array; wasm: string };
 export type RespostaConversao =
   | { tipo: "progresso"; valor: number }
-  | { tipo: "pronto"; frag: Uint8Array }
+  | { tipo: "pronto"; frag: Uint8Array; resumo: ResumoIfc | null }
   | { tipo: "erro"; mensagem: string };
 
 declare const self: DedicatedWorkerGlobalScope;
@@ -22,7 +23,15 @@ self.onmessage = async (e: MessageEvent<PedidoConversao>) => {
       bytes: e.data.bytes,
       progressCallback: (valor) => avisar({ tipo: "progresso", valor }),
     });
-    avisar({ tipo: "pronto", frag }, [frag.buffer]);
+    // O resumo de quantitativos (para o chat) sai do mesmo IFC; se falhar, o
+    // modelo 3D vale do mesmo jeito.
+    let resumo: ResumoIfc | null = null;
+    try {
+      resumo = await resumirIfc(e.data.bytes, { path: e.data.wasm, absolute: true });
+    } catch {
+      resumo = null;
+    }
+    avisar({ tipo: "pronto", frag, resumo }, [frag.buffer]);
   } catch (erro) {
     avisar({ tipo: "erro", mensagem: erro instanceof Error ? erro.message : String(erro) });
   }

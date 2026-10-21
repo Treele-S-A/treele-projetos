@@ -40,6 +40,8 @@ interface ModeloSaida {
   tamanho_modelo: number | null;
   ifc_url: string | null;
   envio: { url: string; metodo: string; headers: Record<string, string> } | null;
+  resumo_pronto: boolean;
+  envio_resumo: { url: string; metodo: string; headers: Record<string, string> } | null;
 }
 
 interface VistaOut extends EstadoCena {
@@ -234,8 +236,17 @@ export default function Modelo3D() {
       } else {
         const ifc = await baixar(info.ifc_url!, info.tamanho_ifc, (p) => atualizar(id, { progresso: p }));
         atualizar(id, { etapa: "convertendo", progresso: 0 });
-        frag = await converter(ifc, (p) => atualizar(id, { progresso: p }));
+        const convertido = await converter(ifc, (p) => atualizar(id, { progresso: p }));
+        frag = convertido.frag;
         if (info.envio) void guardar(id, info.envio, frag.slice());
+        // O resumo de quantitativos vai para o chat do acervo poder somar.
+        if (info.envio_resumo && convertido.resumo) {
+          void fetch(info.envio_resumo.url, {
+            method: info.envio_resumo.metodo,
+            headers: info.envio_resumo.headers,
+            body: JSON.stringify(convertido.resumo),
+          }).catch(() => undefined);
+        }
       }
       atualizar(id, { etapa: "carregando" });
       await motor.current?.carregar(String(id), frag);

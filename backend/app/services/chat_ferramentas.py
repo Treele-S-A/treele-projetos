@@ -13,6 +13,9 @@ Ler o PDF de um projeto (07/10/2026) segue a regra do download: só abre o que
 a pessoa poderia baixar, e cada leitura fica no registro de atividades.
 """
 
+import json
+import unicodedata
+from collections import defaultdict
 from collections.abc import Callable
 from datetime import datetime, timedelta, timezone
 from typing import Any
@@ -51,6 +54,30 @@ ROTULO_STATUS = {
 # sem parâmetro vai SEM "parameters": objeto vazio o Gemini recusa, e a
 # recusa derruba todas as perguntas. Opções fixas levam "format": "enum".
 DECLARACOES = [
+    {
+        "name": "quantitativos_modelo",
+        "description": (
+            "Quantidades tiradas dos modelos IFC (BIM) de uma obra: áreas, volumes, "
+            "comprimentos e contagens por tipo de elemento, material e pavimento. Use para "
+            "perguntas como 'qual a área de reboco', 'volume de concreto das lajes', 'quantas "
+            "portas', 'área de piso cerâmico'. Busque pelo material ou pelo tipo (ex.: "
+            "'reboco', 'concreto', 'porta', 'drywall', 'cerâmica'). Sem busca, devolve o que "
+            "o modelo tem (categorias, tipos e materiais), para escolher a busca certa."
+        ),
+        "parameters": {
+            "type": "OBJECT",
+            "properties": {
+                "obra": {"type": "STRING", "description": "Código da obra, ex.: SER."},
+                "busca": {
+                    "type": "STRING",
+                    "description": "Material, tipo ou categoria, ex.: 'reboco'. Palavras separadas: todas precisam aparecer.",
+                },
+                "disciplina": {"type": "STRING", "description": "Código da disciplina, ex.: ARQ. Opcional."},
+                "pavimento": {"type": "STRING", "description": "Trecho do nome do pavimento, ex.: 'Tipo', '3°'. Opcional."},
+            },
+            "required": ["obra"],
+        },
+    },
     {
         "name": "listar_obras",
         "description": "Lista as obras que a pessoa pode ver, com código e nome.",
@@ -230,6 +257,7 @@ class Ferramentas:
             "liberacoes_recentes": self.liberacoes_recentes,
             "listar_solicitacoes": self.listar_solicitacoes,
             "ler_projeto": self.ler_projeto,
+            "quantitativos_modelo": self.quantitativos_modelo,
         }.get(nome)
         if metodo is None:
             return {"erro": f"Consulta desconhecida: {nome}."}
@@ -244,6 +272,71 @@ class Ferramentas:
         return resultado
 
     # ------------------------------------------------------------- consultas
+
+    def quantitativos_modelo(self, obra: str, busca: str | None = None, disciplina: str | None = None,
+                             pavimento: str | None = None):
+        """Soma, no resumo de cada IFC da obra, o que bate com a busca (21/10/2026)."""
+        from ..api.arquivos import _conferir_leitura, chave_resumo
+
+        ctx = self._contexto(obra)
+        consulta = select(Documento).where(Documento.obra_id == ctx.obra.id)
+        if disciplina:
+            consulta = consulta.join(Disciplina).where(Disciplina.codigo == disciplina.upper())
+        visiveis = status_visiveis(ctx)
+        termos = _normalizar(busca or "").split()
+        filtro_pav = _normalizar(pavimento or "")
+        modelos: list[dict[str, Any]] = []
+        for doc in self.db.scalars(consulta.order_by(Documento.codigo)):
+            if not ctx.ve_disciplina(doc.disciplina.codigo):
+                continue
+            revisoes = sorted(
+                (r for r in doc.revisoes if r.status in visiveis and r.status != StatusRevisao.cancelado),
+                key=lambda r: r.ordem, reverse=True,
+            )
+            arquivo = next(
+                (a for r in revisoes for a in r.arquivos
+                 if a.tipo == TipoArquivo.ifc and a.status.value == "disponivel"),
+                None,
+            )
+            if arquivo is None:
+                continue
+            try:
+                aviso = _conferir_leitura(arquivo, ctx)
+            except HTTPException:
+                continue
+            existe, _ = armazenamento.info(chave_resumo(arquivo))
+            base = {"documento": doc.codigo, "titulo": doc.titulo, "link": f"/documentos/{doc.id}",
+                    "revisao": f"R{arquivo.revisao.numero}",
+                    "status": ROTULO_STATUS[arquivo.revisao.status.value]}
+            if aviso:
+                base["aviso"] = aviso
+            if not existe:
+                modelos.append({**base, "erro": "Este IFC ainda não tem resumo de quantitativos (abra-o uma vez no 3D)."})
+                continue
+            resumo = json.loads(armazenamento.ler_bytes(chave_resumo(arquivo)))
+            auditoria.registrar(
+                self.db, acao="lido_pelo_assistente", entidade="arquivo", entidade_id=arquivo.id,
+                usuario=self.usuario, obra_id=ctx.obra.id,
+                detalhes={"arquivo": arquivo.nome_original, "documento": doc.codigo,
+                          "revisao": arquivo.revisao.numero, "consulta": "quantitativos", "busca": busca or ""},
+            )
+            modelos.append({**base, **_somar_resumo(resumo, termos, filtro_pav)})
+        if not modelos:
+            return {"erro": f"Nenhum modelo IFC que você possa ver na obra {ctx.obra.codigo}"
+                            + (f" na disciplina {disciplina.upper()}." if disciplina else ".")}
+        return {
+            "obra": ctx.obra.codigo,
+            "busca": busca or "",
+            "modelos": modelos,
+            "como_ler": (
+                "Quantidades exportadas pelo programa de projeto, em m, m² e m³. Em parede, a "
+                "'área lateral líquida' é a área de uma face, já sem as aberturas — numa parede "
+                "de acabamento (reboco, pintura, cerâmica), é a área do revestimento. A 'área "
+                "informada' é de elementos que vieram sem área nas quantidades do IFC: é o "
+                "parâmetro 'Área' do programa de projeto (no Revit, uma face, sem as aberturas); "
+                "some-a ao total e diga que veio por esse caminho."
+            ),
+        }
 
     def listar_obras(self) -> dict[str, Any]:
         return {"obras": [{"codigo": o.codigo, "nome": o.nome} for o in self._obras_visiveis()]}
@@ -562,6 +655,9 @@ def descrever(nome: str, args: dict[str, Any]) -> str:
         case "listar_solicitacoes":
             obra = f" da obra {args['obra']}" if args.get("obra") else ""
             return f"Consultando as solicitações de revisão{obra}"
+        case "quantitativos_modelo":
+            busca = f" ({args['busca']})" if args.get("busca") else ""
+            return f"Somando quantidades do modelo IFC{busca} na obra {args.get('obra', '')}".strip()
         case "ler_projeto":
             rev = f" ({args['revisao']})" if args.get("revisao") else ""
             return f"Lendo o PDF de {args.get('codigo', 'uma prancha')}{rev}"
@@ -587,6 +683,104 @@ def resumir(resultado: dict[str, Any]) -> str | None:
     if "obras" in resultado:
         n = len(resultado["obras"])
         return f"{n} obra{'' if n == 1 else 's'}"
+    if "modelos" in resultado:
+        n = len(resultado["modelos"])
+        return f"{n} modelo{'' if n == 1 else 's'} IFC consultado{'' if n == 1 else 's'}"
     if "leitura" in resultado:
         return f"PDF lido ({resultado.get('revisao_lida', '')})".replace(" ()", "")
     return None
+
+
+# ------------------------------------------------------- quantitativos IFC
+
+ROTULO_QUANTIDADE = {
+    "NetSideArea": "area_lateral_liquida_m2",
+    "GrossSideArea": "area_lateral_bruta_m2",
+    "NetArea": "area_liquida_m2",
+    "GrossArea": "area_bruta_m2",
+    "Area": "area_m2",
+    "GrossFootprintArea": "area_projecao_m2",
+    "NetFootprintArea": "area_projecao_liquida_m2",
+    "GrossCeilingArea": "area_forro_m2",
+    # Elemento sem área nas quantidades do IFC: o parâmetro "Área" do programa
+    # de projeto (no Revit, a área de uma face, sem as aberturas).
+    "AreaInformada": "area_informada_m2",
+    "NetVolume": "volume_liquido_m3",
+    "GrossVolume": "volume_bruto_m3",
+    "Volume": "volume_m3",
+    "Length": "comprimento_m",
+}
+UNIDADE = {"area": "m2", "volume": "m3", "comprimento": "m", "contagem": "un", "peso": "kg"}
+MAX_TIPOS = 30
+
+
+def _normalizar(texto: str) -> str:
+    sem_acento = unicodedata.normalize("NFKD", texto).encode("ascii", "ignore").decode()
+    return sem_acento.lower().strip()
+
+
+def _rotulo(nome: str, grandeza: str) -> str | None:
+    if nome in ROTULO_QUANTIDADE:
+        return ROTULO_QUANTIDADE[nome]
+    if grandeza == "comprimento":
+        return None  # só o "Length" soma (larguras e alturas somadas não dizem nada)
+    return f"{nome}_{UNIDADE.get(grandeza, '')}".rstrip("_")
+
+
+def _somar_resumo(resumo: dict, termos: list[str], filtro_pav: str) -> dict[str, Any]:
+    grandezas = resumo.get("grandezas", {})
+    materiais = resumo.get("materiais", {})
+    grupos = [
+        g for g in resumo.get("grupos", [])
+        if not filtro_pav or filtro_pav in _normalizar(g.get("pavimento") or "")
+    ]
+    if not termos:
+        # Sem busca: o que há no modelo, para a IA escolher o que procurar.
+        categorias: dict[str, int] = defaultdict(int)
+        tipos: dict[str, int] = defaultdict(int)
+        for g in grupos:
+            categorias[g["categoria"]] += g["n"]
+            tipos[f"{g['categoria']} · {g['tipo']}"] += g["n"]
+        nomes_materiais = sorted({m.split(" (")[0] for ms in materiais.values() for m in ms})
+        return {
+            "elementos": sum(categorias.values()),
+            "categorias": dict(sorted(categorias.items(), key=lambda x: -x[1])),
+            "tipos_mais_comuns": [t for t, _ in sorted(tipos.items(), key=lambda x: -x[1])[:60]],
+            "materiais": nomes_materiais[:120],
+            "pavimentos": resumo.get("pavimentos", []),
+        }
+
+    def bate(g: dict) -> bool:
+        texto = _normalizar(" ".join([g["categoria"], g["tipo"], *materiais.get(g["tipo"], [])]))
+        return all(t in texto for t in termos)
+
+    por_tipo: dict[tuple[str, str], dict[str, Any]] = {}
+    por_pavimento: dict[str, dict[str, float]] = defaultdict(lambda: defaultdict(float))
+    total: dict[str, float] = defaultdict(float)
+    for g in filter(bate, grupos):
+        chave = (g["categoria"], g["tipo"])
+        t = por_tipo.setdefault(chave, {
+            "categoria": g["categoria"], "tipo": g["tipo"],
+            "materiais": materiais.get(g["tipo"], []), "elementos": 0, "quantidades": defaultdict(float),
+        })
+        t["elementos"] += g["n"]
+        pav = g.get("pavimento") or "(sem pavimento)"
+        por_pavimento[pav]["elementos"] += g["n"]
+        for nome, valor in g["q"].items():
+            rotulo = _rotulo(nome, grandezas.get(nome, ""))
+            if rotulo is None:
+                continue
+            t["quantidades"][rotulo] += valor
+            total[rotulo] += valor
+            por_pavimento[pav][rotulo] += valor
+    if not por_tipo:
+        return {"encontrados": 0, "aviso": "Nada no modelo bate com a busca. Tente sem busca para ver os materiais e tipos."}
+    arred = lambda d: {k: round(v, 2) for k, v in d.items()}  # noqa: E731
+    tipos = sorted(por_tipo.values(), key=lambda t: -t["elementos"])
+    return {
+        "encontrados": len(tipos),
+        "tipos": [{**t, "quantidades": arred(t["quantidades"])} for t in tipos[:MAX_TIPOS]],
+        **({"aviso": f"Mostrando {MAX_TIPOS} de {len(tipos)} tipos; o total soma todos."} if len(tipos) > MAX_TIPOS else {}),
+        "total": arred(total),
+        "por_pavimento": {p: arred(v) for p, v in por_pavimento.items()},
+    }
