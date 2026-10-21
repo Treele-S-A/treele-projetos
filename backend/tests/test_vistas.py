@@ -131,3 +131,19 @@ def test_obra_pede_correcao_com_vista(cliente, c):
                      json={"descricao": "Na obra a porta não cabe: ver a vista.", "vista_id": vid})
     assert r.status_code == 201, r.text
     assert r.json()["status"] == "aberta" and r.json()["vista_id"] == vid and len(r.json()["anexos"]) == 1
+
+
+def test_coordenador_reprova_com_vista(cliente, c):
+    vid = _vista(cliente, c["coord"], c["obra"]["id"], [c["hid"]]).json()["id"]
+    modelo = cliente.get(f"/arquivos/{c['hid']}/modelo", headers=c["coord"]).json()
+    cliente.post("/notificacoes/lidas", headers=c["proj"])
+    # Vista inexistente ou sem imagem não entra.
+    r = cliente.post(f"/revisoes/{modelo['revisao_id']}/reprovar", headers=c["coord"],
+                     json={"observacao": "Tubulação passa pela viga.", "vista_id": 999999})
+    assert r.status_code == 422
+    r = cliente.post(f"/revisoes/{modelo['revisao_id']}/reprovar", headers=c["coord"],
+                     json={"observacao": "A tubulação de esgoto atravessa a viga V12.", "vista_id": vid})
+    assert r.status_code == 200, r.text
+    assert r.json()["status"] == "reprovado" and r.json()["vista_reprovacao_id"] == vid
+    avisos = [a for a in cliente.get("/notificacoes", headers=c["proj"]).json() if not a["lida"]]
+    assert any("vista marcada do modelo 3D" in a["texto"] for a in avisos), avisos

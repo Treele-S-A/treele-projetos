@@ -249,6 +249,7 @@ class RevisaoOut(Modelo):
     observacao: str | None = None
     reprovada_em: datetime | None = None
     reprovada_por: UsuarioOut | None = None
+    vista_reprovacao_id: int | None = None
     arquivos: list[ArquivoOut] = []
 
 
@@ -507,6 +508,8 @@ class ReprovarEntrada(BaseModel):
     # Obrigatória: é o que o projetista precisa corrigir, e o registro da
     # análise crítica.
     observacao: str = Field(min_length=1, max_length=4000)
+    # Vista do modelo 3D com a marcação do problema (opcional).
+    vista_id: int | None = None
 
 
 # --------------------------------------------------------------------------
@@ -571,6 +574,7 @@ class ModeloSaida(BaseModel):
     documento_id: int
     titulo: str | None = None
     disciplina: str
+    revisao_id: int
     revisao: str
     status_revisao: str
     aviso: str | None = None

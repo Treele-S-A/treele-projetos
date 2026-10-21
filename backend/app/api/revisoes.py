@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 
 from ..db import get_db
 from ..deps import montar_contexto, status_visiveis, usuario_atual
-from ..models import Revisao, Usuario
+from ..models import Revisao, Usuario, VistaModelo
 from ..enums import StatusRevisao
 from ..enums import StatusSolicitacao
 from ..enums import StatusArquivo
@@ -285,6 +285,15 @@ def reprovar(
             "Escreva a observação: é o que o projetista precisa corrigir.",
         )
 
+    # Vista do modelo 3D com o problema marcado (21/10/2026): desta obra e com
+    # a imagem já guardada.
+    vista = None
+    if dados.vista_id is not None:
+        vista = db.get(VistaModelo, dados.vista_id)
+        if vista is None or vista.obra_id != ctx.obra.id or not vista.imagem_tamanho:
+            raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Vista do modelo 3D não encontrada.")
+        revisao.vista_reprovacao_id = vista.id
+
     servico.reprovar(db, revisao, usuario.id, observacao)
     auditoria.registrar(
         db, acao="revisao_reprovada", entidade="revisao", entidade_id=revisao.id,
@@ -293,6 +302,7 @@ def reprovar(
             "documento": revisao.documento.codigo,
             "revisao": revisao.numero,
             "observacao": observacao,
+            **({"vista": vista.titulo} if vista else {}),
         },
         request=request,
     )

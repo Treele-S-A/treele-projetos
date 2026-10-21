@@ -248,7 +248,12 @@ def ao_reprovar(db: Session, revisao: Revisao, autor: Usuario) -> list[Notificac
             f"{autor.nome} reprovou a R{revisao.numero} de {_nome_documento(documento)}, "
             f"na obra {obra.codigo} · {obra.nome}, na análise crítica.\n\n"
             f"Observação:\n{_resumo(revisao.observacao or '')}\n\n"
-            "Envie a correção numa revisão nova."
+            + (
+                "A reprovação traz uma vista marcada do modelo 3D: abra-a na tela do documento.\n\n"
+                if revisao.vista_reprovacao_id
+                else ""
+            )
+            + "Envie a correção numa revisão nova."
         ),
     )
 

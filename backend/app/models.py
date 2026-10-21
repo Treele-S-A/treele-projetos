@@ -276,6 +276,10 @@ class Revisao(Base):
     reprovada_por_id: Mapped[int | None] = mapped_column(
         ForeignKey("usuarios.id"), nullable=True
     )
+    # Vista marcada do modelo 3D que mostra o que reprovar (21/10/2026).
+    vista_reprovacao_id: Mapped[int | None] = mapped_column(
+        ForeignKey("vistas_modelo.id", ondelete="SET NULL"), nullable=True
+    )
 
     documento: Mapped["Documento"] = relationship(back_populates="revisoes")
     arquivos: Mapped[list["Arquivo"]] = relationship(

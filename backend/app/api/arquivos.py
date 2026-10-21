@@ -219,7 +219,7 @@ def modelo(
         arquivo_id=arquivo.id, nome=arquivo.nome_original, obra_id=ctx.obra.id,
         obra=ctx.obra.codigo, documento=doc.codigo,
         documento_id=doc.id, titulo=doc.titulo, disciplina=doc.disciplina.codigo,
-        revisao=revisao.numero, status_revisao=revisao.status.value, aviso=aviso,
+        revisao_id=revisao.id, revisao=revisao.numero, status_revisao=revisao.status.value, aviso=aviso,
         tamanho_ifc=arquivo.tamanho,
     )
     chave = chave_modelo(arquivo)

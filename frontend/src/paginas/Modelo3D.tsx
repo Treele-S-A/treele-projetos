@@ -31,6 +31,7 @@ interface ModeloSaida {
   documento_id: number;
   titulo: string | null;
   disciplina: string;
+  revisao_id: number;
   revisao: string;
   status_revisao: string;
   aviso: string | null;
@@ -444,6 +445,7 @@ export default function Modelo3D() {
           documentoSugerido={modeloDaSelecao?.info?.documento_id ?? null}
           podePedir={obra?.permissoes.includes("solicitar_revisao") ?? false}
           podeMarcar={obra?.permissoes.includes("autorizar_revisao") ?? false}
+          podeReprovar={obra?.permissoes.includes("publicar") ?? false}
           aoFechar={(criou) => {
             setRascunho(null);
             if (criou) carregarVistas();
@@ -503,7 +505,9 @@ interface Membro {
 }
 
 /** Marcar a foto, dar um título e guardar a vista — e, se for o caso, pedir a
- *  correção do documento com a vista anexada e os projetistas marcados. */
+ *  correção do documento com a vista anexada. O caminho sai do estado do
+ *  documento: liberado vira solicitação de revisão (com os projetistas
+ *  marcados); em análise vira reprovação da revisão, com o motivo. */
 function PainelVista({
   rascunho,
   obraId,
@@ -511,6 +515,7 @@ function PainelVista({
   documentoSugerido,
   podePedir,
   podeMarcar,
+  podeReprovar,
   aoFechar,
 }: {
   rascunho: RascunhoVista;
@@ -519,11 +524,12 @@ function PainelVista({
   documentoSugerido: number | null;
   podePedir: boolean;
   podeMarcar: boolean;
+  podeReprovar: boolean;
   aoFechar: (criou: boolean) => void;
 }) {
   const gerarPng = useRef<() => Promise<Blob>>(async () => rascunho.foto);
   const [titulo, setTitulo] = useState("");
-  const [pedir, setPedir] = useState(podePedir);
+  const [pedir, setPedir] = useState(podePedir || podeReprovar);
   const documentos = modelos
     .filter((m) => m.info && m.etapa === "pronto")
     .map((m) => m.info!)
@@ -536,7 +542,11 @@ function PainelVista({
   const [marcados, setMarcados] = useState<Set<number>>(new Set());
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
-  const [feito, setFeito] = useState<{ vistaId: number; documentoId: number | null } | null>(null);
+  const [feito, setFeito] = useState<{
+    vistaId: number;
+    documentoId: number | null;
+    caminho: "solicitar" | "reprovar" | null;
+  } | null>(null);
 
   useEffect(() => {
     if (!podeMarcar) return;
@@ -547,12 +557,31 @@ function PainelVista({
   }, [obraId, podeMarcar]);
 
   const documento = documentos.find((d) => d.documento_id === documentoId);
-  const naoLiberado = pedir && documento && documento.status_revisao !== "liberado_para_obra";
+  const liberado = documento?.status_revisao === "liberado_para_obra";
+  const emAnalise = documento?.status_revisao === "em_revisao";
+  const caminho: "solicitar" | "reprovar" | null =
+    !pedir || !documento
+      ? null
+      : liberado && podePedir
+        ? "solicitar"
+        : emAnalise && podeReprovar
+          ? "reprovar"
+          : null;
+  const impedimento =
+    pedir && documento && !caminho
+      ? emAnalise
+        ? "Este documento está em análise: só o coordenador reprova a revisão."
+        : liberado
+          ? "Seu papel não pede revisão de projeto."
+          : `A R${documento.revisao} deste documento não está liberada nem em análise: não aceita pedido de correção.`
+      : null;
 
   async function concluir() {
     if (!titulo.trim()) return setErro("Dê um título à vista (ex.: Pilar P12 invade a porta da sala).");
     if (pedir && !documentoId) return setErro("Escolha o documento a corrigir.");
-    if (pedir && descricao.trim().length < 10) return setErro("Descreva o que deve mudar.");
+    if (impedimento) return setErro(impedimento);
+    if (caminho && descricao.trim().length < 10)
+      return setErro(caminho === "reprovar" ? "Escreva o motivo da reprovação." : "Descreva o que deve mudar.");
     setEnviando(true);
     setErro(null);
     try {
@@ -573,14 +602,19 @@ function PainelVista({
       });
       if (!envio.ok) throw new Error("A imagem da vista não subiu. Tente de novo.");
       await api.post(`/vistas/${criada.vista.id}/imagem`);
-      if (pedir && documentoId) {
+      if (caminho === "solicitar" && documentoId) {
         await api.post(`/documentos/${documentoId}/solicitacoes`, {
           descricao: descricao.trim(),
           vista_id: criada.vista.id,
           mencionados: [...marcados],
         });
+      } else if (caminho === "reprovar" && documento) {
+        await api.post(`/revisoes/${documento.revisao_id}/reprovar`, {
+          observacao: descricao.trim(),
+          vista_id: criada.vista.id,
+        });
       }
-      setFeito({ vistaId: criada.vista.id, documentoId: pedir ? documentoId : null });
+      setFeito({ vistaId: criada.vista.id, documentoId: caminho ? documentoId : null, caminho });
     } catch (e) {
       setErro(e instanceof ErroApi || e instanceof Error ? e.message : "Não foi possível guardar a vista.");
     } finally {
@@ -592,9 +626,17 @@ function PainelVista({
     return (
       <div className="painel-vista-fundo">
         <div className="painel-vista" role="dialog" aria-label="Vista guardada">
-          <strong>{feito.documentoId ? "Vista guardada e correção pedida" : "Vista guardada"}</strong>
+          <strong>
+            {feito.caminho === "reprovar"
+              ? "Vista guardada e revisão reprovada"
+              : feito.documentoId
+                ? "Vista guardada e correção pedida"
+                : "Vista guardada"}
+          </strong>
           <p className="silencioso" style={{ fontSize: 13 }}>
-            {feito.documentoId
+            {feito.caminho === "reprovar"
+              ? "A revisão foi reprovada com o motivo e a vista. Quem a enviou recebeu o aviso e o e-mail; a correção vem numa revisão nova."
+              : feito.documentoId
               ? podeMarcar
                 ? "A revisão já está autorizada. O projetista da última revisão e os marcados foram avisados, com a imagem marcada como anexo e o link para abrir esta vista no 3D."
                 : "O pedido foi para o coordenador autorizar, com a imagem marcada como anexo e o link para abrir esta vista no 3D."
@@ -603,7 +645,7 @@ function PainelVista({
           <div className="linha" style={{ gap: 8 }}>
             {feito.documentoId && (
               <Link className="botao pequeno" to={`/documentos/${feito.documentoId}`}>
-                Ver o pedido no documento
+                {feito.caminho === "reprovar" ? "Ver a revisão no documento" : "Ver o pedido no documento"}
               </Link>
             )}
             <button className="botao secundario pequeno" onClick={() => aoFechar(true)}>
@@ -642,7 +684,7 @@ function PainelVista({
           />
         </label>
 
-        {podePedir && (
+        {(podePedir || podeReprovar) && (
           <label className="opcao-aviso" style={{ marginTop: 8 }}>
             <input
               type="checkbox"
@@ -651,7 +693,9 @@ function PainelVista({
               disabled={enviando}
             />
             Pedir correção de um projeto com esta vista
-            <span className="silencioso">— vira solicitação de revisão, com a imagem anexada</span>
+            <span className="silencioso">
+              — liberado: vira solicitação de revisão; em análise: reprovação da revisão. A imagem vai junto.
+            </span>
           </label>
         )}
 
@@ -672,14 +716,16 @@ function PainelVista({
                 ))}
               </select>
             </label>
-            {naoLiberado && (
-              <p className="aviso-modelo">
-                Este documento ainda não tem revisão liberada para obra, e o pedido de revisão não vai passar.
-                Se ele está em análise, reprove a revisão na página do documento, com a observação.
+            {caminho === "reprovar" && documento && (
+              <p className="nota-reprovacao">
+                A R{documento.revisao} está em análise: a correção é a <strong>reprovação</strong>. Ela fica
+                reprovada com esta vista e o motivo abaixo, quem a enviou recebe o aviso e o e-mail, e a correção
+                vem numa revisão nova.
               </p>
             )}
+            {impedimento && <p className="aviso-modelo">{impedimento}</p>}
             <label className="campo" style={{ display: "block", marginTop: 8 }}>
-              <span className="rotulo">O que deve mudar</span>
+              <span className="rotulo">{caminho === "reprovar" ? "Motivo da reprovação" : "O que deve mudar"}</span>
               <textarea
                 value={descricao}
                 onChange={(e) => setDescricao(e.target.value)}
@@ -689,7 +735,7 @@ function PainelVista({
                 placeholder="Ex.: O pilar P12 invade o vão da porta da sala do 2º pavimento. Ajustar a porta ou o pilar."
               />
             </label>
-            {podeMarcar && projetistas.length > 0 && (
+            {caminho === "solicitar" && podeMarcar && projetistas.length > 0 && (
               <div style={{ marginTop: 8 }}>
                 <span className="rotulo">Marcar projetistas</span>
                 <div className="linha" style={{ gap: 12, flexWrap: "wrap", marginTop: 4 }}>
@@ -722,7 +768,13 @@ function PainelVista({
         {erro && <p className="erro-modelo">{erro}</p>}
         <div className="linha" style={{ gap: 8, marginTop: 12 }}>
           <button className="botao" disabled={enviando} onClick={concluir}>
-            {enviando ? "Guardando…" : pedir ? "Guardar e pedir correção" : "Guardar vista"}
+            {enviando
+              ? "Guardando…"
+              : caminho === "reprovar"
+                ? "Guardar e reprovar"
+                : caminho === "solicitar"
+                  ? "Guardar e pedir correção"
+                  : "Guardar vista"}
           </button>
           <button className="botao secundario pequeno" disabled={enviando} onClick={() => aoFechar(false)}>
             Cancelar

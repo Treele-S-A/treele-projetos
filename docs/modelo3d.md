@@ -76,8 +76,11 @@ abriram em 3,6 s.
   - Pedido do coordenador já nasce autorizado: o projetista da última
     revisão e os marcados recebem o aviso e o e-mail, que cita a vista.
   - Pedido da obra vai para o coordenador autorizar, como os outros.
-  - Vale a regra de sempre: só se pede revisão de documento liberado. Para
-    o que está em análise, a correção é a reprovação, com a observação.
+  - Documento **em análise**: o mesmo botão reprova a revisão (só o
+    coordenador), com o motivo e a vista (`POST /revisoes/{id}/reprovar`
+    aceita `vista_id`). Quem enviou a revisão recebe o aviso, que cita a
+    vista; na página do documento, a reprovação mostra a imagem marcada e o
+    link para abrir a vista no 3D.
 - **Vistas da obra**, na lateral do visualizador, com miniatura: qualquer
   pessoa da obra reabre (`/modelos?vista=ID`) e vê a cena como foi marcada.
   Quem abre só vê modelos que poderia abrir sozinho.

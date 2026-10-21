@@ -180,6 +180,8 @@ export interface Revisao {
   observacao: string | null;
   reprovada_em: string | null;
   reprovada_por: Usuario | null;
+  /** Vista marcada do modelo 3D que mostra o que foi reprovado. */
+  vista_reprovacao_id: number | null;
   arquivos: Arquivo[];
 }
 

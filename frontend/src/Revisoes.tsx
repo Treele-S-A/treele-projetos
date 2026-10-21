@@ -7,6 +7,7 @@
 
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import VistaAnexada from "./VistaAnexada";
 import {
   api,
   ErroApi,
@@ -272,6 +273,9 @@ Isto não pode ser desfeito.`)) {
                 {revisao.status === "reprovado" ? "Motivo da reprovação" : "Observação da liberação"}
               </span>
               <div style={{ marginTop: 3 }}>{revisao.observacao}</div>
+              {revisao.status === "reprovado" && revisao.vista_reprovacao_id && (
+                <VistaAnexada vistaId={revisao.vista_reprovacao_id} />
+              )}
             </div>
           )}
 

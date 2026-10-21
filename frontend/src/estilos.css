@@ -2040,3 +2040,25 @@ table.tabela {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.vista-anexada {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  margin-top: 8px;
+}
+.vista-anexada img {
+  width: 120px;
+  height: 84px;
+  object-fit: cover;
+  border: 1px solid var(--traco-medio);
+  border-radius: 6px;
+  background: #eef2f3;
+}
+.nota-reprovacao {
+  margin: 8px 0 0;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: var(--obsoleto-fundo);
+  color: var(--obsoleto);
+  font-size: 12.5px;
+}
