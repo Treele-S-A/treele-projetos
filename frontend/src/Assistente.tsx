@@ -51,6 +51,123 @@ async function perguntarComEtapas(
   if (resto.trim()) aoEvento(JSON.parse(resto) as Evento);
 }
 
+interface EstadoAvaliacao {
+  id: number | null;
+  nota: 1 | -1;
+  comentario: string;
+  comentarioEnviado: boolean;
+  erro: string | null;
+}
+
+/** 👍/👎 numa resposta (TREELE, 21/10/2026). Avaliar guarda a conversa até
+ *  esta resposta, para saber onde o assistente erra; no 👎, um comentário
+ *  opcional diz o que estava errado. */
+function Avaliacao({
+  conversa,
+  etapas,
+  obraId,
+}: {
+  conversa: Turno[];
+  etapas: string[];
+  obraId: number | null;
+}) {
+  const [estado, setEstado] = useState<EstadoAvaliacao | null>(null);
+  const [enviando, setEnviando] = useState(false);
+
+  async function votar(nota: 1 | -1) {
+    if (enviando || estado?.nota === nota) return;
+    setEnviando(true);
+    try {
+      if (estado?.id) {
+        await api.patch(`/chat/avaliacoes/${estado.id}`, { nota });
+        setEstado({ ...estado, nota, erro: null });
+      } else {
+        const r = await api.post<{ id: number }>("/chat/avaliacoes", {
+          conversa: conversa.slice(-24).map(({ papel, texto }) => ({ papel, texto })),
+          etapas,
+          nota,
+          obra_id: obraId,
+        });
+        setEstado({ id: r.id, nota, comentario: "", comentarioEnviado: false, erro: null });
+      }
+    } catch (ex) {
+      setEstado((e) => ({
+        id: e?.id ?? null,
+        nota: e?.nota ?? nota,
+        comentario: e?.comentario ?? "",
+        comentarioEnviado: false,
+        erro: ex instanceof ErroApi ? ex.message : "Não foi possível registrar a avaliação.",
+      }));
+    } finally {
+      setEnviando(false);
+    }
+  }
+
+  async function comentar(e: FormEvent) {
+    e.preventDefault();
+    if (!estado?.id || !estado.comentario.trim()) return;
+    setEnviando(true);
+    try {
+      await api.patch(`/chat/avaliacoes/${estado.id}`, { comentario: estado.comentario.trim() });
+      setEstado({ ...estado, comentarioEnviado: true, erro: null });
+    } catch (ex) {
+      setEstado({
+        ...estado,
+        erro: ex instanceof ErroApi ? ex.message : "Não foi possível enviar o comentário.",
+      });
+    } finally {
+      setEnviando(false);
+    }
+  }
+
+  return (
+    <div className="assistente-avaliacao">
+      <div className="assistente-votos">
+        <button
+          type="button"
+          className={estado?.nota === 1 ? "ativo" : undefined}
+          aria-pressed={estado?.nota === 1}
+          aria-label="Resposta útil"
+          title="Resposta útil"
+          disabled={enviando}
+          onClick={() => votar(1)}
+        >
+          👍
+        </button>
+        <button
+          type="button"
+          className={estado?.nota === -1 ? "ativo" : undefined}
+          aria-pressed={estado?.nota === -1}
+          aria-label="Resposta com problema"
+          title="Resposta com problema"
+          disabled={enviando}
+          onClick={() => votar(-1)}
+        >
+          👎
+        </button>
+        {estado?.id && estado.nota === 1 && <span>Obrigado!</span>}
+      </div>
+      {estado?.id && estado.nota === -1 && !estado.comentarioEnviado && (
+        <form className="assistente-comentario" onSubmit={comentar}>
+          <textarea
+            value={estado.comentario}
+            onChange={(e) => setEstado({ ...estado, comentario: e.target.value })}
+            placeholder="O que estava errado? (opcional) Ex.: a prancha diz 1000 litros."
+            maxLength={2000}
+            rows={2}
+            disabled={enviando}
+          />
+          <button className="botao secundario pequeno" disabled={enviando || !estado.comentario.trim()}>
+            Enviar
+          </button>
+        </form>
+      )}
+      {estado?.comentarioEnviado && <span className="assistente-obrigado">Obrigado! Vamos corrigir.</span>}
+      {estado?.erro && <span className="assistente-obrigado erro">{estado.erro}</span>}
+    </div>
+  );
+}
+
 function Etapas({ etapas }: { etapas: string[] }) {
   if (!etapas.length) return null;
   return (
@@ -283,6 +400,7 @@ export default function Assistente({ obraId }: { obraId: number | null }) {
                   <>
                     {t.etapas && <Etapas etapas={t.etapas} />}
                     <Markdown texto={t.texto} />
+                    <Avaliacao conversa={turnos.slice(0, i + 1)} etapas={t.etapas ?? []} obraId={obraId} />
                   </>
                 ) : (
                   t.texto

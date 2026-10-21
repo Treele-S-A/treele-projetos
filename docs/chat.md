@@ -52,8 +52,19 @@ recolhidas em **Ver etapas**, acima dela. A rota é `POST /chat/fluxo`, que
 responde em NDJSON (uma linha por evento: `etapa`, `resposta` ou `erro`); a
 `POST /chat` antiga continua, com a resposta só no fim.
 
+### Avaliação das respostas (21/10/2026)
+
+Cada resposta tem 👍 e 👎. No 👎, um campo opcional "O que estava errado?".
+Avaliar **guarda** a conversa até aquela resposta, as etapas, o comentário,
+a obra da tela e o modelo que respondeu (tabela `avaliacoes_chat`) — é o
+material para corrigir o assistente. Quem avaliou pode trocar o voto ou
+acrescentar o comentário; ninguém mexe na avaliação de outro.
+
+Para ler: `GET /api/chat/avaliacoes` (só administrador; `?nota=-1` para só
+os 👎), mais recentes primeiro.
+
 A conversa não fica guardada no servidor: a tela manda o histórico a cada
-pergunta e esquece ao fechar o navegador.
+pergunta e esquece ao fechar o navegador. A exceção é a resposta avaliada.
 
 ## Fornecedor (06/10/2026)
 

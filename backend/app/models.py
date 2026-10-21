@@ -462,3 +462,35 @@ class Notificacao(Base):
     )
 
     obra: Mapped["Obra"] = relationship()
+
+
+class AvaliacaoChat(Base):
+    """👍 ou 👎 numa resposta do chat do acervo (TREELE, 21/10/2026).
+
+    A conversa não fica guardada no servidor — só a que alguém avaliou, para
+    saber onde o assistente erra. Por isso a linha leva o retrato completo:
+    a conversa até a resposta avaliada, as etapas e quem respondeu.
+    """
+
+    __tablename__ = "avaliacoes_chat"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    usuario_id: Mapped[int | None] = mapped_column(
+        ForeignKey("usuarios.id", ondelete="SET NULL"), nullable=True
+    )
+    obra_id: Mapped[int | None] = mapped_column(
+        ForeignKey("obras.id", ondelete="SET NULL"), nullable=True
+    )
+    # +1 (👍) ou -1 (👎).
+    nota: Mapped[int] = mapped_column(Integer, index=True)
+    comentario: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # [{"papel": "usuario" | "assistente", "texto": ...}], terminando na
+    # resposta avaliada.
+    conversa: Mapped[list] = mapped_column(JSON, default=list)
+    etapas: Mapped[list] = mapped_column(JSON, default=list)
+    fornecedor: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    modelo: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    criada_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=agora)
+    atualizada_em: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    usuario: Mapped["Usuario | None"] = relationship()

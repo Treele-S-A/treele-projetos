@@ -2,7 +2,9 @@
 
 Pergunta em português, resposta com base nas consultas ao catálogo — com as
 permissões de quem pergunta. A conversa não fica guardada no servidor: a tela
-manda o histórico a cada pergunta e esquece ao fechar.
+manda o histórico a cada pergunta e esquece ao fechar. A exceção é a resposta
+que alguém avalia com 👍 ou 👎 (21/10/2026): essa fica guardada, com a conversa
+até ela, para saber onde o assistente erra.
 """
 
 import json
@@ -10,16 +12,18 @@ import logging
 import queue
 import threading
 from datetime import datetime, timezone
+from typing import Literal
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..config import settings
 from ..db import SessionLocal, get_db
-from ..deps import usuario_atual
-from ..models import Obra, ObraMembro, Usuario
+from ..deps import usuario_admin, usuario_atual
+from ..models import AvaliacaoChat, Obra, ObraMembro, Usuario
 from ..services import chat_modelo
 from ..services.chat_ferramentas import Ferramentas, catalogo
 
@@ -228,3 +232,117 @@ def perguntar_com_etapas(dados: PerguntaEntrada, usuario: Usuario = Depends(usua
         # todas juntas no fim.
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
+
+
+# ------------------------------------------------------------- avaliações
+
+
+class AvaliacaoEntrada(BaseModel):
+    # A conversa até a resposta avaliada, que é a última.
+    conversa: list[TurnoEntrada] = Field(min_length=2, max_length=2 * MAX_TURNOS)
+    etapas: list[str] = Field(default=[], max_length=60)
+    nota: Literal[1, -1]
+    comentario: str | None = Field(default=None, max_length=2000)
+    obra_id: int | None = None
+
+    @field_validator("etapas")
+    @classmethod
+    def _etapas_curtas(cls, etapas: list[str]) -> list[str]:
+        return [e[:400] for e in etapas]
+
+
+class AvaliacaoAtualizar(BaseModel):
+    nota: Literal[1, -1] | None = None
+    comentario: str | None = Field(default=None, max_length=2000)
+
+
+class AvaliacaoCriada(BaseModel):
+    id: int
+
+
+class AvaliacaoOut(BaseModel):
+    id: int
+    nota: int
+    comentario: str | None
+    conversa: list[dict]
+    etapas: list[str]
+    fornecedor: str | None
+    modelo: str | None
+    criada_em: datetime
+    atualizada_em: datetime | None
+    usuario: str | None = None
+    obra: str | None = None
+
+
+def _modelo_ativo() -> tuple[str | None, str | None]:
+    fornecedor = settings.chat_fornecedor_ativo
+    modelo = {"claude": settings.chat_modelo_claude, "gemini": settings.chat_modelo}.get(fornecedor or "")
+    return fornecedor, modelo
+
+
+@router.post("/avaliacoes", response_model=AvaliacaoCriada, status_code=status.HTTP_201_CREATED)
+def avaliar(
+    dados: AvaliacaoEntrada,
+    usuario: Usuario = Depends(usuario_atual),
+    db: Session = Depends(get_db),
+):
+    if dados.conversa[-1].papel != "assistente":
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "A última mensagem é a resposta avaliada.")
+    # A obra da tela só fica registrada se a pessoa a vê.
+    visiveis = {o.id for o in Ferramentas(db, usuario)._obras_visiveis()}
+    fornecedor, modelo = _modelo_ativo()
+    avaliacao = AvaliacaoChat(
+        usuario_id=usuario.id,
+        obra_id=dados.obra_id if dados.obra_id in visiveis else None,
+        nota=dados.nota,
+        comentario=(dados.comentario or "").strip() or None,
+        conversa=[{"papel": t.papel, "texto": t.texto} for t in dados.conversa],
+        etapas=dados.etapas,
+        fornecedor=fornecedor,
+        modelo=modelo,
+    )
+    db.add(avaliacao)
+    db.commit()
+    return AvaliacaoCriada(id=avaliacao.id)
+
+
+@router.patch("/avaliacoes/{avaliacao_id}", status_code=status.HTTP_204_NO_CONTENT)
+def mudar_avaliacao(
+    avaliacao_id: int,
+    dados: AvaliacaoAtualizar,
+    usuario: Usuario = Depends(usuario_atual),
+    db: Session = Depends(get_db),
+):
+    """Trocar o voto ou acrescentar o comentário — só na própria avaliação."""
+    avaliacao = db.get(AvaliacaoChat, avaliacao_id)
+    if avaliacao is None or avaliacao.usuario_id != usuario.id:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Avaliação não encontrada.")
+    if dados.nota is not None:
+        avaliacao.nota = dados.nota
+    if "comentario" in dados.model_fields_set:
+        avaliacao.comentario = (dados.comentario or "").strip() or None
+    avaliacao.atualizada_em = datetime.now(timezone.utc)
+    db.commit()
+
+
+@router.get("/avaliacoes", response_model=list[AvaliacaoOut])
+def listar_avaliacoes(
+    nota: int | None = Query(default=None, description="1 = 👍, -1 = 👎"),
+    _: Usuario = Depends(usuario_admin),
+    db: Session = Depends(get_db),
+):
+    """As avaliações mais recentes primeiro (só administrador)."""
+    consulta = select(AvaliacaoChat).order_by(AvaliacaoChat.criada_em.desc()).limit(500)
+    if nota is not None:
+        consulta = consulta.where(AvaliacaoChat.nota == (1 if nota > 0 else -1))
+    saida = []
+    for a in db.scalars(consulta):
+        obra = db.get(Obra, a.obra_id) if a.obra_id else None
+        saida.append(AvaliacaoOut(
+            id=a.id, nota=a.nota, comentario=a.comentario, conversa=a.conversa or [],
+            etapas=a.etapas or [], fornecedor=a.fornecedor, modelo=a.modelo,
+            criada_em=a.criada_em, atualizada_em=a.atualizada_em,
+            usuario=a.usuario.nome if a.usuario else None,
+            obra=obra.codigo if obra else None,
+        ))
+    return saida
