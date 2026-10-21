@@ -2062,3 +2062,38 @@ table.tabela {
   color: var(--obsoleto);
   font-size: 12.5px;
 }
+.disciplinas-correcao {
+  list-style: none;
+  margin: 4px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+}
+.disciplinas-correcao li.sem-caminho {
+  opacity: 0.6;
+}
+.caminho-correcao {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--tinta-2);
+}
+.caminho-correcao.reprovar {
+  color: var(--obsoleto);
+}
+.caminho-correcao.solicitar {
+  color: var(--petroleo);
+}
+.resultado-correcoes {
+  margin: 8px 0;
+  padding-left: 18px;
+  font-size: 13px;
+}
+.resultado-correcoes li {
+  margin-bottom: 4px;
+}
+.resultado-correcoes li.com-erro {
+  color: var(--obsoleto);
+}

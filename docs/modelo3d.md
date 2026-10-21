@@ -68,9 +68,13 @@ abriram em 3,6 s.
   os cortes e os elementos selecionados, pelo GlobalId, que não muda entre
   conversões. A imagem marcada fica no Storage
   (`obras/<obra>/_vistas/...png`).
-- **Pedir correção** (coordenador e obra): escolhe o documento (vem
-  sugerido o do elemento selecionado), descreve o que deve mudar e, se for
-  coordenador, marca os projetistas. Vira solicitação de revisão com a imagem
+- **Pedir correção** (coordenador e obra): marca uma ou mais disciplinas
+  da cena (vem marcada a do elemento selecionado) — cada uma diz o que vai
+  acontecer com ela: pedir revisão (liberada), reprovar (em análise, só o
+  coordenador) ou nada, com o motivo. Um texto só, e, se for coordenador,
+  marca os projetistas. Sai um pedido por disciplina, todos com a mesma
+  vista; a falha de um não segura os outros, e o painel mostra o resultado
+  de cada. Vira solicitação de revisão com a imagem
   marcada como anexo (uma cópia: a mesma vista pode servir a pedidos de
   várias disciplinas) e com o link **Abrir a vista no 3D**.
   - Pedido do coordenador já nasce autorizado: o projetista da última
