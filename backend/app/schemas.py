@@ -611,6 +611,12 @@ Ponto3 = list[float]
 class CameraVista(BaseModel):
     posicao: Ponto3 = Field(min_length=3, max_length=3)
     alvo: Ponto3 = Field(min_length=3, max_length=3)
+    # Ângulo de visão vertical (graus) da câmera perspectiva, para as
+    # marcações voltarem do mesmo tamanho na cena.
+    fov: float | None = Field(default=None, gt=1, lt=179)
+    # Largura / altura da câmera na hora: é o que diz quanto da cena cabe na
+    # largura da imagem (pode diferir da proporção do arquivo da foto).
+    aspecto: float | None = Field(default=None, gt=0.05, lt=20)
 
 
 class CorteVista(BaseModel):
@@ -626,6 +632,8 @@ class VistaCriar(BaseModel):
     # {"<arquivo_id>": ["<GlobalId>", ...]}
     selecao: dict[str, list[str]] = {}
     ocultos: list[int] = []
+    # A tela manda também a imagem só das marcações.
+    com_marcacoes: bool = False
 
 
 class ModeloDaVista(BaseModel):
@@ -647,6 +655,7 @@ class VistaOut(BaseModel):
     ocultos: list[int]
     modelos: list[ModeloDaVista] = []
     imagem_url: str | None = None
+    marcacoes_url: str | None = None
     criada_por: UsuarioOut | None = None
     criada_em: datetime
 
@@ -655,3 +664,5 @@ class VistaCriada(BaseModel):
     vista: VistaOut
     # Para onde a tela envia a imagem marcada (PNG); depois, POST .../imagem.
     envio_imagem: EnvioModelo
+    # E a imagem só das marcações, se ela pediu.
+    envio_marcacoes: EnvioModelo | None = None

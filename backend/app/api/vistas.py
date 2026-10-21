@@ -50,6 +50,11 @@ def saida(db: Session, vista: VistaModelo) -> VistaOut:
         imagem_url=(
             armazenamento.url_imagem(vista.imagem_key, "image/png") if vista.imagem_tamanho else None
         ),
+        marcacoes_url=(
+            armazenamento.url_imagem(vista.marcacoes_key, "image/png")
+            if vista.marcacoes_key and vista.marcacoes_tamanho
+            else None
+        ),
         criada_por=UsuarioOut.model_validate(vista.criada_por) if vista.criada_por else None,
         criada_em=vista.criada_em,
     )
@@ -89,16 +94,20 @@ def criar(
         obra_id=obra_id,
         titulo=dados.titulo.strip(),
         arquivos=arquivos,
-        camera=dados.camera.model_dump(),
+        camera=dados.camera.model_dump(exclude_none=True),
         cortes=[c.model_dump() for c in dados.cortes],
         selecao={k: v[:500] for k, v in dados.selecao.items() if k.isdigit() and int(k) in arquivos},
         ocultos=[i for i in dados.ocultos if i in arquivos],
         imagem_key=chave_imagem(ctx.obra.codigo),
+        marcacoes_key=chave_imagem(ctx.obra.codigo) if dados.com_marcacoes else None,
         criada_por_id=usuario.id,
     )
     db.add(vista)
     db.flush()
     destino = armazenamento.destino_upload(vista.imagem_key, "image/png")
+    marcacoes = (
+        armazenamento.destino_upload(vista.marcacoes_key, "image/png") if vista.marcacoes_key else None
+    )
     auditoria.registrar(
         db, acao="vista_criada", entidade="vista", entidade_id=vista.id,
         usuario=usuario, obra_id=obra_id, detalhes={"titulo": vista.titulo, "arquivos": arquivos},
@@ -109,6 +118,11 @@ def criar(
     return VistaCriada(
         vista=saida(db, vista),
         envio_imagem=EnvioModelo(url=destino.url, metodo=destino.metodo, headers=destino.headers),
+        envio_marcacoes=(
+            EnvioModelo(url=marcacoes.url, metodo=marcacoes.metodo, headers=marcacoes.headers)
+            if marcacoes
+            else None
+        ),
     )
 
 
@@ -129,6 +143,11 @@ def confirmar_imagem(
         armazenamento.remover(vista.imagem_key)
         raise HTTPException(status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, "Imagem da vista grande demais.")
     vista.imagem_tamanho = tamanho
+    # As marcações são opcionais: sem elas, a vista abre só com a foto.
+    if vista.marcacoes_key:
+        existe_m, tamanho_m = armazenamento.info(vista.marcacoes_key)
+        if existe_m and 0 < tamanho_m <= IMAGEM_MAX_MB * 1024 * 1024:
+            vista.marcacoes_tamanho = tamanho_m
     db.commit()
     return saida(db, vista)
 

@@ -67,7 +67,8 @@ def test_vista_guarda_a_cena_e_a_imagem(cliente, c):
                selecao={str(c["arq"]): ["2O2Fr$t4X7Zf8NOew3FLOH"], "999": ["x"]}, ocultos=[c["hid"]])
     assert r.status_code == 200, r.text
     v = r.json()
-    assert v["arquivos"] == [c["arq"], c["hid"]] and v["camera"] == CAMERA
+    assert v["arquivos"] == [c["arq"], c["hid"]]
+    assert {k: v["camera"][k] for k in CAMERA} == CAMERA and v["camera"]["fov"] is None
     assert v["selecao"] == {str(c["arq"]): ["2O2Fr$t4X7Zf8NOew3FLOH"]}  # modelo fora da cena sai
     assert v["ocultos"] == [c["hid"]] and v["imagem_url"]
     assert [m["documento"] for m in v["modelos"]] == ["VST-ARQ-PE-MOD", "VST-HID-PE-MOD"]
@@ -147,3 +148,21 @@ def test_coordenador_reprova_com_vista(cliente, c):
     assert r.json()["status"] == "reprovado" and r.json()["vista_reprovacao_id"] == vid
     avisos = [a for a in cliente.get("/notificacoes", headers=c["proj"]).json() if not a["lida"]]
     assert any("vista marcada do modelo 3D" in a["texto"] for a in avisos), avisos
+
+
+def test_vista_guarda_as_marcacoes_e_o_angulo(cliente, c):
+    corpo = {"titulo": "Com marcações", "arquivos": [c["arq"]], "com_marcacoes": True,
+             "camera": {**CAMERA, "fov": 60.0}}
+    r = cliente.post(f"/obras/{c['obra']['id']}/vistas", json=corpo, headers=c["coord"])
+    assert r.status_code == 201, r.text
+    criada = r.json()
+    assert criada["envio_marcacoes"]
+    _put(cliente, criada["envio_imagem"]["url"], PNG)
+    _put(cliente, criada["envio_marcacoes"]["url"], PNG + b"marcas")
+    v = cliente.post(f"/vistas/{criada['vista']['id']}/imagem", headers=c["coord"]).json()
+    assert v["marcacoes_url"] and v["camera"]["fov"] == 60.0
+    # Sem as marcações (pedidas mas não enviadas), a vista vale só com a foto.
+    sem = cliente.post(f"/obras/{c['obra']['id']}/vistas", json=corpo, headers=c["coord"]).json()
+    _put(cliente, sem["envio_imagem"]["url"], PNG)
+    v2 = cliente.post(f"/vistas/{sem['vista']['id']}/imagem", headers=c["coord"]).json()
+    assert v2["imagem_url"] and v2["marcacoes_url"] is None

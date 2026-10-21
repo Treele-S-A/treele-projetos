@@ -8,6 +8,7 @@
 import * as OBC from "@thatopen/components";
 import * as OBCF from "@thatopen/components-front";
 import * as FRAGS from "@thatopen/fragments";
+import CameraControls from "camera-controls";
 import * as THREE from "three";
 import type { PedidoConversao, RespostaConversao } from "./conversor.worker";
 
@@ -28,7 +29,9 @@ type Ponto3 = [number, number, number];
 
 /** O que uma vista guarda da cena (o resto — modelos, ocultos — a tela sabe). */
 export interface EstadoCena {
-  camera: { posicao: Ponto3; alvo: Ponto3 };
+  /** fov: ângulo de visão vertical (graus), para as marcações voltarem do
+   *  mesmo tamanho. */
+  camera: { posicao: Ponto3; alvo: Ponto3; fov?: number | null; aspecto?: number | null };
   cortes: { normal: Ponto3; ponto: Ponto3 }[];
   /** modelId → GlobalIds selecionados. */
   selecao: Record<string, string[]>;
@@ -40,13 +43,18 @@ export interface Motor {
   estado(): Promise<EstadoCena>;
   /** Volta a uma cena guardada. */
   aplicar(cena: EstadoCena): Promise<void>;
-  /** A tela como PNG, do jeito que está (com a seleção em destaque). */
-  fotografar(): Promise<Blob>;
+  /** A tela como PNG (com a seleção em destaque), vista da câmera dada —
+   *  a mesma que a vista grava, mesmo com a câmera ainda em movimento. */
+  fotografar(camera?: EstadoCena["camera"]): Promise<Blob>;
   mostrarModelo(modelId: string, visivel: boolean): Promise<void>;
   enquadrar(): Promise<void>;
   isolarSelecao(): Promise<void>;
   esconderSelecao(): Promise<void>;
+  /** Mostra os elementos escondidos e tira os cortes. */
   mostrarTudo(): Promise<void>;
+  /** Põe na cena os desenhos de uma vista, onde coincidem com a foto. */
+  mostrarMarcacoes(url: string, camera: EstadoCena["camera"]): Promise<void>;
+  verMarcacoes(visiveis: boolean): void;
   corte(ativo: boolean): void;
   limparCortes(): void;
   descartar(): void;
@@ -79,6 +87,8 @@ export function converter(bytes: Uint8Array, aoProgredir: (p: number) => void): 
 export async function criarMotor(
   container: HTMLElement,
   aoSelecionar: (p: Propriedades | null) => void,
+  /** Botão direito sobre um elemento: a posição do clique no palco. */
+  aoMenu?: (posicao: { x: number; y: number }) => void,
 ): Promise<Motor> {
   const components = new OBC.Components();
   const world = components
@@ -90,6 +100,13 @@ export async function criarMotor(
   world.renderer = new OBC.SimpleRenderer(components, container);
   world.camera = new OBC.OrthoPerspectiveCamera(components);
   components.init();
+  // Controles (TREELE, 21/10/2026): esquerdo arrasta para mover, a roda
+  // apertada gira, girar a roda aproxima e afasta, e o direito fica para o
+  // menu de esconder e isolar.
+  const botoes = world.camera.controls.mouseButtons;
+  botoes.left = CameraControls.ACTION.TRUCK;
+  botoes.middle = CameraControls.ACTION.ROTATE;
+  botoes.right = CameraControls.ACTION.NONE;
   components.get(OBC.Grids).create(world);
   components.get(OBC.Raycasters).get(world);
 
@@ -141,6 +158,18 @@ export async function criarMotor(
 
   const hider = components.get(OBC.Hider);
 
+  // Botão direito: seleciona o elemento sob o mouse e abre o menu.
+  const aoMenuContexto = async (e: MouseEvent) => {
+    e.preventDefault();
+    await highlighter.highlight("select", true, false);
+    if (!Object.keys(highlighter.selection.select ?? {}).length) return;
+    const caixa = container.getBoundingClientRect();
+    aoMenu?.({ x: e.clientX - caixa.left, y: e.clientY - caixa.top });
+  };
+  container.addEventListener("contextmenu", aoMenuContexto);
+
+  let marcacoes: THREE.Mesh | null = null;
+
   return {
     async carregar(modelId, frag) {
       await fragments.core.load(frag, { modelId });
@@ -163,8 +192,14 @@ export async function criarMotor(
         const guids = (await model.getGuidsByLocalIds([...ids])).filter((g): g is string => !!g);
         if (guids.length) porModelo[modelId] = guids;
       }
+      const cam = world.camera.three;
       return {
-        camera: { posicao: posicao.toArray() as Ponto3, alvo: alvo.toArray() as Ponto3 },
+        camera: {
+          posicao: posicao.toArray() as Ponto3,
+          alvo: alvo.toArray() as Ponto3,
+          fov: cam instanceof THREE.PerspectiveCamera ? cam.fov : null,
+          aspecto: cam instanceof THREE.PerspectiveCamera ? cam.aspect : null,
+        },
         cortes,
         selecao: porModelo,
       };
@@ -173,6 +208,9 @@ export async function criarMotor(
       const [px, py, pz] = cena.camera.posicao;
       const [ax, ay, az] = cena.camera.alvo;
       await world.camera.controls.setLookAt(px, py, pz, ax, ay, az, false);
+      // Aplica já na câmera: o controle só passa a posição a ela no próximo
+      // quadro, e a foto ou as marcações não podem esperar por ele.
+      world.camera.controls.update(0);
       clipper.deleteAll();
       for (const c of cena.cortes) {
         clipper.createFromNormalAndCoplanarPoint(
@@ -191,9 +229,17 @@ export async function criarMotor(
       if (Object.keys(mapa).length) await highlighter.highlightByID("select", mapa, true, false);
       await fragments.core.update(true);
     },
-    async fotografar() {
+    async fotografar(camera) {
       // Sem preserveDrawingBuffer o WebGL limpa a tela depois de mostrar:
-      // desenha agora e lê na mesma hora.
+      // desenha agora e lê na mesma hora. A câmera vai para os números que
+      // a vista grava (o controle a move aos poucos, quadro a quadro).
+      const cam = world.camera.three;
+      if (camera) {
+        cam.position.set(...camera.posicao);
+        cam.up.set(0, 1, 0);
+        cam.lookAt(new THREE.Vector3(...camera.alvo));
+        cam.updateMatrixWorld();
+      }
       await fragments.core.update(true);
       const renderer = world.renderer!.three;
       renderer.render(world.scene.three, world.camera.three);
@@ -225,6 +271,48 @@ export async function criarMotor(
     },
     async mostrarTudo() {
       await hider.set(true);
+      clipper.deleteAll();
+      await fragments.core.update(true);
+    },
+    async mostrarMarcacoes(url, camera) {
+      // Os desenhos viram uma placa transparente no plano que passa pelo alvo
+      // da câmera, de frente para ela e do tamanho exato do campo de visão:
+      // no ângulo da vista, coincide com a foto; girando, deforma — são
+      // desenhos 2D numa cena 3D.
+      const textura = await new THREE.TextureLoader().setCrossOrigin("anonymous").loadAsync(url);
+      textura.colorSpace = THREE.SRGBColorSpace;
+      const posicao = new THREE.Vector3(...camera.posicao);
+      const alvo = new THREE.Vector3(...camera.alvo);
+      const cam = world.camera.three;
+      const fov = camera.fov ?? (cam instanceof THREE.PerspectiveCamera ? cam.fov : 60);
+      const altura = 2 * posicao.distanceTo(alvo) * Math.tan(THREE.MathUtils.degToRad(fov) / 2);
+      const imagem = textura.image as { width: number; height: number };
+      // A largura que a câmera via; sem o dado (vista antiga), a da imagem.
+      const largura = altura * (camera.aspecto ?? imagem.width / imagem.height);
+      if (marcacoes) {
+        world.scene.three.remove(marcacoes);
+        marcacoes.geometry.dispose();
+      }
+      marcacoes = new THREE.Mesh(
+        new THREE.PlaneGeometry(largura, altura),
+        new THREE.MeshBasicMaterial({
+          map: textura,
+          transparent: true,
+          depthTest: false,
+          depthWrite: false,
+          side: THREE.DoubleSide,
+        }),
+      );
+      marcacoes.renderOrder = 999; // por cima do modelo, sempre
+      marcacoes.raycast = () => {}; // não atrapalha o clique nos elementos
+      marcacoes.position.copy(alvo);
+      marcacoes.quaternion.setFromRotationMatrix(
+        new THREE.Matrix4().lookAt(posicao, alvo, new THREE.Vector3(0, 1, 0)),
+      );
+      world.scene.three.add(marcacoes);
+    },
+    verMarcacoes(visiveis) {
+      if (marcacoes) marcacoes.visible = visiveis;
     },
     corte(ativo) {
       clipper.enabled = ativo;
@@ -234,6 +322,7 @@ export async function criarMotor(
     },
     descartar() {
       container.removeEventListener("dblclick", aoDuploClique);
+      container.removeEventListener("contextmenu", aoMenuContexto);
       components.dispose();
     },
   };

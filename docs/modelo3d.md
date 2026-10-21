@@ -12,12 +12,16 @@ disciplinas na mesma cena (modelo federado), cada uma ligando e desligando.
 
 ## O que dá para fazer (21/10/2026)
 
-- Girar, mover e aproximar; **Enquadrar** volta a ver tudo.
+- **Controles:** botão esquerdo arrasta para mover; a roda apertada arrasta
+  para girar; girar a roda aproxima e afasta. O botão direito sobre um
+  elemento abre o menu **Esconder / Isolar / Mostrar tudo**. **Enquadrar**
+  volta a ver tudo.
 - Ligar e desligar cada disciplina; **Tirar da cena** remove uma.
 - Clicar num elemento: ele fica em destaque e as propriedades aparecem à
   direita (nome, tipo IFC, GlobalId e os conjuntos de propriedades, como os do
   TQS ou do Revit).
-- **Isolar seleção**, **Esconder seleção**, **Mostrar tudo**.
+- **Isolar seleção**, **Esconder seleção**, **Mostrar tudo** — que traz de
+  volta os elementos escondidos, tira os cortes e religa as disciplinas.
 - **Corte:** com ele ligado, um duplo clique numa face cria um plano de corte
   ali, e a seta arrasta o plano. **Limpar cortes** tira todos.
 
@@ -85,6 +89,13 @@ abriram em 3,6 s.
     aceita `vista_id`). Quem enviou a revisão recebe o aviso, que cita a
     vista; na página do documento, a reprovação mostra a imagem marcada e o
     link para abrir a vista no 3D.
+- **Marcações na cena:** a vista guarda também os desenhos em fundo
+  transparente, com o ângulo de visão e a proporção da câmera. Reabrindo a
+  vista, eles viram uma placa transparente no plano do alvo da câmera, do
+  tamanho do campo de visão: no ângulo da vista, a cena fica idêntica à
+  imagem anexada; mexendo a câmera, os desenhos deformam (são 2D numa cena
+  3D). **Mostrar as marcações** liga e desliga; **Voltar ao ângulo da
+  vista** recoloca a câmera.
 - **Vistas da obra**, na lateral do visualizador, com miniatura: qualquer
   pessoa da obra reabre (`/modelos?vista=ID`) e vê a cena como foi marcada.
   Quem abre só vê modelos que poderia abrir sozinho.

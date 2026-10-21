@@ -81,13 +81,25 @@ function desenhar(ctx: CanvasRenderingContext2D, forma: Forma, espessura: number
   }
 }
 
+export interface Gerador {
+  foto: () => Promise<Blob>;
+  marcacoes: () => Promise<Blob | null>;
+}
+
+function paraPng(c: HTMLCanvasElement): Promise<Blob> {
+  return new Promise((resolver, rejeitar) =>
+    c.toBlob((b) => (b ? resolver(b) : rejeitar(new Error("Sem imagem."))), "image/png"),
+  );
+}
+
 export default function Marcacao({
   imagem,
   aoMudar,
 }: {
   imagem: Blob;
-  /** Chamado a cada mudança, com uma função que gera o PNG final. */
-  aoMudar: (gerarPng: () => Promise<Blob>) => void;
+  /** Chamado a cada mudança: a foto com os desenhos e, sem a foto, só os
+   *  desenhos (null se não houver nenhum) — esses voltam na cena 3D. */
+  aoMudar: (gerar: Gerador) => void;
 }) {
   const tela = useRef<HTMLCanvasElement>(null);
   const [foto, setFoto] = useState<HTMLImageElement | null>(null);
@@ -120,14 +132,20 @@ export default function Marcacao({
   }, [foto, formas, rascunho, espessura]);
 
   useEffect(() => {
-    aoMudar(
-      () =>
-        new Promise<Blob>((resolver, rejeitar) =>
-          tela.current?.toBlob((b) => (b ? resolver(b) : rejeitar(new Error("Sem imagem."))), "image/png"),
-        ),
-    );
+    aoMudar({
+      foto: () => paraPng(tela.current!),
+      marcacoes: async () => {
+        if (!foto || !formas.length) return null;
+        const c = document.createElement("canvas");
+        c.width = foto.naturalWidth;
+        c.height = foto.naturalHeight;
+        const ctx = c.getContext("2d")!;
+        for (const f of formas) desenhar(ctx, f, espessura);
+        return paraPng(c);
+      },
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [formas, foto]);
+  }, [formas, foto, espessura]);
 
   function ponto(e: PointerEvent<HTMLCanvasElement>): Ponto {
     const r = e.currentTarget.getBoundingClientRect();

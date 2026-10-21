@@ -535,6 +535,11 @@ class VistaModelo(Base):
     imagem_key: Mapped[str] = mapped_column(String(500), unique=True)
     # 0 enquanto a imagem não chegou ao armazenamento.
     imagem_tamanho: Mapped[int] = mapped_column(BigInteger, default=0)
+    # Só os desenhos, em fundo transparente (21/10/2026): reabrindo a vista, o
+    # visualizador os põe na cena 3D, onde coincidem com a foto no ângulo em
+    # que foram feitos.
+    marcacoes_key: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    marcacoes_tamanho: Mapped[int] = mapped_column(BigInteger, default=0)
     criada_por_id: Mapped[int | None] = mapped_column(
         ForeignKey("usuarios.id", ondelete="SET NULL"), nullable=True
     )

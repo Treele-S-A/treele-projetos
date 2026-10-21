@@ -11,7 +11,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { api, ErroApi, formatarData, type StatusRevisao, type Usuario } from "../api";
 import { Estado } from "../componentes";
-import Marcacao from "../modelo3d/Marcacao";
+import Marcacao, { type Gerador } from "../modelo3d/Marcacao";
 import {
   converter,
   criarMotor,
@@ -50,6 +50,7 @@ interface VistaOut extends EstadoCena {
   ocultos: number[];
   modelos: { arquivo_id: number; documento: string; documento_id: number; revisao: string; disciplina: string }[];
   imagem_url: string | null;
+  marcacoes_url: string | null;
   criada_por: Usuario | null;
   criada_em: string;
 }
@@ -134,6 +135,10 @@ export default function Modelo3D() {
   const { obras } = useSessao();
   const [rascunho, setRascunho] = useState<RascunhoVista | null>(null);
   const [vistas, setVistas] = useState<VistaOut[]>([]);
+  // Menu do botão direito (esconder, isolar), na posição do clique.
+  const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
+  const [verMarcacoes, setVerMarcacoes] = useState(true);
+  const [temMarcacoes, setTemMarcacoes] = useState(false);
 
   const palco = useRef<HTMLDivElement>(null);
   const motor = useRef<Motor | null>(null);
@@ -152,7 +157,11 @@ export default function Modelo3D() {
   useEffect(() => {
     let vivo = true;
     if (!palco.current) return;
-    criarMotor(palco.current, (p) => vivo && setSelecao(p))
+    criarMotor(
+      palco.current,
+      (p) => vivo && setSelecao(p),
+      (posicao) => vivo && setMenu(posicao),
+    )
       .then((m) => {
         if (!vivo) return m.descartar();
         motor.current = m;
@@ -200,6 +209,16 @@ export default function Modelo3D() {
           await motor.current.mostrarModelo(String(id), false);
         }
         await motor.current.aplicar(vista);
+        // As marcações voltam para a cena: no ângulo da vista, idênticas à
+        // imagem anexada; mexendo a câmera, deformam.
+        if (vista.marcacoes_url) {
+          try {
+            await motor.current.mostrarMarcacoes(vista.marcacoes_url, vista.camera);
+            setTemMarcacoes(true);
+          } catch {
+            setTemMarcacoes(false);
+          }
+        }
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -253,6 +272,32 @@ export default function Modelo3D() {
     window.location.reload();
   }
 
+  /** Tudo de volta: elementos escondidos, cortes e disciplinas desligadas. */
+  async function mostrarTudo() {
+    setMenu(null);
+    for (const m of modelos) {
+      if (!m.visivel && m.etapa === "pronto") {
+        atualizar(m.id, { visivel: true });
+        await motor.current?.mostrarModelo(String(m.id), true);
+      }
+    }
+    await motor.current?.mostrarTudo();
+  }
+
+  useEffect(() => {
+    if (!menu) return;
+    const fechar = (e: Event) => {
+      if (e instanceof KeyboardEvent && e.key !== "Escape") return;
+      setMenu(null);
+    };
+    window.addEventListener("keydown", fechar);
+    window.addEventListener("pointerdown", fechar);
+    return () => {
+      window.removeEventListener("keydown", fechar);
+      window.removeEventListener("pointerdown", fechar);
+    };
+  }, [menu]);
+
   function alternarCorte() {
     const novo = !corte;
     setCorte(novo);
@@ -277,7 +322,7 @@ export default function Modelo3D() {
   async function novaVista() {
     if (!motor.current) return;
     const cena = await motor.current.estado();
-    const foto = await motor.current.fotografar();
+    const foto = await motor.current.fotografar(cena.camera);
     setRascunho({ foto, cena });
   }
 
@@ -379,7 +424,7 @@ export default function Modelo3D() {
           >
             Esconder seleção
           </button>
-          <button className="botao secundario pequeno" onClick={() => motor.current?.mostrarTudo()}>
+          <button className="botao secundario pequeno" onClick={mostrarTudo}>
             Mostrar tudo
           </button>
           <button className={`botao pequeno ${corte ? "" : "secundario"}`} onClick={alternarCorte}>
@@ -392,8 +437,8 @@ export default function Modelo3D() {
           )}
         </div>
         <p className="silencioso dica-modelo">
-          Arraste para girar, botão direito para mover, roda para aproximar. Clique num elemento para
-          ver as propriedades.
+          Botão esquerdo arrasta para mover; aperte a roda e arraste para girar; gire a roda para aproximar.
+          Clique num elemento para ver as propriedades, ou use o botão direito para esconder ou isolar.
           {corte && " Com o corte ligado, dê um duplo clique numa face para cortar ali."}
         </p>
 
@@ -404,6 +449,33 @@ export default function Modelo3D() {
             <span className="silencioso" style={{ fontSize: 12 }}>
               {vista.criada_por?.nome} · {formatarData(vista.criada_em)}
             </span>
+            {temMarcacoes && (
+              <label className="opcao-aviso" style={{ margin: "4px 0 0" }}>
+                <input
+                  type="checkbox"
+                  checked={verMarcacoes}
+                  onChange={(e) => {
+                    setVerMarcacoes(e.target.checked);
+                    motor.current?.verMarcacoes(e.target.checked);
+                  }}
+                />
+                Mostrar as marcações
+              </label>
+            )}
+            {temMarcacoes && (
+              <span className="silencioso" style={{ fontSize: 11.5 }}>
+                Idênticas à imagem no ângulo da vista; mexendo a câmera, elas deformam.
+              </span>
+            )}
+            <button
+              className="link-pequeno"
+              style={{ alignSelf: "flex-start" }}
+              onClick={async () => {
+                await motor.current?.aplicar(vista);
+              }}
+            >
+              Voltar ao ângulo da vista
+            </button>
           </div>
         )}
 
@@ -429,7 +501,38 @@ export default function Modelo3D() {
         )}
       </aside>
 
-      <div className="visualizador-palco" ref={palco}>
+      <div className="visualizador-palco" ref={palco} onContextMenu={(e) => e.preventDefault()}>
+        {menu && (
+          <div
+            className="menu-modelo"
+            style={{ left: menu.x, top: menu.y }}
+            role="menu"
+            onPointerDown={(e) => e.stopPropagation()}
+          >
+            <strong>{selecao?.nome ?? "Elemento"}</strong>
+            <button
+              role="menuitem"
+              onClick={async () => {
+                setMenu(null);
+                await motor.current?.esconderSelecao();
+              }}
+            >
+              Esconder
+            </button>
+            <button
+              role="menuitem"
+              onClick={async () => {
+                setMenu(null);
+                await motor.current?.isolarSelecao();
+              }}
+            >
+              Isolar
+            </button>
+            <button role="menuitem" onClick={mostrarTudo}>
+              Mostrar tudo
+            </button>
+          </div>
+        )}
         {falhaMotor && (
           <p className="erro-modelo" style={{ position: "absolute", inset: "auto 16px 16px" }}>
             O visualizador não abriu neste navegador: {falhaMotor}
@@ -556,7 +659,7 @@ function PainelVista({
   podeReprovar: boolean;
   aoFechar: (criou: boolean) => void;
 }) {
-  const gerarPng = useRef<() => Promise<Blob>>(async () => rascunho.foto);
+  const gerador = useRef<Gerador>({ foto: async () => rascunho.foto, marcacoes: async () => null });
   const [titulo, setTitulo] = useState("");
   const podeCorrigir = podePedir || podeReprovar;
   const [pedir, setPedir] = useState(podeCorrigir);
@@ -603,16 +706,27 @@ function PainelVista({
     setEnviando(true);
     setErro(null);
     try {
-      const png = await gerarPng.current();
-      const criada = await api.post<{
-        vista: VistaOut;
-        envio_imagem: { url: string; metodo: string; headers: Record<string, string> };
-      }>(`/obras/${obraId}/vistas`, {
-        titulo: titulo.trim(),
-        arquivos: modelos.map((m) => m.id),
-        ocultos: modelos.filter((m) => !m.visivel).map((m) => m.id),
-        ...rascunho.cena,
-      });
+      const png = await gerador.current.foto();
+      const desenhos = await gerador.current.marcacoes();
+      type Envio = { url: string; metodo: string; headers: Record<string, string> };
+      const criada = await api.post<{ vista: VistaOut; envio_imagem: Envio; envio_marcacoes: Envio | null }>(
+        `/obras/${obraId}/vistas`,
+        {
+          titulo: titulo.trim(),
+          arquivos: modelos.map((m) => m.id),
+          ocultos: modelos.filter((m) => !m.visivel).map((m) => m.id),
+          com_marcacoes: !!desenhos,
+          ...rascunho.cena,
+        },
+      );
+      if (desenhos && criada.envio_marcacoes) {
+        const r = await fetch(criada.envio_marcacoes.url, {
+          method: criada.envio_marcacoes.metodo,
+          headers: criada.envio_marcacoes.headers,
+          body: desenhos,
+        });
+        if (!r.ok) throw new Error("As marcações não subiram. Tente de novo.");
+      }
       const envio = await fetch(criada.envio_imagem.url, {
         method: criada.envio_imagem.metodo,
         headers: criada.envio_imagem.headers,
@@ -682,9 +796,11 @@ function PainelVista({
               ))}
             </ul>
           )}
-          <p className="silencioso" style={{ fontSize: 12.5 }}>
-            A imagem marcada vai junto de cada uma, com o link para abrir esta vista no 3D.
-          </p>
+          {feito.resultados.length > 0 && (
+            <p className="silencioso" style={{ fontSize: 12.5 }}>
+              A imagem marcada vai junto de cada uma, com o link para abrir esta vista no 3D.
+            </p>
+          )}
           <button className="botao secundario pequeno" onClick={() => aoFechar(true)}>
             Voltar ao modelo
           </button>
@@ -708,7 +824,7 @@ function PainelVista({
             ×
           </button>
         </div>
-        <Marcacao imagem={rascunho.foto} aoMudar={(f) => (gerarPng.current = f)} />
+        <Marcacao imagem={rascunho.foto} aoMudar={(g) => (gerador.current = g)} />
         <label className="campo" style={{ display: "block", marginTop: 10 }}>
           <span className="rotulo">Título da vista</span>
           <input
