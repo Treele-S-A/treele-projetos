@@ -67,7 +67,7 @@ const COR_SELECAO = new THREE.Color("#f0a500");
 export function converter(
   bytes: Uint8Array,
   aoProgredir: (p: number) => void,
-): Promise<{ frag: Uint8Array; resumo: ResumoIfc | null }> {
+): Promise<{ frag: Uint8Array; resumo: ResumoIfc | null; indice: Uint8Array | null }> {
   return new Promise((resolver, rejeitar) => {
     const worker = new Worker(new URL("./conversor.worker.ts", import.meta.url), { type: "module" });
     worker.onmessage = (e: MessageEvent<RespostaConversao>) => {
@@ -75,7 +75,7 @@ export function converter(
       if (r.tipo === "progresso") aoProgredir(r.valor);
       else {
         worker.terminate();
-        if (r.tipo === "pronto") resolver({ frag: r.frag, resumo: r.resumo });
+        if (r.tipo === "pronto") resolver({ frag: r.frag, resumo: r.resumo, indice: r.indice });
         else rejeitar(new Error(r.mensagem));
       }
     };

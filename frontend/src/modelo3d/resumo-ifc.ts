@@ -37,6 +37,20 @@ export interface GrupoResumo {
   q: Record<string, number>;
 }
 
+/** Índice completo (TREELE, 21/10/2026): cada elemento com todos os
+ *  parâmetros, para o chat filtrar e agrupar por qualquer um. Compacto: os
+ *  nomes repetidos viram listas, e cada elemento aponta para elas. */
+export interface IndiceIfc {
+  versao: number;
+  categorias: string[];
+  tipos: string[];
+  pavimentos: string[];
+  /** "Conjunto/Parâmetro", ex.: "Pset_DoorCommon/FireRating". */
+  campos: string[];
+  /** [categoria, tipo, pavimento (-1 = sem), GlobalId, nome, {campo: valor}] */
+  elementos: [number, number, number, string, string, Record<number, string | number>][];
+}
+
 export interface ResumoIfc {
   versao: number;
   elementos: number;
@@ -79,6 +93,7 @@ const CATEGORIAS: Record<string, string> = {
   IFCDUCTSEGMENT: "Duto",
   IFCCABLECARRIERSEGMENT: "Eletrocalha / eletroduto",
   IFCBUILDINGELEMENTPROXY: "Outro elemento",
+  IFCELEMENTASSEMBLY: "Conjunto",
   IFCSPACE: "Ambiente",
   IFCOPENINGELEMENT: "Abertura",
 };
@@ -104,10 +119,16 @@ const PREFIXOS: Record<string, number> = {
   MICRO: 1e-6,
 };
 
-export async function resumirIfc(
+/** Só o resumo (compatível com quem já usa). */
+export async function resumirIfc(bytes: Uint8Array, wasm: { path: string; absolute: boolean }): Promise<ResumoIfc> {
+  return (await analisarIfc(bytes, wasm)).resumo;
+}
+
+/** Resumo de quantitativos e índice completo, numa leitura só do IFC. */
+export async function analisarIfc(
   bytes: Uint8Array,
   wasm: { path: string; absolute: boolean },
-): Promise<ResumoIfc> {
+): Promise<{ resumo: ResumoIfc; indice: IndiceIfc }> {
   const api = new IfcAPI();
   api.SetWasmPath(wasm.path, wasm.absolute);
   await api.Init();
@@ -121,7 +142,7 @@ export async function resumirIfc(
 
 type Linha = Record<string, unknown> & { type: number; expressID: number };
 
-function extrair(api: IfcAPI, modelo: number): ResumoIfc {
+function extrair(api: IfcAPI, modelo: number): { resumo: ResumoIfc; indice: IndiceIfc } {
   const cache = new Map<number, Linha>();
   const linha = (id: number): Linha | null => {
     if (id < 0) return null;
@@ -173,6 +194,53 @@ function extrair(api: IfcAPI, modelo: number): ResumoIfc {
     }
   }
 
+  // ---- valor de um parâmetro, já na unidade (m, m², m³) e em texto legível
+  type ValorProp = string | number;
+  const valorProp = (nominal: unknown): ValorProp | null => {
+    if (!nominal || typeof nominal !== "object") return null;
+    const medida = String((nominal as { name?: string }).name ?? "");
+    const v = (nominal as { value?: unknown }).value;
+    if (typeof v === "boolean") return v ? "Sim" : "Não";
+    if (typeof v === "number") {
+      const n = /LENGTHMEASURE$/.test(medida)
+        ? v * fator.comprimento
+        : medida === "IFCAREAMEASURE"
+          ? v * fator.area
+          : medida === "IFCVOLUMEMEASURE"
+            ? v * fator.volume
+            : v;
+      return Math.round(n * 10000) / 10000;
+    }
+    if (typeof v === "string") {
+      if (medida === "IFCBOOLEAN" || medida === "IFCLOGICAL") {
+        if (v === "T" || v === ".T." || v === "true") return "Sim";
+        if (v === "F" || v === ".F." || v === "false") return "Não";
+      }
+      const t = textoIfc(v).trim();
+      return t ? t.slice(0, 200) : null;
+    }
+    return null;
+  };
+  // Parâmetros de um conjunto de propriedades: [campo, valor].
+  const parametros = (ps: Linha): [string, ValorProp][] => {
+    const conjunto = textoIfc(valor(ps.Name)) || "Propriedades";
+    const saida: [string, ValorProp][] = [];
+    for (const r of lista(ps.HasProperties)) {
+      const pr = linha(ref(r) ?? -1);
+      if (!pr) continue;
+      const nome = textoIfc(valor(pr.Name));
+      let v: ValorProp | null = null;
+      if ("NominalValue" in pr) v = valorProp(pr.NominalValue);
+      else if ("EnumerationValues" in pr) {
+        const vs = lista(pr.EnumerationValues).map(valorProp).filter((x) => x !== null);
+        v = vs.length ? vs.join(", ") : null;
+      }
+      if (nome && v !== null) saida.push([`${conjunto}/${nome}`, v]);
+      cache.delete(ref(r) ?? -1);
+    }
+    return saida;
+  };
+
   // ---- quantidades de cada conjunto (IfcElementQuantity)
   const grandezas: Record<string, Grandeza> = {};
   const conjuntos = new Map<number, { nome: string; q: Record<string, number> }>();
@@ -203,10 +271,13 @@ function extrair(api: IfcAPI, modelo: number): ResumoIfc {
   // fica de reserva para o elemento que veio sem área nas quantidades.
   const CONJUNTOS_COTAS = new Set(["cotas", "dimensoes", "dimensions"]);
   const areasPset = new Map<number, number>();
+  const parametrosPset = new Map<number, [string, ValorProp][]>();
   for (const pid of ids(IFCPROPERTYSET)) {
     const ps = linha(pid);
+    if (!ps) continue;
+    parametrosPset.set(pid, parametros(ps));
     const nome = textoIfc(valor(ps?.Name)).normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-    if (!ps || !CONJUNTOS_COTAS.has(nome)) {
+    if (!CONJUNTOS_COTAS.has(nome)) {
       cache.delete(pid);
       continue;
     }
@@ -229,9 +300,22 @@ function extrair(api: IfcAPI, modelo: number): ResumoIfc {
   // ---- elemento → quantidades (o primeiro conjunto vence: nada se soma duas vezes)
   const areaInformada = new Map<number, number>();
   const quantidades = new Map<number, Record<string, number>>();
+  const parametrosDe = new Map<number, [string, ValorProp][]>();
+  const juntar = (el: number, ps: [string, ValorProp][]) => {
+    const atual = parametrosDe.get(el);
+    if (atual) atual.push(...ps);
+    else parametrosDe.set(el, [...ps]);
+  };
   for (const rid of ids(IFCRELDEFINESBYPROPERTIES)) {
     const rel = linha(rid);
     const definicao = ref(rel?.RelatingPropertyDefinition) ?? -1;
+    const ps = parametrosPset.get(definicao);
+    if (rel && ps?.length) {
+      for (const o of lista(rel.RelatedObjects)) {
+        const el = ref(o);
+        if (el !== null) juntar(el, ps);
+      }
+    }
     const area = areasPset.get(definicao);
     if (rel && area !== undefined) {
       for (const o of lista(rel.RelatedObjects)) {
@@ -261,9 +345,18 @@ function extrair(api: IfcAPI, modelo: number): ResumoIfc {
     const tipo = linha(ref(rel?.RelatingType) ?? -1);
     const nome = textoIfc(valor(tipo?.Name));
     if (!rel || !nome) continue;
+    // Parâmetros do tipo (no Revit, muitas vezes a resistência ao fogo, o
+    // fabricante, a classe) valem para cada elemento dele.
+    const doTipo: [string, ValorProp][] = [];
+    for (const r of lista(tipo?.HasPropertySets)) {
+      const ps = parametrosPset.get(ref(r) ?? -1);
+      if (ps) doTipo.push(...ps.map(([c, v]) => [`Tipo · ${c}`, v] as [string, ValorProp]));
+    }
     for (const o of lista(rel.RelatedObjects)) {
       const el = ref(o);
-      if (el !== null) tipos.set(el, nome);
+      if (el === null) continue;
+      tipos.set(el, nome);
+      if (doTipo.length) juntar(el, doTipo);
     }
   }
 
@@ -321,10 +414,23 @@ function extrair(api: IfcAPI, modelo: number): ResumoIfc {
   const grupos = new Map<string, GrupoResumo>();
   const materiais: Record<string, string[]> = {};
   let contados = 0;
+  const posicao = (listaNomes: string[], mapa: Map<string, number>, nome: string) => {
+    let i = mapa.get(nome);
+    if (i === undefined) {
+      i = listaNomes.length;
+      listaNomes.push(nome);
+      mapa.set(nome, i);
+    }
+    return i;
+  };
+  const indice: IndiceIfc = { versao: VERSAO_RESUMO, categorias: [], tipos: [], pavimentos: [], campos: [], elementos: [] };
+  const mapas = { categorias: new Map<string, number>(), tipos: new Map<string, number>(),
+                  pavimentos: new Map<string, number>(), campos: new Map<string, number>() };
   for (const el of elementos) {
     let codigo: string;
     try {
-      codigo = api.GetNameFromTypeCode(api.GetLineType(modelo, el));
+      // O web-ifc devolve "IfcWallStandardCase"; a tabela é em maiúsculas.
+      codigo = String(api.GetNameFromTypeCode(api.GetLineType(modelo, el)) ?? "").toUpperCase();
     } catch {
       continue;
     }
@@ -332,12 +438,12 @@ function extrair(api: IfcAPI, modelo: number): ResumoIfc {
     if (!codigo || codigo.endsWith("TYPE") || codigo === "IFCOPENINGELEMENT" || codigo.startsWith("IFCREL")) continue;
     if (codigo === "IFCBUILDINGSTOREY" || codigo === "IFCBUILDING" || codigo === "IFCSITE" || codigo === "IFCPROJECT") continue;
     const categoria = CATEGORIAS[codigo] ?? codigo;
+    const l = linha(el);
     let tipo = tipos.get(el);
     if (!tipo) {
-      const l = linha(el);
       tipo = textoIfc(valor(l?.ObjectType)) || textoIfc(valor(l?.Name)).replace(/:\d+$/, "") || "(sem tipo)";
-      cache.delete(el);
     }
+    cache.delete(el);
     const pavimento = pavimentoDe.get(el) ?? null;
     const chave = `${categoria}|${tipo}|${pavimento ?? ""}`;
     const g = grupos.get(chave) ?? { categoria, tipo, pavimento, n: 0, q: {} };
@@ -364,10 +470,33 @@ function extrair(api: IfcAPI, modelo: number): ResumoIfc {
       materiais[tipo] = [...atuais];
     }
     contados += 1;
+
+    // Índice: o elemento com tudo o que tem.
+    const campos: Record<number, string | number> = {};
+    const por = (campo: string, v: string | number | null | undefined) => {
+      if (v === null || v === undefined || v === "") return;
+      const i = posicao(indice.campos, mapas.campos, campo);
+      if (!(i in campos)) campos[i] = v;
+    };
+    por("Atributos/Nome", textoIfc(valor(l?.Name)));
+    por("Atributos/Descrição", textoIfc(valor(l?.Description)));
+    por("Atributos/Tag", textoIfc(valor(l?.Tag)));
+    por("Atributos/Classe IFC", codigo);
+    if (mats) por("Materiais", mats.join("; "));
+    for (const [k, v] of Object.entries(q)) por(`Quantidades/${k}`, Math.round(v * 10000) / 10000);
+    for (const [c, v] of parametrosDe.get(el) ?? []) por(c, v);
+    indice.elementos.push([
+      posicao(indice.categorias, mapas.categorias, categoria),
+      posicao(indice.tipos, mapas.tipos, tipo),
+      pavimento === null ? -1 : posicao(indice.pavimentos, mapas.pavimentos, pavimento),
+      textoIfc(valor(l?.GlobalId)),
+      textoIfc(valor(l?.Name)).slice(0, 120),
+      campos,
+    ]);
   }
 
   const arredondar = (v: number) => Math.round(v * 1000) / 1000;
-  return {
+  const resumo: ResumoIfc = {
     versao: VERSAO_RESUMO,
     elementos: contados,
     grandezas,
@@ -378,4 +507,5 @@ function extrair(api: IfcAPI, modelo: number): ResumoIfc {
       q: Object.fromEntries(Object.entries(g.q).map(([k, v]) => [k, arredondar(v)])),
     })),
   };
+  return { resumo, indice };
 }

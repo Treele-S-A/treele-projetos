@@ -34,7 +34,9 @@ URL = "https://generativelanguage.googleapis.com/v1beta/models/{modelo}:generate
 TEMPO_POR_CHAMADA = 20
 # Ler um PDF de prancha leva mais.
 TEMPO_LEITURA_PDF = 35
-MAX_RODADAS = 6
+# Consultas ao modelo IFC costumam pedir uma rodada para ver os parâmetros
+# e outras para filtrar: 6 era pouco.
+MAX_RODADAS = 10
 
 
 class ChatIndisponivel(Exception):

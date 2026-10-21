@@ -586,6 +586,9 @@ class ModeloSaida(BaseModel):
     # Resumo de quantitativos (para o chat): se já existe, e onde guardá-lo.
     resumo_pronto: bool = False
     envio_resumo: EnvioModelo | None = None
+    # Índice completo de parâmetros (gzip), também para o chat.
+    indice_pronto: bool = False
+    envio_indice: EnvioModelo | None = None
 
 
 # --------------------------------------------------------------------------

@@ -42,6 +42,8 @@ interface ModeloSaida {
   envio: { url: string; metodo: string; headers: Record<string, string> } | null;
   resumo_pronto: boolean;
   envio_resumo: { url: string; metodo: string; headers: Record<string, string> } | null;
+  indice_pronto: boolean;
+  envio_indice: { url: string; metodo: string; headers: Record<string, string> } | null;
 }
 
 interface VistaOut extends EstadoCena {
@@ -245,6 +247,13 @@ export default function Modelo3D() {
             method: info.envio_resumo.metodo,
             headers: info.envio_resumo.headers,
             body: JSON.stringify(convertido.resumo),
+          }).catch(() => undefined);
+        }
+        if (info.envio_indice && convertido.indice) {
+          void fetch(info.envio_indice.url, {
+            method: info.envio_indice.metodo,
+            headers: info.envio_indice.headers,
+            body: new Blob([convertido.indice as BlobPart]),
           }).catch(() => undefined);
         }
       }

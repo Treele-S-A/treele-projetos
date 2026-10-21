@@ -13,7 +13,9 @@ Ler o PDF de um projeto (07/10/2026) segue a regra do download: só abre o que
 a pessoa poderia baixar, e cada leitura fica no registro de atividades.
 """
 
+import gzip
 import json
+import threading
 import unicodedata
 from collections import defaultdict
 from collections.abc import Callable
@@ -54,6 +56,62 @@ ROTULO_STATUS = {
 # sem parâmetro vai SEM "parameters": objeto vazio o Gemini recusa, e a
 # recusa derruba todas as perguntas. Opções fixas levam "format": "enum".
 DECLARACOES = [
+    {
+        "name": "consultar_elementos",
+        "description": (
+            "Consulta elemento a elemento os modelos IFC (BIM) de uma obra, por QUALQUER "
+            "parâmetro modelado: filtra (ex.: portas com 'Pset_DoorCommon/IsExternal' = Sim, "
+            "paredes com 'Comentários' contendo 'externa'), agrupa (por pavimento, tipo ou um "
+            "parâmetro), soma um parâmetro numérico e lista elementos. Use quando a pergunta "
+            "depender de um parâmetro (resistência ao fogo, marca, fabricante, dimensão, "
+            "ambiente, fck, se é externo) ou de elementos específicos. Antes de filtrar por um "
+            "parâmetro cujo nome você não sabe, chame com mostrar_campos=true (com a categoria) "
+            "para ver os nomes e exemplos de valores. Para somar áreas e volumes por material "
+            "(reboco, concreto), prefira quantitativos_modelo."
+        ),
+        "parameters": {
+            "type": "OBJECT",
+            "properties": {
+                "obra": {"type": "STRING", "description": "Código da obra, ex.: SER."},
+                "disciplina": {"type": "STRING", "description": "Código da disciplina, ex.: ARQ. Opcional."},
+                "categoria": {
+                    "type": "STRING",
+                    "description": "Trecho da categoria em português ou classe IFC, ex.: 'Porta', 'Parede', 'Janela', 'IfcSpace'.",
+                },
+                "pavimento": {"type": "STRING", "description": "Trecho do nome do pavimento, ex.: '3°', 'Tipo'."},
+                "filtros": {
+                    "type": "ARRAY",
+                    "description": "Condições (todas valem juntas).",
+                    "items": {
+                        "type": "OBJECT",
+                        "properties": {
+                            "campo": {"type": "STRING", "description": "Trecho do nome do parâmetro, ex.: 'IsExternal', 'Marca', 'Comentários'."},
+                            "operador": {
+                                "type": "STRING",
+                                "format": "enum",
+                                "enum": ["contem", "igual", "diferente", "maior", "menor", "preenchido"],
+                                "description": "Padrão: contem.",
+                            },
+                            "valor": {"type": "STRING", "description": "Valor ou trecho (números com ponto)."},
+                        },
+                        "required": ["campo"],
+                    },
+                },
+                "agrupar_por": {
+                    "type": "STRING",
+                    "description": (
+                        "'pavimento', 'tipo', 'categoria' ou trecho do nome de um parâmetro. Vários "
+                        "separados por vírgula agrupam pela combinação, ex.: 'pavimento, tipo' — "
+                        "prefira isso a uma consulta por pavimento."
+                    ),
+                },
+                "somar": {"type": "STRING", "description": "Trecho do nome de um parâmetro numérico a somar, ex.: 'Cotas/Área'."},
+                "listar": {"type": "BOOLEAN", "description": "Devolve até 50 elementos, com os parâmetros usados."},
+                "mostrar_campos": {"type": "BOOLEAN", "description": "Mostra os parâmetros existentes e exemplos de valores."},
+            },
+            "required": ["obra"],
+        },
+    },
     {
         "name": "quantitativos_modelo",
         "description": (
@@ -258,6 +316,7 @@ class Ferramentas:
             "listar_solicitacoes": self.listar_solicitacoes,
             "ler_projeto": self.ler_projeto,
             "quantitativos_modelo": self.quantitativos_modelo,
+            "consultar_elementos": self.consultar_elementos,
         }.get(nome)
         if metodo is None:
             return {"erro": f"Consulta desconhecida: {nome}."}
@@ -273,19 +332,17 @@ class Ferramentas:
 
     # ------------------------------------------------------------- consultas
 
-    def quantitativos_modelo(self, obra: str, busca: str | None = None, disciplina: str | None = None,
-                             pavimento: str | None = None):
-        """Soma, no resumo de cada IFC da obra, o que bate com a busca (21/10/2026)."""
-        from ..api.arquivos import _conferir_leitura, chave_resumo
+    def _modelos_ifc(self, obra: str, disciplina: str | None):
+        """Os IFC da obra que a pessoa pode ler: o da revisão mais recente que
+        ela vê, de cada documento. Devolve (contexto, [(documento, arquivo, aviso)])."""
+        from ..api.arquivos import _conferir_leitura
 
         ctx = self._contexto(obra)
         consulta = select(Documento).where(Documento.obra_id == ctx.obra.id)
         if disciplina:
             consulta = consulta.join(Disciplina).where(Disciplina.codigo == disciplina.upper())
         visiveis = status_visiveis(ctx)
-        termos = _normalizar(busca or "").split()
-        filtro_pav = _normalizar(pavimento or "")
-        modelos: list[dict[str, Any]] = []
+        saida = []
         for doc in self.db.scalars(consulta.order_by(Documento.codigo)):
             if not ctx.ve_disciplina(doc.disciplina.codigo):
                 continue
@@ -304,12 +361,67 @@ class Ferramentas:
                 aviso = _conferir_leitura(arquivo, ctx)
             except HTTPException:
                 continue
+            saida.append((doc, arquivo, aviso))
+        return ctx, saida
+
+    def _base_modelo(self, doc, arquivo, aviso) -> dict[str, Any]:
+        base = {"documento": doc.codigo, "titulo": doc.titulo, "link": f"/documentos/{doc.id}",
+                "revisao": f"R{arquivo.revisao.numero}",
+                "status": ROTULO_STATUS[arquivo.revisao.status.value]}
+        if aviso:
+            base["aviso"] = aviso
+        return base
+
+    def consultar_elementos(self, obra: str, disciplina: str | None = None, categoria: str | None = None,
+                            pavimento: str | None = None, filtros: list | None = None,
+                            agrupar_por: str | None = None, somar: str | None = None,
+                            listar: bool = False, mostrar_campos: bool = False):
+        """Filtra, agrupa e soma no índice completo de cada IFC (21/10/2026)."""
+        from ..api.arquivos import chave_indice
+
+        ctx, modelos_ifc = self._modelos_ifc(obra, disciplina)
+        if not modelos_ifc:
+            return {"erro": f"Nenhum modelo IFC que você possa ver na obra {ctx.obra.codigo}"
+                            + (f" na disciplina {disciplina.upper()}." if disciplina else ".")}
+        modelos = []
+        for doc, arquivo, aviso in modelos_ifc:
+            base = self._base_modelo(doc, arquivo, aviso)
+            chave = chave_indice(arquivo)
+            indice = _ler_indice(chave)
+            if indice is None:
+                modelos.append({**base, "erro": "Este IFC ainda não tem índice de parâmetros (abra-o uma vez no 3D)."})
+                continue
+            auditoria.registrar(
+                self.db, acao="lido_pelo_assistente", entidade="arquivo", entidade_id=arquivo.id,
+                usuario=self.usuario, obra_id=ctx.obra.id,
+                detalhes={"arquivo": arquivo.nome_original, "documento": doc.codigo,
+                          "revisao": arquivo.revisao.numero, "consulta": "elementos"},
+            )
+            modelos.append({**base, **_consultar_indice(
+                indice, categoria=categoria, pavimento=pavimento, filtros=filtros or [],
+                agrupar_por=agrupar_por, somar=somar, listar=bool(listar), mostrar_campos=bool(mostrar_campos),
+            )})
+        return {
+            "obra": ctx.obra.codigo,
+            "modelos": modelos,
+            "como_ler": (
+                "Valores do que o projetista modelou, em m, m² e m³. Parâmetros que começam com "
+                "'Tipo · ' vêm do tipo do elemento e valem para todos os elementos dele."
+            ),
+        }
+
+    def quantitativos_modelo(self, obra: str, busca: str | None = None, disciplina: str | None = None,
+                             pavimento: str | None = None):
+        """Soma, no resumo de cada IFC da obra, o que bate com a busca (21/10/2026)."""
+        from ..api.arquivos import chave_resumo
+
+        ctx, modelos_ifc = self._modelos_ifc(obra, disciplina)
+        termos = _normalizar(busca or "").split()
+        filtro_pav = _normalizar(pavimento or "")
+        modelos: list[dict[str, Any]] = []
+        for doc, arquivo, aviso in modelos_ifc:
             existe, _ = armazenamento.info(chave_resumo(arquivo))
-            base = {"documento": doc.codigo, "titulo": doc.titulo, "link": f"/documentos/{doc.id}",
-                    "revisao": f"R{arquivo.revisao.numero}",
-                    "status": ROTULO_STATUS[arquivo.revisao.status.value]}
-            if aviso:
-                base["aviso"] = aviso
+            base = self._base_modelo(doc, arquivo, aviso)
             if not existe:
                 modelos.append({**base, "erro": "Este IFC ainda não tem resumo de quantitativos (abra-o uma vez no 3D)."})
                 continue
@@ -655,6 +767,20 @@ def descrever(nome: str, args: dict[str, Any]) -> str:
         case "listar_solicitacoes":
             obra = f" da obra {args['obra']}" if args.get("obra") else ""
             return f"Consultando as solicitações de revisão{obra}"
+        case "consultar_elementos":
+            o_que = args.get("categoria") or "elementos"
+            detalhes = []
+            for f in args.get("filtros") or []:
+                if isinstance(f, dict) and f.get("campo"):
+                    detalhes.append(f"{f['campo']} {f.get('operador') or 'contem'} {f.get('valor') or ''}".strip())
+            if args.get("agrupar_por"):
+                detalhes.append(f"agrupado por {args['agrupar_por']}")
+            if args.get("somar"):
+                detalhes.append(f"somando {args['somar']}")
+            if args.get("mostrar_campos"):
+                detalhes.append("vendo os parâmetros")
+            extra = f" ({'; '.join(detalhes)})" if detalhes else ""
+            return f"Consultando {o_que} no modelo IFC da obra {args.get('obra', '')}{extra}".strip()
         case "quantitativos_modelo":
             busca = f" ({args['busca']})" if args.get("busca") else ""
             return f"Somando quantidades do modelo IFC{busca} na obra {args.get('obra', '')}".strip()
@@ -784,3 +910,189 @@ def _somar_resumo(resumo: dict, termos: list[str], filtro_pav: str) -> dict[str,
         "total": arred(total),
         "por_pavimento": {p: arred(v) for p, v in por_pavimento.items()},
     }
+
+
+# ------------------------------------------------------- índice completo IFC
+
+# Índices lidos ficam na memória da função enquanto ela está quente: a
+# segunda pergunta sobre o mesmo modelo não baixa nem descompacta de novo.
+_INDICES: dict[str, dict] = {}
+_TRAVA_INDICES = threading.Lock()
+MAX_INDICES_NA_MEMORIA = 4
+MAX_GRUPOS = 60
+MAX_LISTA = 50
+
+
+def _ler_indice(chave: str) -> dict | None:
+    with _TRAVA_INDICES:
+        if chave in _INDICES:
+            return _INDICES[chave]
+    if not armazenamento.info(chave)[0]:
+        return None
+    indice = json.loads(gzip.decompress(armazenamento.ler_bytes(chave)))
+    indice["_campos_norm"] = [_normalizar(c) for c in indice["campos"]]
+    with _TRAVA_INDICES:
+        if len(_INDICES) >= MAX_INDICES_NA_MEMORIA:
+            _INDICES.pop(next(iter(_INDICES)))
+        _INDICES[chave] = indice
+    return indice
+
+
+def _campos_que_batem(indice: dict, texto: str) -> list[int]:
+    """Índices dos campos cujo nome contém o texto; o nome exato do parâmetro
+    (depois da barra) vem primeiro."""
+    t = _normalizar(texto)
+    if not t:
+        return []
+    achados = [i for i, c in enumerate(indice["_campos_norm"]) if t in c]
+    return sorted(achados, key=lambda i: (indice["_campos_norm"][i].rsplit("/", 1)[-1] != t, len(indice["campos"][i])))
+
+
+def _numero(v) -> float | None:
+    if isinstance(v, (int, float)):
+        return float(v)
+    try:
+        return float(str(v).replace(",", "."))
+    except ValueError:
+        return None
+
+
+def _consultar_indice(indice: dict, *, categoria, pavimento, filtros, agrupar_por, somar, listar,
+                      mostrar_campos) -> dict[str, Any]:
+    cats = [_normalizar(c) for c in indice["categorias"]]
+    tipos, pavs, campos = indice["tipos"], indice["pavimentos"], indice["campos"]
+    cat_ok = None
+    if categoria:
+        t = _normalizar(categoria)
+        cat_ok = {i for i, c in enumerate(cats) if t in c}
+        # Classe IFC também vale ("IfcDoor", "door").
+        classe = [i for i, c in enumerate(indice["_campos_norm"]) if c == "atributos/classe ifc"]
+    pav_ok = None
+    if pavimento:
+        t = _normalizar(pavimento)
+        pav_ok = {i for i, p in enumerate(pavs) if t in _normalizar(p)}
+
+    condicoes = []
+    for f in filtros:
+        if not isinstance(f, dict) or not f.get("campo"):
+            continue
+        ids = _campos_que_batem(indice, str(f["campo"]))
+        if not ids:
+            return {"encontrados": 0, "aviso": f"Nenhum parâmetro com '{f['campo']}' neste modelo. Use mostrar_campos."}
+        condicoes.append((ids, str(f.get("operador") or "contem"), str(f.get("valor") or "")))
+
+    def bate(campos_el: dict, ids, operador, valor) -> bool:
+        presentes = [campos_el[str(i)] for i in ids if str(i) in campos_el]
+        if operador == "preenchido":
+            return bool(presentes)
+        if not presentes:
+            return operador == "diferente"
+        alvo = _normalizar(valor)
+        for v in presentes:
+            if operador in ("maior", "menor"):
+                a, b = _numero(v), _numero(valor)
+                if a is not None and b is not None and (a > b if operador == "maior" else a < b):
+                    return True
+            elif operador == "igual" and _normalizar(str(v)) == alvo:
+                return True
+            elif operador == "diferente":
+                return all(_normalizar(str(x)) != alvo for x in presentes)
+            elif operador == "contem" and alvo in _normalizar(str(v)):
+                return True
+        return False
+
+    escolhidos = []
+    for el in indice["elementos"]:
+        cat, tipo, pav, _guid, _nome, campos_el = el
+        if cat_ok is not None and cat not in cat_ok:
+            classe_el = next((campos_el.get(str(i)) for i in classe if str(i) in campos_el), "")
+            if _normalizar(categoria) not in _normalizar(str(classe_el)):
+                continue
+        if pav_ok is not None and pav not in pav_ok:
+            continue
+        if all(bate(campos_el, *c) for c in condicoes):
+            escolhidos.append(el)
+
+    saida: dict[str, Any] = {"encontrados": len(escolhidos)}
+    if not escolhidos:
+        saida["aviso"] = "Nenhum elemento atende. Confira os nomes com mostrar_campos."
+        return saida
+
+    if mostrar_campos:
+        conta: dict[int, int] = defaultdict(int)
+        exemplos: dict[int, set] = defaultdict(set)
+        for el in escolhidos:
+            for k, v in el[5].items():
+                i = int(k)
+                conta[i] += 1
+                if len(exemplos[i]) < 4:
+                    exemplos[i].add(str(v)[:60])
+        ordem = sorted(conta, key=lambda i: -conta[i])[:90]
+        saida["campos"] = [{"campo": campos[i], "preenchido_em": conta[i], "exemplos": sorted(exemplos[i])} for i in ordem]
+        return saida
+
+    ids_somar = _campos_que_batem(indice, somar) if somar else []
+    if somar and not ids_somar:
+        saida["aviso"] = f"Nenhum parâmetro com '{somar}' para somar."
+
+    def valor_somado(el) -> float | None:
+        for i in ids_somar:
+            n = _numero(el[5].get(str(i)))
+            if n is not None:
+                return n
+        return None
+
+    if ids_somar:
+        nums = [n for n in map(valor_somado, escolhidos) if n is not None]
+        saida["somado"] = {"campo": campos[ids_somar[0]], "total": round(sum(nums), 3), "elementos_com_valor": len(nums)}
+
+    if agrupar_por:
+        fixos = {
+            "pavimento": lambda el: pavs[el[2]] if el[2] >= 0 else "(sem pavimento)",
+            "tipo": lambda el: tipos[el[1]],
+            "categoria": lambda el: indice["categorias"][el[0]],
+        }
+        partes, nomes = [], []
+        for criterio in [c.strip() for c in agrupar_por.split(",") if c.strip()]:
+            a = _normalizar(criterio)
+            if a in fixos:
+                partes.append(fixos[a])
+                nomes.append(a)
+                continue
+            ids_grupo = _campos_que_batem(indice, criterio)
+            nomes.append(campos[ids_grupo[0]] if ids_grupo else criterio)
+            partes.append(lambda el, ids=ids_grupo: next(
+                (str(el[5][str(i)]) for i in ids if str(i) in el[5]), "(vazio)"))
+        nome_grupo = " · ".join(nomes)
+
+        def chave(el):
+            return " · ".join(f(el) for f in partes)
+        grupos: dict[str, list] = defaultdict(lambda: [0, 0.0])
+        for el in escolhidos:
+            g = grupos[chave(el)]
+            g[0] += 1
+            n = valor_somado(el) if ids_somar else None
+            if n is not None:
+                g[1] += n
+        ordenados = sorted(grupos.items(), key=lambda x: -x[1][0])
+        saida["agrupado_por"] = nome_grupo
+        saida["grupos"] = [
+            {"valor": k, "elementos": v[0], **({"soma": round(v[1], 3)} if ids_somar else {})}
+            for k, v in ordenados[:MAX_GRUPOS]
+        ]
+        if len(ordenados) > MAX_GRUPOS:
+            saida["aviso_grupos"] = f"Mostrando {MAX_GRUPOS} de {len(ordenados)} grupos."
+
+    if listar or not (agrupar_por or ids_somar):
+        usados = sorted({i for c in condicoes for i in c[0][:2]} | set(ids_somar[:1]))
+        lista = []
+        for el in escolhidos[:MAX_LISTA]:
+            item = {"nome": el[4], "tipo": tipos[el[1]], "pavimento": pavs[el[2]] if el[2] >= 0 else None}
+            for i in usados:
+                if str(i) in el[5]:
+                    item[campos[i]] = el[5][str(i)]
+            lista.append(item)
+        saida["elementos"] = lista
+        if len(escolhidos) > MAX_LISTA:
+            saida["aviso_lista"] = f"Listando {MAX_LISTA} de {len(escolhidos)}."
+    return saida

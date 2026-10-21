@@ -66,6 +66,29 @@ em m, m² e m³.
   reboco interno 15.221 m² e externo 8.942 m², com os tipos de cada um, a
   pastilha (que tem reboco embaixo) à parte e o aviso de que é uma face.
 
+### Qualquer parâmetro do modelo (21/10/2026)
+
+Junto do resumo, a conversão gera o **índice completo de parâmetros**
+(`<chave do IFC>.r1.indice.json.gz`): cada elemento com categoria, tipo,
+pavimento, GlobalId, atributos (nome, tag, classe IFC), materiais,
+quantidades e **todos** os parâmetros dos conjuntos de propriedades — os do
+tipo entram como `Tipo · conjunto/parâmetro`. Medidas já em m, m², m³. No
+SER-ARQ-PE-ESD: 19.107 elementos, 690 parâmetros, 20 MB que viram 1,1 MB.
+
+A consulta `consultar_elementos` filtra por qualquer parâmetro (`contem`,
+`igual`, `diferente`, `maior`, `menor`, `preenchido`), agrupa (por
+pavimento, tipo, categoria ou parâmetro — vários juntos, separados por
+vírgula), soma um parâmetro numérico e lista elementos. Com
+`mostrar_campos`, mostra os parâmetros que existem e exemplos de valores:
+é como o assistente descobre os nomes antes de filtrar. O índice lido fica
+na memória da função enquanto ela está quente.
+
+Teste: "quantas portas externas, por pavimento e tamanho?" — o assistente
+viu que `Pset_DoorCommon/IsExternal` está "Não" em todas as 782 portas,
+usou o comentário "ESQUADRIAS EXTERNAS" (282 portas), avisou disso e montou
+as tabelas. O chat responde só o que foi modelado: parâmetro que o
+projetista não preencheu não aparece.
+
 ### Etapas na tela (21/10/2026)
 
 Enquanto o assistente trabalha, a tela mostra o que ele está fazendo: cada

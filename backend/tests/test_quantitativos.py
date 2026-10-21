@@ -5,6 +5,7 @@ quem pode ver o arquivo."""
 import json
 
 import pytest
+from sqlalchemy import select
 
 from app.api.arquivos import chave_resumo
 from app.db import SessionLocal
@@ -117,3 +118,83 @@ def test_nada_encontrado_e_etapa_na_tela(c):
     assert descrever("quantitativos_modelo", {"obra": "SER", "busca": "reboco"}) == (
         "Somando quantidades do modelo IFC (reboco) na obra SER"
     )
+
+
+# ------------------------------------------------------- índice completo
+
+INDICE = {
+    "versao": 1,
+    "categorias": ["Porta", "Parede"],
+    "tipos": ["Porta_Abrir_1F:80x210", "Porta_Abrir_1F:90x210", "AC_Pintura Branca Interna - 1,5"],
+    "pavimentos": ["1° Pav", "Pav Tipo"],
+    "campos": ["Atributos/Classe IFC", "Pset_DoorCommon/IsExternal", "Cotas/Área",
+               "Dados de identidade/Marca", "Tipo · Pset_DoorCommon/FireRating"],
+    "elementos": [
+        [0, 0, 0, "g1", "Porta 1", {"0": "IFCDOOR", "1": "Sim", "2": 1.68, "3": "P1", "4": "P-60"}],
+        [0, 0, 1, "g2", "Porta 2", {"0": "IFCDOOR", "1": "Não", "2": 1.68, "3": "P2"}],
+        [0, 1, 1, "g3", "Porta 3", {"0": "IFCDOOR", "1": "Sim", "2": 1.89, "3": "P3", "4": "P-90"}],
+        [1, 2, 0, "g4", "Parede 1", {"0": "IFCWALLSTANDARDCASE", "2": 7.75}],
+    ],
+}
+
+
+@pytest.fixture(scope="module")
+def com_indice(c):
+    import gzip
+
+    from app.api.arquivos import chave_indice
+
+    db = SessionLocal()
+    try:
+        a = db.scalars(select(Arquivo).where(Arquivo.nome_original == "QTD-ARQ-PE-MOD-R00.ifc")).one()
+        armazenamento.gravar_bytes(chave_indice(a), gzip.compress(json.dumps(INDICE).encode()), "application/gzip")
+    finally:
+        db.close()
+    return c
+
+
+def _elementos(c, **args):
+    r = _ferramentas(c["coord"]).executar("consultar_elementos", {"obra": "QTD", "disciplina": "ARQ", **args})
+    return r["modelos"][0]
+
+
+def test_filtra_por_parametro_e_agrupa(com_indice):
+    m = _elementos(com_indice, categoria="porta", filtros=[{"campo": "IsExternal", "operador": "igual", "valor": "sim"}],
+                   agrupar_por="pavimento", somar="Cotas/Área")
+    assert m["encontrados"] == 2
+    assert m["somado"]["total"] == 3.57 and m["somado"]["campo"] == "Cotas/Área"
+    assert {g["valor"]: g["elementos"] for g in m["grupos"]} == {"1° Pav": 1, "Pav Tipo": 1}
+
+
+def test_parametro_do_tipo_preenchido_e_maior(com_indice):
+    m = _elementos(com_indice, categoria="IfcDoor", filtros=[{"campo": "fireRating", "operador": "preenchido"}],
+                   listar=True)
+    assert [e["nome"] for e in m["elementos"]] == ["Porta 1", "Porta 3"]
+    assert m["elementos"][1]["Tipo · Pset_DoorCommon/FireRating"] == "P-90"
+    m = _elementos(com_indice, filtros=[{"campo": "Área", "operador": "maior", "valor": "1.7"}])
+    assert m["encontrados"] == 2  # a porta de 1,89 e a parede
+
+
+def test_mostrar_campos_e_campo_inexistente(com_indice):
+    m = _elementos(com_indice, categoria="porta", mostrar_campos=True)
+    nomes = {x["campo"]: x for x in m["campos"]}
+    assert nomes["Dados de identidade/Marca"]["preenchido_em"] == 3
+    assert nomes["Pset_DoorCommon/IsExternal"]["exemplos"] == ["Não", "Sim"]
+    m = _elementos(com_indice, filtros=[{"campo": "fck", "valor": "40"}])
+    assert m["encontrados"] == 0 and "mostrar_campos" in m["aviso"]
+
+
+def test_sem_indice_avisa(com_indice):
+    r = _ferramentas(com_indice["coord"]).executar("consultar_elementos", {"obra": "QTD", "categoria": "porta"})
+    hid = next(m for m in r["modelos"] if m["documento"] == "QTD-HID-PE-MOD")
+    assert "ainda não tem índice" in hid["erro"]
+
+
+def test_agrupa_por_combinacao(com_indice):
+    m = _elementos(com_indice, categoria="porta", agrupar_por="pavimento, tipo")
+    assert m["agrupado_por"] == "pavimento · tipo"
+    assert {g["valor"]: g["elementos"] for g in m["grupos"]} == {
+        "1° Pav · Porta_Abrir_1F:80x210": 1,
+        "Pav Tipo · Porta_Abrir_1F:80x210": 1,
+        "Pav Tipo · Porta_Abrir_1F:90x210": 1,
+    }

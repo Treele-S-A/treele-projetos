@@ -206,6 +206,11 @@ def chave_resumo(arquivo: Arquivo) -> str:
     return f"{arquivo.storage_key}.{VERSAO_RESUMO}.resumo.json"
 
 
+def chave_indice(arquivo: Arquivo) -> str:
+    """Índice completo de parâmetros do IFC (JSON em gzip), para o chat."""
+    return f"{arquivo.storage_key}.{VERSAO_RESUMO}.indice.json.gz"
+
+
 @router.get("/{arquivo_id}/modelo", response_model=ModeloSaida)
 def modelo(
     arquivo_id: int,
@@ -248,6 +253,10 @@ def modelo(
     if not saida.resumo_pronto and ctx.pode("enviar") and saida.envio:
         destino = armazenamento.destino_upload(chave_resumo(arquivo), "application/json")
         saida.envio_resumo = EnvioModelo(url=destino.url, metodo=destino.metodo, headers=destino.headers)
+    saida.indice_pronto = armazenamento.info(chave_indice(arquivo))[0]
+    if not saida.indice_pronto and ctx.pode("enviar") and saida.envio:
+        destino = armazenamento.destino_upload(chave_indice(arquivo), "application/gzip")
+        saida.envio_indice = EnvioModelo(url=destino.url, metodo=destino.metodo, headers=destino.headers)
     _registrar_leitura(db, "visualizacao", arquivo, ctx, usuario, request)
     return saida
 
@@ -284,7 +293,9 @@ def remover(
     chave = arquivo.storage_key
     # O modelo 3D convertido vai junto (se houver; apagar o que não existe não falha).
     chaves = (
-        [chave, chave_modelo(arquivo), chave_resumo(arquivo)] if arquivo.tipo == TipoArquivo.ifc else [chave]
+        [chave, chave_modelo(arquivo), chave_resumo(arquivo), chave_indice(arquivo)]
+        if arquivo.tipo == TipoArquivo.ifc
+        else [chave]
     )
 
     db.delete(arquivo)
