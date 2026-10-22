@@ -133,9 +133,14 @@ Como funciona (`modelo3d/conflitos.ts` e `conflitos.worker.ts`):
 1. As peças de cada grupo saem das categorias do modelo, só as com geometria.
 2. A caixa de cada peça é calculada da própria malha e guardada por modelo.
    Não use o `getBoxes` da biblioteca: ele desloca as caixas guardadas ao
-   montar os blocos de desenho (`box.translate` em `buildSampleInTile`), e o
-   resultado mudava conforme a tela desenhava (caso real: 33 ou 94 conflitos
-   no mesmo conjunto).
+   montar os blocos de desenho (`box.translate` em `buildSampleInTile`) e
+   depende do `matrixWorld` (abaixo).
+   **A posição de cada modelo vem de `noMundo()`, nunca do `matrixWorld`
+   direto.** Ao carregar, a biblioteca desloca cada modelo para alinhá-lo ao
+   primeiro (`autoCoordinate`, só na posição do objeto); o `matrixWorld` só
+   acompanha quando a tela desenha. Lido antes disso, vinha zerado: no SER, o
+   esgoto ficava 28 m abaixo e 46 m ao lado da estrutura no cálculo, e a mesma
+   detecção dava 59 numa máquina e 258 na outra (22/10/2026). O certo é 258.
 3. Triagem numa grade de 2 m: na interferência, as caixas precisam se
    sobrepor mais que a tolerância nos três eixos.
 4. Teste exato das malhas num worker (three-mesh-bvh): triângulo contra
@@ -145,9 +150,10 @@ Como funciona (`modelo3d/conflitos.ts` e `conflitos.worker.ts`):
 Durante a leitura, os modelos ficam congelados (`model.frozen`): o desenho
 não se refaz no mesmo worker enquanto a geometria é lida.
 
-Medido no SER (EST, HID água e esgoto, ELE, ARQ): instalações × pilares e
-vigas, 59 conflitos (13 s na primeira vez, que calcula as caixas; menos de 2 s
-depois); folga de 5 cm, 107; portas e janelas, 94; instalações entre si, 21.
+Medido no SER (EST, HID água e esgoto, ELE alimentação e iluminação):
+instalações × pilares e vigas, 258 conflitos — 135 da iluminação (eletroduto
+flexível em viga e pilar), 71 do esgoto, 48 da água, 4 da alimentação. Uns
+5 s, mais na primeira vez, que calcula as caixas.
 
 "Entra ~X cm" é estimado pelas caixas.
 

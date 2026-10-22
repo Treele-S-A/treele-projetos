@@ -215,7 +215,11 @@ export async function criarMotor(
 
   return {
     async carregar(modelId, frag) {
-      await fragments.core.load(frag, { modelId });
+      const model = await fragments.core.load(frag, { modelId });
+      // A biblioteca desloca o modelo para alinhá-lo ao primeiro; a matriz
+      // vai junto já, e não só quando a tela desenhar (ver conflitos.ts).
+      model.object.updateMatrix();
+      model.object.updateMatrixWorld(true);
     },
     async estado() {
       const posicao = world.camera.controls.getPosition(new THREE.Vector3());

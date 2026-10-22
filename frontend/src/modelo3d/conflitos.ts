@@ -200,20 +200,34 @@ const CELULA = 2; // m: a grade da triagem
 const MAX_PARES = 400_000;
 const JUNTAR_A_MENOS_DE = 0.6; // m: o mesmo B atravessado várias vezes ali perto vira um conflito só
 
-// As caixas saem da própria geometria, e não do getBoxes da biblioteca: ele
-// muda conforme o que a tela está desenhando (caso real, 22/10/2026 — as
-// mesmas portas vieram com caixas diferentes com o painel visível ou não, e
-// o resultado da detecção mudava). Calculadas uma vez por modelo.
-const caixasCalculadas = new WeakMap<FragmentsModel, Map<number, THREE.Box3>>();
+/** Onde o modelo está na cena. Ao carregar, a biblioteca desloca cada modelo
+ *  para alinhá-lo ao primeiro (autoCoordinate), mudando a posição do objeto;
+ *  o matrixWorld só acompanha quando a tela desenha. Lido sem desenhar, ele
+ *  vinha zerado e os modelos ficavam desalinhados no cálculo — o esgoto 28 m
+ *  abaixo da estrutura, e a mesma detecção dava 59 numa máquina e 258 na
+ *  outra (22/10/2026). Por isso a matriz sai da posição, na hora. */
+function noMundo(model: FragmentsModel): THREE.Matrix4 {
+  const objeto = model.object;
+  objeto.updateMatrix();
+  objeto.updateMatrixWorld(true);
+  return objeto.matrixWorld.clone();
+}
+
+// As caixas saem da própria geometria, e não do getBoxes da biblioteca (que
+// também depende do matrixWorld). Calculadas uma vez por modelo, e de novo
+// se o modelo mudar de lugar.
+const caixasCalculadas = new WeakMap<FragmentsModel, { onde: string; caixas: Map<number, THREE.Box3> }>();
 
 async function caixas(modelo: ModeloNaCena, ids: number[], aoAvancar: (n: number) => void): Promise<Map<number, THREE.Box3>> {
-  let guardadas = caixasCalculadas.get(modelo.model);
-  if (!guardadas) {
-    guardadas = new Map();
-    caixasCalculadas.set(modelo.model, guardadas);
+  const mundo = noMundo(modelo.model);
+  const onde = mundo.elements.join(",");
+  let cache = caixasCalculadas.get(modelo.model);
+  if (!cache || cache.onde !== onde) {
+    cache = { onde, caixas: new Map() };
+    caixasCalculadas.set(modelo.model, cache);
   }
-  const faltam = ids.filter((id) => !guardadas!.has(id));
-  const mundo = modelo.model.object.matrixWorld;
+  const guardadas = cache.caixas;
+  const faltam = ids.filter((id) => !guardadas.has(id));
   const local = new THREE.Box3();
   const v = new THREE.Vector3();
   for (let k = 0; k < faltam.length; k += LOTE_GEOMETRIA) {
@@ -237,7 +251,7 @@ async function caixas(modelo: ModeloNaCena, ids: number[], aoAvancar: (n: number
         }
       }
       const dono = malhas.find((m) => m.localId !== undefined)?.localId ?? lote[j];
-      guardadas!.set(dono, caixa);
+      guardadas.set(dono, caixa);
     });
     aoAvancar(lote.length);
   }
@@ -352,7 +366,7 @@ async function geometrias(
   modelo: ModeloNaCena,
   localIds: number[],
 ): Promise<{ localId: number; posicoes: Float32Array; indices: Uint32Array }[]> {
-  const mundo = modelo.model.object.matrixWorld;
+  const mundo = noMundo(modelo.model);
   const saida: { localId: number; posicoes: Float32Array; indices: Uint32Array }[] = [];
   const v = new THREE.Vector3();
   for (let k = 0; k < localIds.length; k += LOTE_GEOMETRIA) {
