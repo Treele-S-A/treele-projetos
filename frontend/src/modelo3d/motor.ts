@@ -66,6 +66,41 @@ export interface Medida {
 /** modelId → localIds. */
 export type Pecas = Record<string, number[]>;
 
+/** Um tópico para exportar em BCF: um conflito ou uma vista. */
+export interface TopicoBcf {
+  titulo: string;
+  descricao?: string;
+  /** "Clash" (conflito) ou "Issue" (apontamento). */
+  tipo: string;
+  /** "Open", "Resolved" ou "Closed". */
+  situacao: string;
+  rotulos: string[];
+  comentarios: string[];
+  /** GlobalIds das peças em destaque. */
+  guids: string[];
+  /** Põe a câmera no lugar do tópico (enquadra o conflito, aplica a vista).
+   *  `paraFoto`: false quando não vai foto — basta a câmera, sem destaque. */
+  posicionar: (paraFoto: boolean) => Promise<void>;
+  /** A foto pronta (a imagem marcada da vista); sem ela, fotografa a tela. */
+  foto?: Blob;
+}
+
+/** Um tópico lido de um arquivo BCF de outro programa. */
+export interface TopicoImportado {
+  guid: string;
+  titulo: string;
+  descricao: string;
+  tipo: string;
+  situacao: string;
+  autor: string;
+  data: string;
+  comentarios: { autor: string; texto: string; data: string }[];
+  viewpoint: string | null;
+  /** URL local da foto do ponto de vista, se veio. */
+  foto: string | null;
+  guids: string[];
+}
+
 export interface Motor {
   carregar(modelId: string, frag: ArrayBuffer | Uint8Array): Promise<void>;
   /** A cena agora: câmera, cortes e seleção. */
@@ -95,9 +130,11 @@ export interface Motor {
   ): Promise<Conflito[]>;
   /** Enquadra o conflito: A em destaque (a seleção), B translúcido em
    *  vermelho, para ver a peça que o atravessa. null limpa. */
-  focarConflito(conflito: Conflito | null): Promise<void>;
+  focarConflito(conflito: Conflito | null, animar?: boolean): Promise<void>;
   /** Os localIds das peças, pelos GlobalIds (conflito de outra rodada). */
   idsDosGuids(modelId: string, guids: string[]): Promise<number[]>;
+  /** Só a câmera no conflito, sem destaque nem redesenho. */
+  cameraNoConflito(conflito: Conflito): Promise<void>;
   /** Os pavimentos do modelo, na ordem da elevação. */
   pavimentos(modelId: string): Promise<Pavimento[]>;
   mostrarPecas(pecas: Pecas, visiveis: boolean): Promise<void>;
@@ -111,10 +148,44 @@ export interface Motor {
   apagarMedidas(): void;
   /** Avisa a tela quando uma medida entra ou sai. */
   aoMudarMedidas(aviso: () => void): void;
+  /** Gera o .bcfzip (BCF 2.1) com os tópicos: um ponto de vista por tópico,
+   *  com a câmera, as peças em destaque e a foto. */
+  bcfExportar(
+    topicos: TopicoBcf[],
+    aoProgredir: (feitos: number, total: number) => void,
+    /** Fotografar cada tópico: o lento (destacar, redesenhar). Sem foto, a
+     *  câmera e as peças vão do mesmo jeito, e sai em segundos. */
+    comFotos?: boolean,
+  ): Promise<Blob>;
+  /** Lê um .bcfzip/.bcf de outro programa. */
+  bcfImportar(bytes: Uint8Array): Promise<TopicoImportado[]>;
+  /** Vai ao ponto de vista importado: câmera, cortes e peças em destaque. */
+  bcfIr(viewpoint: string): Promise<void>;
   descartar(): void;
 }
 
 const COR_SELECAO = new THREE.Color("#f0a500");
+
+/** De cima e de lado, sempre do mesmo jeito, a uma distância que mostra o
+ *  entorno: a região de um conflito costuma ter centímetros. */
+function olharPara(conflito: Conflito): [number, number, number, number, number, number] {
+  const caixa = new THREE.Box3(new THREE.Vector3(...conflito.caixa.min), new THREE.Vector3(...conflito.caixa.max));
+  const c = new THREE.Vector3(...conflito.centro);
+  const d = Math.max(caixa.getSize(new THREE.Vector3()).length(), 1) * 1.5 + 2.5;
+  return [c.x + d * 0.65, c.y + d * 0.55, c.z + d * 0.65, c.x, c.y, c.z];
+}
+
+/** O texto do BCF vem do XML sem decodificar (&quot; e companhia). */
+function textoXml(texto: string | undefined | null): string {
+  if (!texto) return "";
+  return texto
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n)))
+    .replace(/&amp;/g, "&");
+}
 
 function mapaDe(pecas: Pecas): OBC.ModelIdMap {
   const mapa: OBC.ModelIdMap = {};
@@ -122,6 +193,18 @@ function mapaDe(pecas: Pecas): OBC.ModelIdMap {
   return mapa;
 }
 const COR_CONFLITO = new THREE.Color("#d61f9c"); // magenta: pilar costuma vir vermelho
+const MATERIAL_A: FRAGS.MaterialDefinition = {
+  color: COR_SELECAO,
+  opacity: 1,
+  transparent: false,
+  renderedFaces: FRAGS.RenderedFaces.TWO,
+};
+const MATERIAL_B: FRAGS.MaterialDefinition = {
+  color: COR_CONFLITO,
+  opacity: 0.55,
+  transparent: true,
+  renderedFaces: FRAGS.RenderedFaces.TWO,
+};
 
 /** Converte um IFC em fragments num worker, com o andamento de 0 a 1. */
 export function converter(
@@ -203,12 +286,6 @@ export async function criarMotor(
       renderedFaces: FRAGS.RenderedFaces.TWO,
     },
   });
-  highlighter.styles.set("conflito", {
-    color: COR_CONFLITO,
-    opacity: 0.55,
-    transparent: true,
-    renderedFaces: FRAGS.RenderedFaces.TWO,
-  });
   let selecao: OBC.ModelIdMap = {};
   highlighter.events.select.onHighlight.add(async (mapa) => {
     selecao = mapa;
@@ -274,9 +351,52 @@ export async function criarMotor(
   container.addEventListener("contextmenu", aoMenuContexto);
 
   let marcacoes: THREE.Mesh | null = null;
+
+  async function fotografarCena(camera?: EstadoCena["camera"], formato: "image/png" | "image/jpeg" = "image/png"): Promise<Blob> {
+    // Sem preserveDrawingBuffer o WebGL limpa a tela depois de mostrar:
+    // desenha agora e lê na mesma hora. A câmera vai para os números que
+    // a vista grava (o controle a move aos poucos, quadro a quadro).
+    const cam = world.camera.three;
+    if (camera) {
+      cam.position.set(...camera.posicao);
+      cam.up.set(0, 1, 0);
+      cam.lookAt(new THREE.Vector3(...camera.alvo));
+      cam.updateMatrixWorld();
+    }
+    await fragments.core.update(true);
+    const renderer = world.renderer!.three;
+    renderer.render(world.scene.three, world.camera.three);
+    const dados = renderer.domElement.toDataURL(formato, 0.85);
+    return await (await fetch(dados)).blob();
+  }
+
+  // BCF (22/10/2026): o formato aberto de apontamentos de BIM, que o Revit
+  // (BCF Manager), o Solibri, o Trimble Connect e o BIMcollab leem. A
+  // biblioteca converte a câmera para as coordenadas do IFC (Z para cima),
+  // descontando o alinhamento entre modelos. Versão 2.1: a mais aceita.
+  const bcf = components.get(OBC.BCFTopics);
+  bcf.setup({
+    version: "2.1",
+    author: "projetos.treele.com.br",
+    types: new Set(["Clash", "Issue"]),
+    statuses: new Set(["Open", "Resolved", "Closed"]),
+    strict: false,
+    // Lê as peças pelo modelo: separa seleção de exceção (sem isso, a biblioteca
+    // grava as peças em destaque também como exceção, e com a visibilidade
+    // padrão ligada exceção quer dizer "esconder" — o Revit e o Solibri sumiam
+    // justamente com elas) e manda o id do elemento no Revit (AuthoringToolId).
+    includeSelectionTag: true,
+    updateExtensionsOnImport: true,
+    fallbackVersionOnImport: "2.1",
+    ignoreIncompleteTopicsOnImport: false,
+  });
+  const pontosDeVista = components.get(OBC.Viewpoints);
   // Com um conflito em foco, o resto dos modelos fica translúcido; aqui, as
   // peças do conflito em foco (as únicas que não estão translúcidas).
   let emFoco: Map<string, Set<number>> | null = null;
+  // As peças pintadas pelo conflito em foco, e a peça A (a "seleção").
+  let destaque: Map<string, Set<number>> | null = null;
+  let destaqueA: OBC.ModelIdMap = {};
   const comGeometria = new Map<string, Promise<Set<number>>>();
   const pecas = (modelId: string): Promise<Set<number>> => {
     let p = comGeometria.get(modelId);
@@ -306,7 +426,9 @@ export async function criarMotor(
         normal: p.three.normal.toArray() as Ponto3,
         ponto: p.three.coplanarPoint(new THREE.Vector3()).toArray() as Ponto3,
       }));
-      const marcados = highlighter.selection.select ?? {};
+      // A seleção da tela, ou a peça A do conflito em foco.
+      const selecionados = highlighter.selection.select ?? {};
+      const marcados = Object.keys(selecionados).length ? selecionados : destaqueA;
       const porModelo: Record<string, string[]> = {};
       for (const [modelId, ids] of Object.entries(marcados)) {
         const model = fragments.list.get(modelId);
@@ -352,21 +474,7 @@ export async function criarMotor(
       await fragments.core.update(true);
     },
     async fotografar(camera) {
-      // Sem preserveDrawingBuffer o WebGL limpa a tela depois de mostrar:
-      // desenha agora e lê na mesma hora. A câmera vai para os números que
-      // a vista grava (o controle a move aos poucos, quadro a quadro).
-      const cam = world.camera.three;
-      if (camera) {
-        cam.position.set(...camera.posicao);
-        cam.up.set(0, 1, 0);
-        cam.lookAt(new THREE.Vector3(...camera.alvo));
-        cam.updateMatrixWorld();
-      }
-      await fragments.core.update(true);
-      const renderer = world.renderer!.three;
-      renderer.render(world.scene.three, world.camera.three);
-      const dados = renderer.domElement.toDataURL("image/png");
-      return await (await fetch(dados)).blob();
+      return await fotografarCena(camera);
     },
     async mostrarModelo(modelId, visivel) {
       const model = fragments.list.get(modelId);
@@ -464,59 +572,68 @@ export async function criarMotor(
         for (const { model } of naCena) model.frozen = false;
       }
     },
-    async focarConflito(conflito) {
-      await highlighter.clear("conflito");
+    async focarConflito(conflito, animar = true) {
+      // As peças do conflito anterior voltam ao normal (e logo abaixo viram
+      // fantasma com o resto).
+      if (destaque) {
+        for (const [modelId, ids] of destaque) {
+          const model = fragments.list.get(modelId);
+          if (model && ids.size) await model.resetHighlight([...ids]);
+        }
+      }
       if (!conflito) {
-        await highlighter.clear("select");
+        destaque = null;
+        destaqueA = {};
         if (emFoco) {
           for (const [modelId, model] of fragments.list) await model.resetOpacity([...(await pecas(modelId))]);
           emFoco = null;
         }
+        aoSelecionar(null);
         await fragments.core.update(true);
         return;
       }
+      if (Object.keys(highlighter.selection.select ?? {}).length) await highlighter.clear("select");
+      // A em laranja e B em magenta translúcido, pintados direto no modelo:
+      // pela ferramenta de seleção da biblioteca, cada conflito levava uns
+      // 3 s (medido em 22/10/2026), e a exportação em BCF com fotos, minutos.
       // Um lado pode não estar na cena (conflito de outra rodada, modelo
       // fechado): enquadra do mesmo jeito, pela região guardada.
-      if (conflito.a.modelId && conflito.a.localIds.length) {
-        await highlighter.highlightByID("select", { [conflito.a.modelId]: new Set(conflito.a.localIds) }, true, false);
-      } else {
-        await highlighter.clear("select");
-      }
-      if (conflito.b.modelId && conflito.b.localIds.length) {
-        await highlighter.highlightByID(
-          "conflito",
-          { [conflito.b.modelId]: new Set(conflito.b.localIds) },
-          true,
-          false,
-        );
-      }
-      // O resto vira fantasma: o conflito costuma estar atrás de laje e
-      // viga. Depois do destaque, que refaz o material dos que ele pinta.
-      // Da primeira vez, todas as peças; depois, só as do conflito anterior,
-      // que o destaque devolveu ao normal (um modelo de arquitetura tem
-      // dezenas de milhares de peças).
       const atuais = new Map<string, Set<number>>();
-      for (const lado of [conflito.a, conflito.b]) {
+      for (const [lado, material] of [
+        [conflito.a, MATERIAL_A],
+        [conflito.b, MATERIAL_B],
+      ] as const) {
+        const model = lado.modelId ? fragments.list.get(lado.modelId) : undefined;
+        if (!model || !lado.localIds.length) continue;
+        await model.highlight(lado.localIds, material);
         const s = atuais.get(lado.modelId) ?? new Set<number>();
         lado.localIds.forEach((id) => s.add(id));
         atuais.set(lado.modelId, s);
       }
+      // O resto vira fantasma: o conflito costuma estar atrás de laje e viga.
+      // Da primeira vez, todas as peças; depois, só as do conflito anterior
+      // (um modelo de arquitetura tem dezenas de milhares de peças).
       for (const [modelId, model] of fragments.list) {
-        const alvo = emFoco ? (emFoco.get(modelId) ?? new Set<number>()) : await pecas(modelId);
+        const alvo = emFoco ? (destaque?.get(modelId) ?? new Set<number>()) : await pecas(modelId);
         const ids = [...alvo].filter((id) => !atuais.get(modelId)?.has(id));
         if (ids.length) await model.setOpacity(ids, 0.12);
       }
       emFoco = atuais;
-      // De cima e de lado, sempre do mesmo jeito, a uma distância que mostra
-      // o entorno: a região de um conflito costuma ter centímetros.
-      const caixa = new THREE.Box3(
-        new THREE.Vector3(...conflito.caixa.min),
-        new THREE.Vector3(...conflito.caixa.max),
-      );
-      const c = new THREE.Vector3(...conflito.centro);
-      const d = Math.max(caixa.getSize(new THREE.Vector3()).length(), 1) * 1.5 + 2.5;
-      await world.camera.controls.setLookAt(c.x + d * 0.65, c.y + d * 0.55, c.z + d * 0.65, c.x, c.y, c.z, true);
+      destaque = atuais;
+      // A peça A é a seleção: as propriedades aparecem, e Isolar, Esconder e
+      // a Nova vista valem para ela.
+      destaqueA = conflito.a.modelId && conflito.a.localIds.length
+        ? { [conflito.a.modelId]: new Set(conflito.a.localIds) }
+        : {};
+      selecao = destaqueA;
+      if (Object.keys(destaqueA).length) aoSelecionar(await propriedades(fragments, destaqueA));
+      await world.camera.controls.setLookAt(...olharPara(conflito), animar);
       await fragments.core.update(true);
+    },
+    async cameraNoConflito(conflito) {
+      const [px, py, pz, ax, ay, az] = olharPara(conflito);
+      await world.camera.controls.setLookAt(px, py, pz, ax, ay, az, false);
+      world.camera.controls.update(0);
     },
     async idsDosGuids(modelId, guids) {
       const model = fragments.list.get(modelId);
@@ -598,6 +715,93 @@ export async function criarMotor(
     },
     aoMudarMedidas(aviso) {
       avisarMedidas = aviso;
+    },
+    async bcfExportar(topicos, aoProgredir, comFotos = true) {
+      const criados: OBC.Topic[] = [];
+      const vistas: OBC.Viewpoint[] = [];
+      try {
+        for (const [i, t] of topicos.entries()) {
+          await t.posicionar(comFotos);
+          world.camera.controls.update(0);
+          // JPEG: 258 conflitos com foto em PNG davam 50 MB (o BCF aceita os dois).
+          const foto = t.foto ?? (comFotos ? await fotografarCena(undefined, "image/jpeg") : null);
+          const vp = pontosDeVista.create();
+          vp.world = world;
+          await vp.updateCamera(false);
+          // Sem título no ponto de vista: a biblioteca usa o título como nome do
+          // arquivo, e "Tubo / duto" virava pasta no zip. O título vai no tópico.
+          for (const guid of t.guids) vp.selectionComponents.add(guid);
+          if (foto) {
+            pontosDeVista.snapshots.set(vp.guid, new Uint8Array(await foto.arrayBuffer()));
+            vp.snapshot = vp.guid;
+          }
+          vistas.push(vp);
+          const topico = bcf.create({
+            title: t.titulo,
+            description: t.descricao,
+            type: t.tipo,
+            status: t.situacao,
+            labels: new Set(t.rotulos),
+          });
+          topico.viewpoints.add(vp.guid);
+          for (const texto of t.comentarios) topico.createComment(texto, vp.guid);
+          criados.push(topico);
+          aoProgredir(i + 1, topicos.length);
+        }
+        return await bcf.export(criados);
+      } finally {
+        // O BCF exportado não fica no visualizador.
+        for (const t of criados) bcf.list.delete(t.guid);
+        for (const vp of vistas) {
+          pontosDeVista.snapshots.delete(vp.guid);
+          pontosDeVista.list.delete(vp.guid);
+        }
+      }
+    },
+    async bcfImportar(bytes) {
+      const { topics } = await bcf.load(bytes);
+      return topics.map((t) => {
+        const viewpoint = [...t.viewpoints][0] ?? null;
+        const vp = viewpoint ? pontosDeVista.list.get(viewpoint) : undefined;
+        const dadosFoto = vp?.snapshot ? pontosDeVista.snapshots.get(vp.snapshot) : undefined;
+        const tipoFoto = vp?.snapshot ? pontosDeVista.getSnapshotExtension(vp.snapshot) : "png";
+        return {
+          guid: t.guid,
+          titulo: textoXml(t.title),
+          descricao: textoXml(t.description),
+          tipo: textoXml(t.type),
+          situacao: textoXml(t.status),
+          autor: textoXml(t.creationAuthor),
+          data: t.creationDate instanceof Date ? t.creationDate.toISOString() : String(t.creationDate ?? ""),
+          comentarios: [...t.comments.values()].map((c) => ({
+            autor: textoXml(c.author),
+            texto: textoXml(c.comment),
+            data: c.date instanceof Date ? c.date.toISOString() : String(c.date ?? ""),
+          })),
+          viewpoint: vp ? vp.guid : null,
+          foto: dadosFoto
+            ? URL.createObjectURL(new Blob([dadosFoto as BlobPart], { type: `image/${tipoFoto === "jpg" ? "jpeg" : tipoFoto}` }))
+            : null,
+          guids: vp ? [...vp.selectionComponents] : [],
+        };
+      });
+    },
+    async bcfIr(viewpoint) {
+      const vp = pontosDeVista.list.get(viewpoint);
+      if (!vp) return;
+      vp.world = world;
+      await vp.go({ applyVisibility: false, applyClippings: true, clippingsVisibility: false });
+      // As peças pelos GlobalIds, em todos os modelos da cena (o mapa da
+      // biblioteca vinha vazio para o ponto de vista importado).
+      const guids = [...vp.selectionComponents];
+      const mapa: OBC.ModelIdMap = {};
+      for (const [modelId, model] of fragments.list) {
+        const ids = (await model.getLocalIdsByGuids(guids)).filter((i): i is number => i !== null);
+        if (ids.length) mapa[modelId] = new Set(ids);
+      }
+      if (Object.keys(mapa).length) await highlighter.highlightByID("select", mapa, true, false);
+      else await highlighter.clear("select");
+      await fragments.core.update(true);
     },
     descartar() {
       window.removeEventListener("keydown", aoTeclar);

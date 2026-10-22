@@ -116,6 +116,11 @@ Como no Trimble Connect e no Navisworks, um **conjunto** define o teste:
 - **Interferência** (uma peça entra na outra mais que a tolerância, padrão
   1 cm) ou **folga** (ficam a menos de X cm; inclui as interferências).
 - **Ignorar pares do mesmo modelo** (tubo com a própria conexão).
+- **Excluir peças cujo nome contém** (22/10/2026), por grupo, separado por
+  vírgula, sem diferença de acento ou maiúscula: vale o nome da família e do
+  tipo do Revit. No SER, "Flexível" tirou o eletroduto flexível embutido —
+  de 258 para 176 conflitos. Os nomes são lidos uma vez por modelo, só quando
+  algum conjunto filtra por nome.
 
 Furo de laje não aparece porque a laje fica fora do grupo B. Três conjuntos
 prontos: instalações × pilares e vigas (sem as paredes e lajes que o
@@ -218,8 +223,46 @@ o `getMergedBox` da biblioteca (mesmo problema do `getBoxes`).
 - Delete apaga a medida sob o mouse; "Apagar medidas" apaga todas. Medindo,
   o corte desliga (os dois usam o duplo clique).
 
+## BCF (22/10/2026)
+
+O formato aberto de apontamentos de BIM (buildingSMART), versão 2.1 — a mais
+aceita: Revit (BCF Manager), Solibri, Trimble Connect, BIMcollab. Usa o
+`BCFTopics` e o `Viewpoints` da biblioteca, que convertem a câmera para as
+coordenadas do IFC (Z para cima), descontando o alinhamento entre modelos:
+sai nas coordenadas do primeiro modelo da cena (no SER, a estrutura).
+
+- **Exportar conflitos** (painel de conflitos, "Exportar BCF"): os do filtro
+  atual, até 300. Cada um vira um tópico tipo Clash, com título e descrição
+  do conflito, rótulos (as disciplinas e a situação), situação BCF (novo e
+  ativo → Open, aprovado → Closed, resolvido → Resolved), a justificativa da
+  aprovação como comentário e um ponto de vista com a câmera no conflito e
+  as duas peças selecionadas — com o GlobalId e o id do elemento no Revit
+  (`AuthoringToolId`). **Com fotos** é opcional (ligado até 30 conflitos):
+  cada foto leva ~1 s; sem fotos, 258 conflitos saem em ~13 s.
+- **Exportar vistas** (botão BCF): as vistas da obra, tipo Issue, com a
+  imagem marcada como foto.
+- **Importar** (botão BCF): lê o `.bcfzip` de outro programa; cada tópico
+  mostra título, situação, autor, descrição, comentários e a foto. Clicar vai
+  para a câmera e destaca as peças (se o modelo delas estiver na cena);
+  **Nova vista** abre a vista com título e descrição do tópico, para pedir a
+  correção pelo caminho de sempre. O importado não fica guardado — vira vista
+  quando alguém a cria.
+
+Armadilhas da biblioteca, já contornadas em `motor.ts`:
+
+- Sem `includeSelectionTag`, ela grava as peças selecionadas também como
+  exceção de visibilidade — e com a visibilidade padrão ligada, exceção quer
+  dizer esconder: o Revit sumiria justamente com as peças do conflito.
+- O título do ponto de vista vira nome de arquivo ("Tubo / duto" virava
+  pasta no zip): o ponto de vista vai sem título; o título fica no tópico.
+- Na leitura, os textos vêm sem decodificar o XML (`&quot;`).
+- O mapa de seleção do ponto de vista importado vinha vazio: as peças são
+  achadas pelos GlobalIds em cada modelo.
+
+O destaque do conflito em foco é pintado direto no modelo
+(`model.highlight`), e não pela ferramenta de seleção da biblioteca: por ela,
+cada conflito levava ~3 s (medido), e a exportação com fotos, minutos.
+
 ## Próximos passos
 
-1. Prazo e situação por apontamento, no padrão BCF, para exportar e importar
-   de outros programas.
-2. Importar os conflitos do Navisworks (relatório XML) como vistas.
+Nenhum pedido em aberto no 3D. O Navisworks não está em uso (22/10/2026).

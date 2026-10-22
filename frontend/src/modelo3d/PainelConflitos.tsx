@@ -18,7 +18,8 @@ import {
   type Fase,
   type GrupoConflito,
 } from "./conflitos";
-import type { Motor } from "./motor";
+import type { Motor, TopicoBcf } from "./motor";
+import { baixarArquivo, hojeArquivo } from "./PainelBCF";
 
 export interface ModeloConflito {
   modelId: string;
@@ -180,6 +181,10 @@ export default function PainelConflitos({
   const [erro, setErro] = useState<string | null>(null);
   const [ativo, setAtivo] = useState<number | null>(null);
   const [aprovando, setAprovando] = useState<{ id: number; texto: string } | null>(null);
+  const [exportando, setExportando] = useState<string | null>(null);
+  // Fotos são o lento da exportação (uns segundos por conflito): ligadas
+  // quando são poucos.
+  const [fotosBcf, setFotosBcf] = useState<boolean | null>(null);
   const rodando = useRef(false);
   // Os conflitos achados nesta sessão, com as peças já localizadas na cena.
   const locais = useRef<Map<number, Conflito>>(new Map());
@@ -435,14 +440,57 @@ export default function PainelConflitos({
     }
   }
 
-  function pedirVista(c: ConflitoServidor) {
+  /** Os conflitos do filtro em BCF, para o projetista abrir no programa dele
+   *  (Revit, Solibri…): cada um com a câmera no conflito, as duas peças em
+   *  destaque e a foto. */
+  async function exportarBcf(lista: ConflitoServidor[], comFotos: boolean) {
+    if (!lista.length || exportando) return;
+    setErro(null);
+    try {
+      const situacaoBcf: Record<Situacao, string> = {
+        novo: "Open", ativo: "Open", aprovado: "Closed", resolvido: "Resolved",
+      };
+      const topicos: TopicoBcf[] = lista.map((c) => {
+        const texto = textoDoConflito(c);
+        return {
+          titulo: texto.titulo,
+          descricao: texto.descricao,
+          tipo: "Clash",
+          situacao: situacaoBcf[c.status],
+          rotulos: [c.disciplina_a, c.disciplina_b, ROTULO_SITUACAO[c.status]].filter((x): x is string => !!x),
+          comentarios: c.justificativa ? [`Aprovado${c.atualizado_por ? ` por ${c.atualizado_por}` : ""}: ${c.justificativa}`] : [],
+          guids: [...c.guids_a, c.guid_b],
+          posicionar: async (paraFoto) => {
+            const cena = await naCena(c);
+            if (paraFoto) await motor.focarConflito(cena, false);
+            else await motor.cameraNoConflito(cena);
+          },
+        };
+      });
+      const blob = await motor.bcfExportar(
+        topicos,
+        (feitos, total) => setExportando(`Montando o BCF: ${feitos} de ${total} conflitos…`),
+        comFotos,
+      );
+      const obra = (modelos[0]?.documento ?? "obra").split("-")[0];
+      baixarArquivo(blob, `${obra}-conflitos-${hojeArquivo()}.bcfzip`);
+    } catch (e) {
+      setErro(mensagem(e, "Não deu para exportar o BCF."));
+    } finally {
+      setExportando(null);
+      setAtivo(null);
+      await motor.focarConflito(null);
+    }
+  }
+
+  function textoDoConflito(c: ConflitoServidor) {
     const cA = nomeCategoria(c.categoria_a);
     const cB = nomeCategoria(c.categoria_b);
     const medida =
       c.tipo === "interferencia" ? `entra cerca de ${medidaTexto(c.medida)}` : `fica a ${medidaTexto(c.medida)}`;
     const nomeB = nomeCurto(c.nome_b);
     const cota = (c.centro[1] ?? 0).toFixed(2).replace(".", ",");
-    aoNovaVista({
+    return {
       titulo: `Conflito: ${cA} × ${cB}${nomeB.length <= 16 ? ` ${nomeB}` : ""}${
         c.disciplina_a && c.disciplina_b ? ` (${c.disciplina_a} × ${c.disciplina_b})` : ""
       }`,
@@ -451,9 +499,11 @@ export default function PainelConflitos({
         `${c.tipo === "interferencia" ? "em" : "de"} ${cB.toLowerCase()} "${nomeB}"` +
         `${c.documento_b ? ` (${c.documento_b} R${c.revisao_b})` : ""}, na cota ${cota} m. ` +
         "Ajustar o traçado ou prever a passagem com o projetista de estrutura.",
-      documentoId: c.documento_a_id,
-      conflitoId: c.id,
-    });
+    };
+  }
+
+  function pedirVista(c: ConflitoServidor) {
+    aoNovaVista({ ...textoDoConflito(c), documentoId: c.documento_a_id, conflitoId: c.id });
   }
 
   const ordem: Record<Situacao, number> = { novo: 0, ativo: 1, aprovado: 2, resolvido: 3 };
@@ -597,6 +647,28 @@ export default function PainelConflitos({
               </button>
             ))}
           </div>
+          {visiveis.length > 0 && (
+            <div className="linha" style={{ gap: 8, margin: "2px 0" }}>
+              <button
+                className="link-pequeno"
+                disabled={!!exportando || !!andamento}
+                onClick={() => exportarBcf(visiveis.slice(0, 300), fotosBcf ?? visiveis.length <= 30)}
+                title="Arquivo .bcfzip para abrir no Revit (BCF Manager), Solibri, Trimble Connect ou BIMcollab"
+              >
+                Exportar BCF ({Math.min(visiveis.length, 300)})
+              </button>
+              <label className="opcao-aviso" style={{ margin: 0, fontSize: 12 }} title="Cada foto leva uns segundos">
+                <input
+                  type="checkbox"
+                  checked={fotosBcf ?? visiveis.length <= 30}
+                  disabled={!!exportando}
+                  onChange={(e) => setFotosBcf(e.target.checked)}
+                />
+                com fotos
+              </label>
+              {exportando && <span className="silencioso" style={{ fontSize: 12 }}>{exportando}</span>}
+            </div>
+          )}
           {visiveis.length === 0 && (
             <p className="silencioso" style={{ fontSize: 12.5, margin: "6px 0 0" }}>
               {filtro === "abertos" ? "Nenhum conflito aberto neste conjunto." : "Nada aqui."}
@@ -719,9 +791,10 @@ export default function PainelConflitos({
 function ResumoConjunto({ conjunto }: { conjunto: ConjuntoConflito }) {
   const grupo = (g: GrupoConflito) => {
     const discs = g.disciplinas.join(", ") || "nenhuma disciplina";
-    if (g.categorias.length) return `${discs} (${g.categorias.map(nomeCategoria).join(", ")})`;
+    const nomes = (g.excluirNomes ?? []).length ? `; sem nomes com "${(g.excluirNomes ?? []).join('", "')}"` : "";
+    if (g.categorias.length) return `${discs} (${g.categorias.map(nomeCategoria).join(", ")}${nomes})`;
     const fora = [...new Set((g.excluir ?? []).map(nomeCategoria))];
-    return `${discs} (tudo${fora.length ? `, menos ${fora.slice(0, 4).join(", ")}${fora.length > 4 ? "…" : ""}` : ""})`;
+    return `${discs} (tudo${fora.length ? `, menos ${fora.slice(0, 4).join(", ")}${fora.length > 4 ? "…" : ""}` : ""}${nomes})`;
   };
   return (
     <p className="silencioso" style={{ fontSize: 12, margin: 0 }}>
@@ -905,6 +978,27 @@ function EditorGrupo({
           </label>
         ))}
       </div>
+      <label className="campo" style={{ display: "block", margin: "0 0 8px" }}>
+        <span className="rotulo">Excluir peças cujo nome contém</span>
+        <input
+          defaultValue={(grupo.excluirNomes ?? []).join(", ")}
+          placeholder="Ex.: Flexível, Embutido"
+          maxLength={300}
+          onChange={(e) =>
+            aoMudar({
+              ...grupo,
+              excluirNomes: e.target.value
+                .split(",")
+                .map((t) => t.trim())
+                .filter(Boolean)
+                .slice(0, 30),
+            })
+          }
+        />
+        <span className="silencioso" style={{ fontSize: 11.5 }}>
+          Separe por vírgula. Vale o nome da família e do tipo (no Revit), sem diferença de acento ou maiúscula.
+        </span>
+      </label>
       <span className="rotulo">Categorias</span>
       <label className="opcao-aviso" style={{ margin: "2px 0 4px" }}>
         <input

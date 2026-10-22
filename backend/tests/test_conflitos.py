@@ -195,3 +195,11 @@ def test_chat_consulta_conflitos_com_as_regras_da_tela(cliente, c, conjunto):
     assert descrever("consultar_conflitos", {"obra": "SER", "disciplina": "HID"}) == (
         "Consultando os conflitos abertos (HID) na obra SER"
     )
+
+
+def test_conjunto_guarda_o_filtro_por_nome(cliente, c):
+    config = {**CONFIG, "a": {**CONFIG["a"], "excluirNomes": ["Flexível", "Embutido"]}}
+    r = cliente.post(f"/obras/{c['obra']['id']}/conjuntos-conflito",
+                     json={"nome": "Sem eletroduto flexível", "config": config}, headers=c["coord"])
+    assert r.status_code == 201, r.text
+    assert r.json()["config"]["a"]["excluirNomes"] == ["Flexível", "Embutido"]

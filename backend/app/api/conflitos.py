@@ -47,6 +47,8 @@ class GrupoConfig(BaseModel):
     disciplinas: list[str] = Field(default=[], max_length=40)
     categorias: list[str] = Field(default=[], max_length=200)
     excluir: list[str] = Field(default=[], max_length=200)
+    # Trechos do nome da peça que tiram ela do grupo (ex.: "Flexível").
+    excluirNomes: list[str] = Field(default=[], max_length=30)
 
 
 class ConfigConjunto(BaseModel):
@@ -230,13 +232,21 @@ def conflitos_unicos(db: Session, obra_id: int) -> list[Conflito]:
     """Os conflitos da obra, de todos os conjuntos, contando uma vez o mesmo
     par de peças que aparece em dois conjuntos (o pronto e um montado com mais
     tolerância), pela situação mais aberta. A tela (resumo) e o chat usam."""
-    unicos: dict[tuple[str, str], Conflito] = {}
+    # O mesmo de sempre: a mesma peça B e alguma peça A em comum (o grupo de
+    # peças A muda de um conjunto para outro — com um filtro por nome, saem
+    # algumas).
+    por_b: dict[str, list[tuple[set[str], Conflito]]] = defaultdict(list)
     for c in db.scalars(select(Conflito).where(Conflito.obra_id == obra_id).order_by(Conflito.id)):
-        chave = (c.guid_b, min(c.guids_a or [""]))
-        atual = unicos.get(chave)
-        if atual is None or PRIORIDADE.get(c.status, 9) < PRIORIDADE.get(atual.status, 9):
-            unicos[chave] = c
-    return list(unicos.values())
+        pecas = set(c.guids_a or [])
+        lista = por_b[c.guid_b]
+        achado = next((i for i, (p, _) in enumerate(lista) if p & pecas), None)
+        if achado is None:
+            lista.append((pecas, c))
+            continue
+        juntas, atual = lista[achado]
+        melhor = c if PRIORIDADE.get(c.status, 9) < PRIORIDADE.get(atual.status, 9) else atual
+        lista[achado] = (juntas | pecas, melhor)
+    return [c for lista in por_b.values() for _, c in lista]
 
 
 def _conflitos(db: Session, conjunto_id: int) -> list[Conflito]:

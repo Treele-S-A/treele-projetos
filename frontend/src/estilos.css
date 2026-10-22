@@ -2391,3 +2391,66 @@ table.tabela {
   content: counter(medida) ". ";
   color: var(--tinta-3);
 }
+
+/* BCF no 3D (22/10/2026) */
+.painel-bcf {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px;
+  border: 1px solid var(--traco-medio);
+  border-radius: 10px;
+  background: var(--nevoa);
+}
+.lista-bcf {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.lista-bcf li {
+  border: 1px solid var(--traco-fino);
+  border-radius: 8px;
+  background: var(--folha);
+}
+.lista-bcf li.atual {
+  border-color: var(--petroleo);
+}
+.item-bcf {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  width: 100%;
+  padding: 6px;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+.item-bcf img {
+  width: 56px;
+  height: 40px;
+  flex: none;
+  object-fit: cover;
+  border-radius: 4px;
+  background: #eef2f3;
+}
+.item-bcf span {
+  display: flex;
+  flex-direction: column;
+}
+.item-bcf strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.comentarios-bcf {
+  margin: 0;
+  padding-left: 16px;
+  font-size: 12px;
+}

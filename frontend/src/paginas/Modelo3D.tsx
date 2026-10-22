@@ -13,6 +13,7 @@ import { api, ErroApi, formatarData, type StatusRevisao, type Usuario } from "..
 import { Estado } from "../componentes";
 import Marcacao, { type Gerador } from "../modelo3d/Marcacao";
 import PainelConflitos, { type ModeloConflito, type PedidoVistaConflito } from "../modelo3d/PainelConflitos";
+import PainelBCF from "../modelo3d/PainelBCF";
 import PainelPavimentos from "../modelo3d/PainelPavimentos";
 import {
   converter,
@@ -150,6 +151,7 @@ export default function Modelo3D() {
   const [verMarcacoes, setVerMarcacoes] = useState(true);
   const [conflitos, setConflitos] = useState(false);
   const [pavimentos, setPavimentos] = useState(false);
+  const [bcf, setBcf] = useState(false);
   const [medindo, setMedindo] = useState<ModoMedida | null>(null);
   const [medidas, setMedidas] = useState<Medida[]>([]);
   // Muda quando uma vista nasce de um conflito: o painel recarrega a lista.
@@ -513,6 +515,14 @@ export default function Modelo3D() {
             Pavimentos
           </button>
           <button
+            className={`botao pequeno ${bcf ? "" : "secundario"}`}
+            disabled={!todosProntos || !obraId}
+            onClick={() => setBcf(!bcf)}
+            title="Importar e exportar apontamentos em BCF (Revit, Solibri, Trimble Connect)"
+          >
+            BCF
+          </button>
+          <button
             className={`botao pequeno ${conflitos ? "" : "secundario"}`}
             disabled={!todosProntos || !obraId}
             onClick={() => {
@@ -570,6 +580,15 @@ export default function Modelo3D() {
               )}
             </div>
           </div>
+        )}
+
+        {bcf && motor.current && obraId && (
+          <PainelBCF
+            motor={motor.current}
+            obraCodigo={obra?.codigo ?? "obra"}
+            vistas={vistas}
+            aoNovaVista={(pedido) => void novaVista(pedido)}
+          />
         )}
 
         {pavimentos && motor.current && (

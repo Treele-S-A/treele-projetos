@@ -27,6 +27,9 @@ export interface GrupoConflito {
   categorias: string[];
   /** Com todas as categorias: as que ficam de fora. */
   excluir?: string[];
+  /** Peças cujo nome (família e tipo, no Revit) contém um destes trechos
+   *  ficam de fora, ex.: "Flexível" tira o eletroduto flexível embutido. */
+  excluirNomes?: string[];
 }
 
 export interface ConjuntoConflito {
@@ -273,6 +276,50 @@ export async function caixaDasPecas(model: FragmentsModel, ids: number[]): Promi
   return caixa;
 }
 
+function semAcento(texto: string): string {
+  return texto.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+}
+
+// Os nomes das peças, lidos uma vez por modelo (só quando um conjunto filtra
+// por nome).
+const nomesLidos = new WeakMap<FragmentsModel, Map<number, string>>();
+
+async function nomesDas(model: FragmentsModel, ids: number[]): Promise<Map<number, string>> {
+  let guardados = nomesLidos.get(model);
+  if (!guardados) {
+    guardados = new Map();
+    nomesLidos.set(model, guardados);
+  }
+  const faltam = ids.filter((id) => !guardados!.has(id));
+  for (let k = 0; k < faltam.length; k += 2000) {
+    const lote = faltam.slice(k, k + 2000);
+    const dados = (await model.getItemsData(lote, {
+      attributesDefault: false,
+      attributes: ["Name", "ObjectType"],
+      relationsDefault: { attributes: false, relations: false },
+    })) as unknown as Record<string, { value?: unknown } | undefined>[];
+    lote.forEach((id, n) => {
+      const nome = [dados[n]?.Name?.value, dados[n]?.ObjectType?.value].filter((v) => typeof v === "string").join(" ");
+      guardados!.set(id, semAcento(nome));
+    });
+  }
+  return guardados;
+}
+
+/** Tira do grupo as peças cujo nome contém algum dos trechos. */
+async function semOsNomes(modelos: ModeloNaCena[], itens: Item[], trechos?: string[]): Promise<Item[]> {
+  const termos = (trechos ?? []).map((t) => semAcento(t.trim())).filter(Boolean);
+  if (!termos.length) return itens;
+  const porModelo = new Map<number, number[]>();
+  for (const i of itens) porModelo.set(i.modelo, [...(porModelo.get(i.modelo) ?? []), i.localId]);
+  const nomes = new Map<number, Map<number, string>>();
+  for (const [m, ids] of porModelo) nomes.set(m, await nomesDas(modelos[m].model, ids));
+  return itens.filter((i) => {
+    const nome = nomes.get(i.modelo)?.get(i.localId) ?? "";
+    return !termos.some((t) => nome.includes(t));
+  });
+}
+
 async function itensDoGrupo(
   modelos: ModeloNaCena[],
   grupo: GrupoConflito,
@@ -430,8 +477,16 @@ export async function detectar(
   aoProgredir: (fase: Fase, valor: number) => void,
 ): Promise<Conflito[]> {
   aoProgredir("elementos", 0);
-  const a = await itensDoGrupo(modelos, conjunto.a, (v) => aoProgredir("elementos", v / 2));
-  const b = await itensDoGrupo(modelos, conjunto.b, (v) => aoProgredir("elementos", 0.5 + v / 2));
+  const a = await semOsNomes(
+    modelos,
+    await itensDoGrupo(modelos, conjunto.a, (v) => aoProgredir("elementos", v / 2)),
+    conjunto.a.excluirNomes,
+  );
+  const b = await semOsNomes(
+    modelos,
+    await itensDoGrupo(modelos, conjunto.b, (v) => aoProgredir("elementos", 0.5 + v / 2)),
+    conjunto.b.excluirNomes,
+  );
   if (!a.length || !b.length) return [];
   aoProgredir("triagem", 0);
   const mesmos = JSON.stringify(conjunto.a) === JSON.stringify(conjunto.b);
