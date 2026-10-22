@@ -13,10 +13,13 @@ import { api, ErroApi, formatarData, type StatusRevisao, type Usuario } from "..
 import { Estado } from "../componentes";
 import Marcacao, { type Gerador } from "../modelo3d/Marcacao";
 import PainelConflitos, { type ModeloConflito, type PedidoVistaConflito } from "../modelo3d/PainelConflitos";
+import PainelPavimentos from "../modelo3d/PainelPavimentos";
 import {
   converter,
   criarMotor,
   type EstadoCena,
+  type Medida,
+  type ModoMedida,
   type Motor,
   type Propriedades,
   type Valor,
@@ -146,6 +149,9 @@ export default function Modelo3D() {
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
   const [verMarcacoes, setVerMarcacoes] = useState(true);
   const [conflitos, setConflitos] = useState(false);
+  const [pavimentos, setPavimentos] = useState(false);
+  const [medindo, setMedindo] = useState<ModoMedida | null>(null);
+  const [medidas, setMedidas] = useState<Medida[]>([]);
   // Muda quando uma vista nasce de um conflito: o painel recarrega a lista.
   const [versaoConflitos, setVersaoConflitos] = useState(0);
   const [temMarcacoes, setTemMarcacoes] = useState(false);
@@ -175,6 +181,7 @@ export default function Modelo3D() {
       .then((m) => {
         if (!vivo) return m.descartar();
         motor.current = m;
+        m.aoMudarMedidas(() => setMedidas(m.medidas()));
         setPronto(true);
       })
       .catch((e) => setFalhaMotor(e instanceof Error ? e.message : String(e)));
@@ -328,6 +335,13 @@ export default function Modelo3D() {
     const novo = !corte;
     setCorte(novo);
     motor.current?.corte(novo);
+    if (novo) medir(null);
+  }
+
+  function medir(modo: ModoMedida | null) {
+    setMedindo(modo);
+    motor.current?.medir(modo);
+    if (modo) setCorte(false);
   }
 
   const modeloDaSelecao = selecao ? modelos.find((m) => String(m.id) === selecao.modelId) : null;
@@ -483,6 +497,22 @@ export default function Modelo3D() {
             </button>
           )}
           <button
+            className={`botao pequeno ${medindo ? "" : "secundario"}`}
+            disabled={!todosProntos}
+            onClick={() => medir(medindo ? null : "distancia")}
+            title="Distâncias e áreas no modelo"
+          >
+            {medindo ? "Medindo" : "Medir"}
+          </button>
+          <button
+            className={`botao pequeno ${pavimentos ? "" : "secundario"}`}
+            disabled={!todosProntos}
+            onClick={() => setPavimentos(!pavimentos)}
+            title="Ver, esconder ou isolar por pavimento"
+          >
+            Pavimentos
+          </button>
+          <button
             className={`botao pequeno ${conflitos ? "" : "secundario"}`}
             disabled={!todosProntos || !obraId}
             onClick={() => {
@@ -499,6 +529,52 @@ export default function Modelo3D() {
           Clique num elemento para ver as propriedades, ou use o botão direito para esconder ou isolar.
           {corte && " Com o corte ligado, dê um duplo clique numa face para cortar ali."}
         </p>
+
+        {(medindo || medidas.length > 0) && (
+          <div className="painel-medidas">
+            <span className="rotulo">Medidas</span>
+            <div className="linha" style={{ gap: 12 }}>
+              {(["distancia", "area"] as const).map((modo) => (
+                <label key={modo} className="opcao-aviso" style={{ margin: 0 }}>
+                  <input type="radio" checked={medindo === modo} onChange={() => medir(modo)} />
+                  {modo === "distancia" ? "Distância" : "Área"}
+                </label>
+              ))}
+            </div>
+            <p className="silencioso" style={{ fontSize: 11.5, margin: 0 }}>
+              {medindo === "area"
+                ? "Duplo clique numa face (laje, parede, piso) mede a área dela inteira. Delete apaga a medida sob o mouse."
+                : medindo === "distancia"
+                  ? "Duplo clique no primeiro ponto e de novo no segundo. Delete apaga a medida sob o mouse."
+                  : "Medição desligada."}
+            </p>
+            {medidas.length > 0 && (
+              <ol className="lista-medidas">
+                {medidas.map((m, i) => (
+                  <li key={i}>
+                    {m.valor.toLocaleString("pt-BR", { maximumFractionDigits: 2 })} {m.tipo === "area" ? "m²" : "m"}
+                  </li>
+                ))}
+              </ol>
+            )}
+            <div className="linha" style={{ gap: 8 }}>
+              {medidas.length > 0 && (
+                <button className="link-pequeno" onClick={() => motor.current?.apagarMedidas()}>
+                  Apagar medidas
+                </button>
+              )}
+              {medindo && (
+                <button className="link-pequeno" onClick={() => medir(null)}>
+                  Parar de medir
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
+        {pavimentos && motor.current && (
+          <PainelPavimentos motor={motor.current} modelos={modelosConflito} aoMostrarTudo={mostrarTudo} />
+        )}
 
         {conflitos && motor.current && obraId && (
           <PainelConflitos

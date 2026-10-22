@@ -11,6 +11,7 @@ import * as FRAGS from "@thatopen/fragments";
 import CameraControls from "camera-controls";
 import * as THREE from "three";
 import {
+  caixaDasPecas,
   contarCategorias,
   detectar,
   type ConjuntoConflito,
@@ -45,6 +46,26 @@ export interface EstadoCena {
   selecao: Record<string, string[]>;
 }
 
+/** Um pavimento do modelo (IfcBuildingStorey) e as peças nele, por categoria. */
+export interface Pavimento {
+  localId: number;
+  nome: string;
+  /** Na unidade do IFC (o Revit exporta em metro ou centímetro). */
+  elevacao: number | null;
+  pecas: Record<string, number[]>;
+}
+
+export type ModoMedida = "distancia" | "area";
+
+export interface Medida {
+  tipo: ModoMedida;
+  /** m ou m². */
+  valor: number;
+}
+
+/** modelId → localIds. */
+export type Pecas = Record<string, number[]>;
+
 export interface Motor {
   carregar(modelId: string, frag: ArrayBuffer | Uint8Array): Promise<void>;
   /** A cena agora: câmera, cortes e seleção. */
@@ -77,10 +98,29 @@ export interface Motor {
   focarConflito(conflito: Conflito | null): Promise<void>;
   /** Os localIds das peças, pelos GlobalIds (conflito de outra rodada). */
   idsDosGuids(modelId: string, guids: string[]): Promise<number[]>;
+  /** Os pavimentos do modelo, na ordem da elevação. */
+  pavimentos(modelId: string): Promise<Pavimento[]>;
+  mostrarPecas(pecas: Pecas, visiveis: boolean): Promise<void>;
+  isolarPecas(pecas: Pecas): Promise<void>;
+  enquadrarPecas(pecas: Pecas): Promise<void>;
+  /** Liga a régua (distância), a área ou nada. Na distância, duplo clique
+   *  nos dois pontos; na área, duplo clique na face. Delete apaga a medida
+   *  sob o mouse. */
+  medir(modo: ModoMedida | null): void;
+  medidas(): Medida[];
+  apagarMedidas(): void;
+  /** Avisa a tela quando uma medida entra ou sai. */
+  aoMudarMedidas(aviso: () => void): void;
   descartar(): void;
 }
 
 const COR_SELECAO = new THREE.Color("#f0a500");
+
+function mapaDe(pecas: Pecas): OBC.ModelIdMap {
+  const mapa: OBC.ModelIdMap = {};
+  for (const [modelId, ids] of Object.entries(pecas)) if (ids.length) mapa[modelId] = new Set(ids);
+  return mapa;
+}
 const COR_CONFLITO = new THREE.Color("#d61f9c"); // magenta: pilar costuma vir vermelho
 
 /** Converte um IFC em fragments num worker, com o andamento de 0 a 1. */
@@ -181,7 +221,42 @@ export async function criarMotor(
 
   const clipper = components.get(OBC.Clipper);
   clipper.enabled = false;
+  // Medidas (22/10/2026): régua e área da biblioteca. Desligadas até a
+  // pessoa escolher; com uma ligada, o duplo clique marca os pontos.
+  const regua = components.get(OBCF.LengthMeasurement);
+  regua.world = world;
+  regua.color = new THREE.Color("#0070a8");
+  regua.enabled = false;
+  const areas = components.get(OBCF.AreaMeasurement);
+  areas.world = world;
+  areas.color = new THREE.Color("#0070a8");
+  areas.enabled = false;
+  // Área pela face clicada (a laje, a parede): um duplo clique dá a área da
+  // face inteira. Os cantos livres exigem pontos no mesmo plano, e na prática
+  // o clique pega a borda ou a peça de trás (testado em 22/10/2026).
+  areas.mode = "face";
+  let avisarMedidas: () => void = () => {};
+  for (const lista of [regua.list, areas.list]) {
+    lista.onItemAdded.add(() => avisarMedidas());
+    lista.onItemDeleted.add(() => avisarMedidas());
+    lista.onCleared.add(() => avisarMedidas());
+  }
+  const aoTeclar = (e: KeyboardEvent) => {
+    if (!regua.enabled && !areas.enabled) return;
+    if (e.key === "Enter" && areas.enabled) areas.endCreation();
+    else if (e.key === "Escape") {
+      regua.cancelCreation();
+      areas.cancelCreation();
+    } else if (e.key === "Delete" || e.key === "Backspace") {
+      if (regua.enabled) regua.delete();
+      if (areas.enabled) areas.delete();
+    }
+  };
+  window.addEventListener("keydown", aoTeclar);
+
   const aoDuploClique = () => {
+    if (regua.enabled) return void regua.create();
+    if (areas.enabled) return void areas.create();
     if (clipper.enabled) void clipper.create(world);
   };
   container.addEventListener("dblclick", aoDuploClique);
@@ -448,7 +523,84 @@ export async function criarMotor(
       if (!model || !guids.length) return [];
       return (await model.getLocalIdsByGuids(guids)).filter((i): i is number => i !== null);
     },
+    async pavimentos(modelId) {
+      const model = fragments.list.get(modelId);
+      if (!model) return [];
+      const arvore = await model.getSpatialStructure();
+      const comMalha = new Set(await model.getItemsIdsWithGeometry());
+      // Os pavimentos pela categoria do modelo; na árvore, a categoria pode
+      // vir num nó de agrupamento acima deles, sem localId.
+      const ehPavimento = new Set(
+        Object.values(await model.getItemsOfCategories([/^IFCBUILDINGSTOREY$/i])).flat(),
+      );
+      const achados: { localId: number; pecas: Record<string, number[]> }[] = [];
+      // Desce a árvore; dentro de um pavimento, junta as peças com geometria
+      // pela categoria (os nós de categoria vêm sem localId).
+      const juntar = (no: FRAGS.SpatialTreeItem, pecas: Record<string, number[]>, categoria: string | null) => {
+        const cat = (no.category ?? categoria ?? "").toUpperCase();
+        if (no.localId !== null && comMalha.has(no.localId)) (pecas[cat] ??= []).push(no.localId);
+        for (const filho of no.children ?? []) juntar(filho, pecas, no.localId === null ? cat : null);
+      };
+      const descer = (no: FRAGS.SpatialTreeItem) => {
+        if (no.localId !== null && ehPavimento.has(no.localId)) {
+          const pecas: Record<string, number[]> = {};
+          for (const filho of no.children ?? []) juntar(filho, pecas, null);
+          achados.push({ localId: no.localId, pecas });
+          return;
+        }
+        for (const filho of no.children ?? []) descer(filho);
+      };
+      descer(arvore);
+      if (!achados.length) return [];
+      const dados = (await model.getItemsData(
+        achados.map((a) => a.localId),
+        { attributesDefault: false, attributes: ["Name", "Elevation"], relationsDefault: { attributes: false, relations: false } },
+      )) as unknown as Record<string, { value?: unknown } | undefined>[];
+      const lista: Pavimento[] = [];
+      for (const [i, a] of achados.entries()) {
+        lista.push({
+          localId: a.localId,
+          nome: String(dados[i]?.Name?.value ?? `Pavimento ${i + 1}`),
+          elevacao: typeof dados[i]?.Elevation?.value === "number" ? (dados[i]!.Elevation!.value as number) : null,
+          pecas: a.pecas,
+        });
+      }
+      return lista.sort((p, q) => (p.elevacao ?? 0) - (q.elevacao ?? 0));
+    },
+    async mostrarPecas(pecas, visiveis) {
+      await hider.set(visiveis, mapaDe(pecas));
+    },
+    async isolarPecas(pecas) {
+      await hider.isolate(mapaDe(pecas));
+    },
+    async enquadrarPecas(pecas) {
+      const caixa = new THREE.Box3();
+      for (const [modelId, ids] of Object.entries(pecas)) {
+        const model = fragments.list.get(modelId);
+        if (model && ids.length) caixa.union(await caixaDasPecas(model, ids));
+      }
+      if (!caixa.isEmpty()) await world.camera.controls.fitToBox(caixa, true);
+    },
+    medir(modo) {
+      regua.enabled = modo === "distancia";
+      areas.enabled = modo === "area";
+      if (modo) clipper.enabled = false;
+    },
+    medidas() {
+      return [
+        ...[...regua.list].map((l) => ({ tipo: "distancia" as const, valor: l.value })),
+        ...[...areas.list].map((a) => ({ tipo: "area" as const, valor: a.value })),
+      ];
+    },
+    apagarMedidas() {
+      regua.list.clear();
+      areas.list.clear();
+    },
+    aoMudarMedidas(aviso) {
+      avisarMedidas = aviso;
+    },
     descartar() {
+      window.removeEventListener("keydown", aoTeclar);
       container.removeEventListener("dblclick", aoDuploClique);
       container.removeEventListener("contextmenu", aoMenuContexto);
       components.dispose();

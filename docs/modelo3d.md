@@ -192,11 +192,34 @@ Rotas: `GET/POST /obras/{id}/conjuntos-conflito`, `PATCH/DELETE
 /conjuntos-conflito/{id}/conflitos`, `PATCH /conflitos/{id}` (situação,
 justificativa, vista), `GET /obras/{id}/conflitos/resumo`.
 
+## Pavimentos e medidas (22/10/2026)
+
+**Pavimentos**: a árvore junta os pavimentos (IfcBuildingStorey) de todos os
+modelos da cena **pela elevação**, não pelo nome — no SER, o mesmo andar é
+"3 PAV" na estrutura, "3° PAV" na hidráulica e "03 - 3º PAVIMENTO" na
+elétrica, e "TIPO-001" na estrutura é o "5° PAV" das outras; as elevações
+batem (diferença de 12 cm). Andares a menos de 0,5 m viram uma linha só; a
+unidade (m, cm, mm) sai do maior valor. O nome que aparece é o que diz "pav" e
+é mais curto; os outros ficam no detalhe. Cada linha: ligar e desligar,
+**Isolar** (só aquele andar, de todas as disciplinas, enquadrado) e, aberta,
+cada modelo com as categorias e quantas peças — clicar numa categoria isola
+só ela naquele andar. **Mostrar todos** volta tudo.
+
+O enquadramento usa as caixas calculadas da geometria (`caixaDasPecas`), não
+o `getMergedBox` da biblioteca (mesmo problema do `getBoxes`).
+
+**Medidas** (botão Medir), com as ferramentas da biblioteca:
+
+- **Distância**: duplo clique no primeiro ponto e no segundo.
+- **Área**: duplo clique numa face — a área da face inteira (a laje de
+  529,77 m² no SER bate com a área bruta das propriedades dela). O modo de
+  cantos livres exige pontos no mesmo plano e, na prática, o clique pegava a
+  borda ou a peça de trás.
+- Delete apaga a medida sob o mouse; "Apagar medidas" apaga todas. Medindo,
+  o corte desliga (os dois usam o duplo clique).
+
 ## Próximos passos
 
 1. Prazo e situação por apontamento, no padrão BCF, para exportar e importar
    de outros programas.
 2. Importar os conflitos do Navisworks (relatório XML) como vistas.
-3. Medidas e árvore por pavimento.
-4. O chat responder sobre conflitos ("quantos abertos na hidráulica do
-   Serra?").

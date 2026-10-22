@@ -258,6 +258,21 @@ async function caixas(modelo: ModeloNaCena, ids: number[], aoAvancar: (n: number
   return guardadas;
 }
 
+/** A caixa que envolve as peças, na cena, pela geometria delas (o
+ *  getMergedBox da biblioteca sofre do mesmo problema do getBoxes). Com
+ *  muitas peças, uma amostra espalhada de até 400 basta para enquadrar. */
+export async function caixaDasPecas(model: FragmentsModel, ids: number[]): Promise<THREE.Box3> {
+  const passo = Math.max(1, Math.ceil(ids.length / 400));
+  const amostra = ids.filter((_, i) => i % passo === 0);
+  const doModelo = await caixas({ modelId: "", disciplina: "", model }, amostra, () => {});
+  const caixa = new THREE.Box3();
+  for (const id of amostra) {
+    const c = doModelo.get(id);
+    if (c && !c.isEmpty()) caixa.union(c);
+  }
+  return caixa;
+}
+
 async function itensDoGrupo(
   modelos: ModeloNaCena[],
   grupo: GrupoConflito,
