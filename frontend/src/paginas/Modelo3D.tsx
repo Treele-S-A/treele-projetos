@@ -149,7 +149,10 @@ export default function Modelo3D() {
   // Menu do botão direito (esconder, isolar), na posição do clique.
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
   const [verMarcacoes, setVerMarcacoes] = useState(true);
-  const [conflitos, setConflitos] = useState(false);
+  // Vindo do quadro da página da obra (?conflitos=1): o painel já abre, no
+  // conjunto da última detecção (?conjunto=).
+  const [conflitos, setConflitos] = useState(parametros.get("conflitos") === "1");
+  const conjuntoPedido = parametros.get("conjunto");
   const [pavimentos, setPavimentos] = useState(false);
   const [bcf, setBcf] = useState(false);
   const [medindo, setMedindo] = useState<ModoMedida | null>(null);
@@ -595,8 +598,9 @@ export default function Modelo3D() {
           <PainelPavimentos motor={motor.current} modelos={modelosConflito} aoMostrarTudo={mostrarTudo} />
         )}
 
-        {conflitos && motor.current && obraId && (
+        {conflitos && todosProntos && motor.current && obraId && (
           <PainelConflitos
+            conjuntoInicial={conjuntoPedido}
             motor={motor.current}
             obraId={obraId}
             modelos={modelosConflito}

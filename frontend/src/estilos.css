@@ -2454,3 +2454,69 @@ table.tabela {
   padding-left: 16px;
   font-size: 12px;
 }
+
+/* Quadro de conflitos na página da obra (22/10/2026) */
+.quadro-conflitos {
+  margin: 0 0 16px;
+  padding: 12px 16px;
+  border: 1px solid var(--traco-medio);
+  border-left: 4px solid var(--obsoleto-marca);
+  border-radius: 10px;
+  background: var(--folha);
+}
+.quadro-conflitos-total {
+  display: flex;
+  flex-direction: column;
+  min-width: 140px;
+}
+.quadro-conflitos-total strong {
+  font-family: var(--fonte-titulo);
+  font-size: 30px;
+  line-height: 1.1;
+  color: var(--obsoleto);
+}
+.quadro-conflitos-pares,
+.quadro-conflitos-docs ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.quadro-conflitos-pares {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding-top: 18px;
+  font-size: 13px;
+}
+.quadro-conflitos-pares li {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+}
+.quadro-conflitos-pares .mono {
+  min-width: 82px;
+  color: var(--tinta-2);
+}
+.quadro-conflitos-docs {
+  font-size: 12.5px;
+}
+.quadro-conflitos-docs ul {
+  margin-top: 2px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.quadro-conflitos-acoes {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  text-align: right;
+  max-width: 260px;
+}
+@media (max-width: 720px) {
+  .quadro-conflitos-acoes {
+    align-items: flex-start;
+    text-align: left;
+  }
+}

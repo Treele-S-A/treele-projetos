@@ -30,8 +30,8 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from ..db import get_db
-from ..deps import ContextoObra, montar_contexto, usuario_atual
-from ..enums import TipoArquivo
+from ..deps import ContextoObra, montar_contexto, status_visiveis, usuario_atual
+from ..enums import StatusRevisao, TipoArquivo
 from ..models import Arquivo, Conflito, ConjuntoConflito, RodadaConflito, Usuario, VistaModelo
 from ..services import auditoria
 
@@ -161,9 +161,35 @@ class ResumoPar(BaseModel):
     resolvido: int = 0
 
 
+class DocumentoComConflitos(BaseModel):
+    documento_id: int
+    codigo: str
+    titulo: str | None
+    disciplina: str
+    abertos: int
+    novos: int
+
+
+class UltimaDeteccao(BaseModel):
+    feita_em: datetime
+    feita_por: str | None
+    conjunto_id: int
+    conjunto: str
+    pronto: str | None
+
+
 class ResumoObra(BaseModel):
     abertos: int
     pares: list[ResumoPar]
+    # O quadro da página da obra (22/10/2026).
+    novos: int = 0
+    aprovados: int = 0
+    resolvidos: int = 0
+    documentos: list[DocumentoComConflitos] = []
+    ultima_deteccao: UltimaDeteccao | None = None
+    # Os IFC atuais (a revisão mais recente que a pessoa vê) dos documentos
+    # com conflito aberto: o "Abrir no 3D" do quadro.
+    arquivos_3d: list[int] = []
 
 
 def _agora() -> datetime:
@@ -524,13 +550,82 @@ def mudar_conflito(
 
 @router.get("/obras/{obra_id}/conflitos/resumo", response_model=ResumoObra)
 def resumo(obra_id: int, usuario: Usuario = Depends(usuario_atual), db: Session = Depends(get_db)):
-    """Por par de disciplinas, quantos em cada situação — todos os conjuntos."""
-    _contexto(db, usuario, obra_id)
+    """Por par de disciplinas, quantos em cada situação — todos os conjuntos —,
+    os documentos com mais conflitos abertos, a última detecção e os IFC para
+    abrir no 3D."""
+    ctx = _contexto(db, usuario, obra_id)
     pares: dict[tuple[str, str], ResumoPar] = {}
+    por_doc: dict[int, DocumentoComConflitos] = {}
     for c in conflitos_unicos(db, obra_id):
         da = c.documento_a.disciplina.codigo if c.documento_a else "?"
         dbb = c.documento_b.disciplina.codigo if c.documento_b else "?"
         par = pares.setdefault((da, dbb), ResumoPar(disciplina_a=da, disciplina_b=dbb))
         setattr(par, c.status, getattr(par, c.status, 0) + 1)
+        if c.status not in ABERTOS:
+            continue
+        for doc in {d.id: d for d in (c.documento_a, c.documento_b) if d}.values():
+            item = por_doc.setdefault(doc.id, DocumentoComConflitos(
+                documento_id=doc.id, codigo=doc.codigo, titulo=doc.titulo,
+                disciplina=doc.disciplina.codigo, abertos=0, novos=0,
+            ))
+            item.abertos += 1
+            item.novos += c.status == "novo"
     lista = sorted(pares.values(), key=lambda p: -(p.novo + p.ativo))
-    return ResumoObra(abertos=sum(p.novo + p.ativo for p in lista), pares=lista)
+
+    rodada = db.scalars(
+        select(RodadaConflito)
+        .join(ConjuntoConflito, ConjuntoConflito.id == RodadaConflito.conjunto_id)
+        .where(ConjuntoConflito.obra_id == obra_id)
+        .order_by(RodadaConflito.feita_em.desc(), RodadaConflito.id.desc())
+        .limit(1)
+    ).first()
+    ultima = None
+    if rodada:
+        conjunto = db.get(ConjuntoConflito, rodada.conjunto_id)
+        ultima = UltimaDeteccao(
+            feita_em=rodada.feita_em, feita_por=rodada.feita_por.nome if rodada.feita_por else None,
+            conjunto_id=conjunto.id, conjunto=conjunto.nome, pronto=conjunto.pronto,
+        )
+
+    return ResumoObra(
+        abertos=sum(p.novo + p.ativo for p in lista),
+        pares=lista,
+        novos=sum(p.novo for p in lista),
+        aprovados=sum(p.aprovado for p in lista),
+        resolvidos=sum(p.resolvido for p in lista),
+        documentos=sorted(por_doc.values(), key=lambda d: (-d.abertos, d.codigo))[:12],
+        ultima_deteccao=ultima,
+        arquivos_3d=_ifcs_atuais(db, ctx, list(por_doc)),
+    )
+
+
+def _ifcs_atuais(db: Session, ctx: ContextoObra, documento_ids: list[int]) -> list[int]:
+    """O IFC da revisão mais recente que a pessoa vê, de cada documento — os
+    conflitos podem ter sido achados numa revisão que já mudou."""
+    from ..models import Documento
+    from .arquivos import _conferir_leitura
+
+    visiveis = status_visiveis(ctx)
+    saida = []
+    for doc_id in documento_ids:
+        doc = db.get(Documento, doc_id)
+        if doc is None or not ctx.ve_disciplina(doc.disciplina.codigo):
+            continue
+        revisoes = sorted(
+            (r for r in doc.revisoes if r.status in visiveis and r.status != StatusRevisao.cancelado),
+            key=lambda r: r.ordem, reverse=True,
+        )
+        arquivo = next(
+            (a for r in revisoes for a in r.arquivos if a.tipo == TipoArquivo.ifc and a.status.value == "disponivel"),
+            None,
+        )
+        if arquivo is None:
+            continue
+        try:
+            _conferir_leitura(arquivo, ctx)
+        except HTTPException:
+            continue
+        saida.append((doc.disciplina.codigo != "EST", doc.disciplina.codigo != "ARQ", doc.codigo, arquivo.id))
+    # A estrutura primeiro: o primeiro modelo da cena é a referência de
+    # alinhamento (e das coordenadas do BCF).
+    return [arquivo_id for *_, arquivo_id in sorted(saida)]

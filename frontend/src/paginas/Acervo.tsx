@@ -12,6 +12,7 @@ import {
   type TipoArquivo,
 } from "../api";
 import Arvore from "../Arvore";
+import QuadroConflitos from "../QuadroConflitos";
 import { MarcaSolicitada } from "../Solicitacoes";
 import { Aviso, CapaObra, Carregando, Estado, Vazio } from "../componentes";
 import { useSessao } from "../sessao";
@@ -423,6 +424,8 @@ export default function Acervo() {
           )}
         </div>
       </div>
+
+      {obra && !usuario?.comercial && <QuadroConflitos obraId={obra.id} />}
 
       {erro && <Aviso tom="erro">{erro}</Aviso>}
 

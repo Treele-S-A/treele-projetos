@@ -203,3 +203,15 @@ def test_conjunto_guarda_o_filtro_por_nome(cliente, c):
                      json={"nome": "Sem eletroduto flexível", "config": config}, headers=c["coord"])
     assert r.status_code == 201, r.text
     assert r.json()["config"]["a"]["excluirNomes"] == ["Flexível", "Embutido"]
+
+
+def test_resumo_da_obra_para_o_quadro(cliente, c, conjunto):
+    cena = [c["est"], c["hid"]]
+    _rodada(cliente, c["proj"], conjunto["id"], cena, [_achado(c, ["t3"], "v12"), _achado(c, ["t9"], "p33")])
+    r = cliente.get(f"/obras/{c['obra']['id']}/conflitos/resumo", headers=c["campo"]).json()
+    assert r["abertos"] >= 2 and r["novos"] + sum(p["ativo"] for p in r["pares"]) == r["abertos"]
+    docs = {d["codigo"]: d for d in r["documentos"]}
+    assert docs["CFL-HID-PE-MOD"]["abertos"] == docs["CFL-EST-PE-MOD"]["abertos"] >= 2
+    assert r["ultima_deteccao"]["feita_por"] == "Projcfl"
+    # Os IFC liberados que a obra pode abrir (EST e HID).
+    assert r["arquivos_3d"] == [c["est"], c["hid"]]  # a estrutura primeiro

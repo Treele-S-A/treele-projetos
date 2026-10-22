@@ -155,6 +155,7 @@ export default function PainelConflitos({
   podeGerenciar,
   podeAprovar,
   versao,
+  conjuntoInicial,
   aoNovaVista,
 }: {
   motor: Motor;
@@ -166,12 +167,14 @@ export default function PainelConflitos({
   podeAprovar: boolean;
   /** Muda quando algo fora do painel mexeu num conflito (a vista criada). */
   versao: number;
+  /** A chave do conjunto a abrir ("s12" ou "pronto-…"). */
+  conjuntoInicial?: string | null;
   aoNovaVista: (pedido: PedidoVistaConflito) => void;
 }) {
   const disciplinas = useMemo(() => [...new Set(modelos.map((m) => m.disciplina))].sort(), [modelos]);
   const prontos = useMemo(() => conjuntosProntos(disciplinas), [disciplinas]);
   const [daObra, setDaObra] = useState<ConjuntoServidor[] | null>(null);
-  const [escolhido, setEscolhido] = useState<string>("");
+  const [escolhido, setEscolhido] = useState<string>(conjuntoInicial ?? "");
   const [editando, setEditando] = useState<{ conjunto: ConjuntoConflito; servidorId: number | null } | null>(null);
   const [andamento, setAndamento] = useState<{ fase: Fase; valor: number } | null>(null);
   const [lista, setLista] = useState<ConflitoServidor[] | null>(null);

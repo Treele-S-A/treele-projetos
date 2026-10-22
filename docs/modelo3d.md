@@ -223,6 +223,22 @@ o `getMergedBox` da biblioteca (mesmo problema do `getBoxes`).
 - Delete apaga a medida sob o mouse; "Apagar medidas" apaga todas. Medindo,
   o corte desliga (os dois usam o duplo clique).
 
+## Quadro de conflitos na página da obra (22/10/2026)
+
+No Acervo, abaixo do cabeçalho, para a equipe (o comercial não vê), quando a
+obra tem conflitos registrados: abertos (e quantos novos), aprovados e
+resolvidos; abertos por par de disciplinas; os documentos com mais conflitos
+abertos (link para cada um); a última detecção (quando, por quem, qual
+conjunto). **Abrir no 3D** abre os IFC atuais desses documentos — a revisão
+mais recente que a pessoa vê, não a da detecção — com o painel de conflitos
+já aberto no conjunto da última detecção (`/modelos?arquivos=…&conflitos=1&conjunto=…`).
+A estrutura vem primeiro na cena: o primeiro modelo é a referência de
+alinhamento e das coordenadas do BCF.
+
+Dados: `GET /obras/{id}/conflitos/resumo` (o mesmo do painel, com os campos
+`novos`, `aprovados`, `resolvidos`, `documentos`, `ultima_deteccao` e
+`arquivos_3d`).
+
 ## BCF (22/10/2026)
 
 O formato aberto de apontamentos de BIM (buildingSMART), versão 2.1 — a mais
