@@ -104,9 +104,61 @@ Servidor: `POST /obras/{id}/vistas` (devolve o envio da imagem), `POST
 /vistas/{id}/imagem` (confirma), `GET /vistas/{id}`, `GET /obras/{id}/vistas`;
 `POST /documentos/{id}/solicitacoes` aceita `vista_id` e `mencionados`.
 
+## Conflitos entre disciplinas (22/10/2026, protótipo)
+
+Botão **Conflitos** no visualizador, com os modelos das disciplinas na cena.
+Como no Trimble Connect e no Navisworks, um **conjunto** define o teste:
+
+- **Grupo A** e **grupo B**: disciplinas (EST, HID, ELE…) e categorias IFC
+  (Pilar, Viga, Tubo…). "Todas, menos as desmarcadas" ou só as marcadas. O
+  conjunto escolhe por disciplina e categoria, não por arquivo, e vale para
+  qualquer revisão.
+- **Interferência** (uma peça entra na outra mais que a tolerância, padrão
+  1 cm) ou **folga** (ficam a menos de X cm; inclui as interferências).
+- **Ignorar pares do mesmo modelo** (tubo com a própria conexão).
+
+Furo de laje não aparece porque a laje fica fora do grupo B. Três conjuntos
+prontos: instalações × pilares e vigas (sem as paredes e lajes que o
+projetista de instalação modela, como as do reservatório), instalações entre
+si, e portas e janelas × pilares e vigas.
+
+Resultado em lista, por cota. Clicar enquadra o conflito: A em laranja (a
+seleção, com as propriedades), B em magenta translúcido e o resto quase
+transparente. **Nova vista** fotografa o conflito e abre a vista com título,
+descrição e a disciplina de A marcada para corrigir — o pedido de revisão (ou a
+reprovação) sai pelo caminho de sempre. **Ignorar** esconde da lista.
+
+Como funciona (`modelo3d/conflitos.ts` e `conflitos.worker.ts`):
+
+1. As peças de cada grupo saem das categorias do modelo, só as com geometria.
+2. A caixa de cada peça é calculada da própria malha e guardada por modelo.
+   Não use o `getBoxes` da biblioteca: ele desloca as caixas guardadas ao
+   montar os blocos de desenho (`box.translate` em `buildSampleInTile`), e o
+   resultado mudava conforme a tela desenhava (caso real: 33 ou 94 conflitos
+   no mesmo conjunto).
+3. Triagem numa grade de 2 m: na interferência, as caixas precisam se
+   sobrepor mais que a tolerância nos três eixos.
+4. Teste exato das malhas num worker (three-mesh-bvh): triângulo contra
+   triângulo, e peça inteira dentro da outra. Na folga, a menor distância.
+5. Achados do mesmo B a menos de 60 cm, no mesmo modelo A, viram um conflito.
+
+Durante a leitura, os modelos ficam congelados (`model.frozen`): o desenho
+não se refaz no mesmo worker enquanto a geometria é lida.
+
+Medido no SER (EST, HID água e esgoto, ELE, ARQ): instalações × pilares e
+vigas, 59 conflitos (13 s na primeira vez, que calcula as caixas; menos de 2 s
+depois); folga de 5 cm, 107; portas e janelas, 94; instalações entre si, 21.
+
+Limites do protótipo: os conjuntos montados ficam no navegador de quem montou
+(`localStorage`); o resultado não fica guardado nem tem situação (novo,
+ativo, resolvido, aprovado); "entra ~X cm" é estimado pelas caixas.
+
 ## Próximos passos
 
-1. Prazo e situação por apontamento (aberto, em correção, resolvido), no
-   padrão BCF, para exportar e importar de outros programas.
-2. Importar os conflitos do Navisworks (relatório XML) como vistas.
-3. Medidas e árvore por pavimento.
+1. Conflitos guardados no servidor, com situação por conflito (novo, ativo,
+   resolvido, aprovado) reconhecida entre revisões pelos GlobalIds, e
+   conjuntos da obra compartilhados pela equipe.
+2. Prazo e situação por apontamento, no padrão BCF, para exportar e importar
+   de outros programas.
+3. Importar os conflitos do Navisworks (relatório XML) como vistas.
+4. Medidas e árvore por pavimento.

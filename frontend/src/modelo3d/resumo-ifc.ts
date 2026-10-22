@@ -63,7 +63,7 @@ export interface ResumoIfc {
 }
 
 /** Categorias IFC em português (as que não estão aqui ficam com o nome IFC). */
-const CATEGORIAS: Record<string, string> = {
+export const CATEGORIAS: Record<string, string> = {
   IFCWALL: "Parede",
   IFCWALLSTANDARDCASE: "Parede",
   IFCSLAB: "Laje / piso",

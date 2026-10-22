@@ -10,6 +10,13 @@ import * as OBCF from "@thatopen/components-front";
 import * as FRAGS from "@thatopen/fragments";
 import CameraControls from "camera-controls";
 import * as THREE from "three";
+import {
+  contarCategorias,
+  detectar,
+  type ConjuntoConflito,
+  type Conflito,
+  type Fase,
+} from "./conflitos";
 import type { PedidoConversao, RespostaConversao } from "./conversor.worker";
 import type { ResumoIfc } from "./resumo-ifc";
 
@@ -58,10 +65,21 @@ export interface Motor {
   verMarcacoes(visiveis: boolean): void;
   corte(ativo: boolean): void;
   limparCortes(): void;
+  /** Elementos de cada categoria IFC do modelo (para montar os grupos). */
+  categorias(modelId: string): Promise<Record<string, number>>;
+  detectarConflitos(
+    modelos: { modelId: string; disciplina: string }[],
+    conjunto: ConjuntoConflito,
+    aoProgredir: (fase: Fase, valor: number) => void,
+  ): Promise<Conflito[]>;
+  /** Enquadra o conflito: A em destaque (a seleção), B translúcido em
+   *  vermelho, para ver a peça que o atravessa. null limpa. */
+  focarConflito(conflito: Conflito | null): Promise<void>;
   descartar(): void;
 }
 
 const COR_SELECAO = new THREE.Color("#f0a500");
+const COR_CONFLITO = new THREE.Color("#d61f9c"); // magenta: pilar costuma vir vermelho
 
 /** Converte um IFC em fragments num worker, com o andamento de 0 a 1. */
 export function converter(
@@ -143,6 +161,12 @@ export async function criarMotor(
       renderedFaces: FRAGS.RenderedFaces.TWO,
     },
   });
+  highlighter.styles.set("conflito", {
+    color: COR_CONFLITO,
+    opacity: 0.55,
+    transparent: true,
+    renderedFaces: FRAGS.RenderedFaces.TWO,
+  });
   let selecao: OBC.ModelIdMap = {};
   highlighter.events.select.onHighlight.add(async (mapa) => {
     selecao = mapa;
@@ -173,6 +197,19 @@ export async function criarMotor(
   container.addEventListener("contextmenu", aoMenuContexto);
 
   let marcacoes: THREE.Mesh | null = null;
+  // Com um conflito em foco, o resto dos modelos fica translúcido; aqui, as
+  // peças do conflito em foco (as únicas que não estão translúcidas).
+  let emFoco: Map<string, Set<number>> | null = null;
+  const comGeometria = new Map<string, Promise<Set<number>>>();
+  const pecas = (modelId: string): Promise<Set<number>> => {
+    let p = comGeometria.get(modelId);
+    if (!p) {
+      const model = fragments.list.get(modelId);
+      p = model ? model.getItemsIdsWithGeometry().then((ids) => new Set(ids)) : Promise.resolve(new Set<number>());
+      comGeometria.set(modelId, p);
+    }
+    return p;
+  };
 
   return {
     async carregar(modelId, frag) {
@@ -323,6 +360,79 @@ export async function criarMotor(
     },
     limparCortes() {
       clipper.deleteAll();
+    },
+    async categorias(modelId) {
+      const model = fragments.list.get(modelId);
+      return model ? await contarCategorias(model) : {};
+    },
+    async detectarConflitos(modelos, conjunto, aoProgredir) {
+      const naCena = modelos.flatMap(({ modelId, disciplina }) => {
+        const model = fragments.list.get(modelId);
+        return model ? [{ modelId, disciplina, model }] : [];
+      });
+      // A tela para de atualizar os modelos enquanto a geometria é lida: com
+      // o desenho se refazendo no mesmo worker, a mesma detecção dava 59 numa
+      // página e 107 na outra (22/10/2026). Espera o que estava pendente.
+      for (const { model } of naCena) model.frozen = true;
+      try {
+        for (let i = 0; i < 100 && naCena.some(({ model }) => model.isBusy); i++) {
+          await new Promise((r) => setTimeout(r, 50));
+        }
+        return await detectar(naCena, conjunto, aoProgredir);
+      } finally {
+        for (const { model } of naCena) model.frozen = false;
+      }
+    },
+    async focarConflito(conflito) {
+      await highlighter.clear("conflito");
+      if (!conflito) {
+        await highlighter.clear("select");
+        if (emFoco) {
+          for (const [modelId, model] of fragments.list) await model.resetOpacity([...(await pecas(modelId))]);
+          emFoco = null;
+        }
+        await fragments.core.update(true);
+        return;
+      }
+      await highlighter.highlightByID(
+        "select",
+        { [conflito.a.modelId]: new Set(conflito.a.localIds) },
+        true,
+        false,
+      );
+      await highlighter.highlightByID(
+        "conflito",
+        { [conflito.b.modelId]: new Set(conflito.b.localIds) },
+        true,
+        false,
+      );
+      // O resto vira fantasma: o conflito costuma estar atrás de laje e
+      // viga. Depois do destaque, que refaz o material dos que ele pinta.
+      // Da primeira vez, todas as peças; depois, só as do conflito anterior,
+      // que o destaque devolveu ao normal (um modelo de arquitetura tem
+      // dezenas de milhares de peças).
+      const atuais = new Map<string, Set<number>>();
+      for (const lado of [conflito.a, conflito.b]) {
+        const s = atuais.get(lado.modelId) ?? new Set<number>();
+        lado.localIds.forEach((id) => s.add(id));
+        atuais.set(lado.modelId, s);
+      }
+      for (const [modelId, model] of fragments.list) {
+        const alvo = emFoco ? (emFoco.get(modelId) ?? new Set<number>()) : await pecas(modelId);
+        const ids = [...alvo].filter((id) => !atuais.get(modelId)?.has(id));
+        if (ids.length) await model.setOpacity(ids, 0.12);
+      }
+      emFoco = atuais;
+      // De cima e de lado, sempre do mesmo jeito, a uma distância que mostra
+      // o entorno: a região de um conflito costuma ter centímetros.
+      const caixa = new THREE.Box3(
+        new THREE.Vector3(...conflito.caixa.min),
+        new THREE.Vector3(...conflito.caixa.max),
+      );
+      const c = new THREE.Vector3(...conflito.centro);
+      const d = Math.max(caixa.getSize(new THREE.Vector3()).length(), 1) * 1.5 + 2.5;
+      await world.camera.controls.setLookAt(c.x + d * 0.65, c.y + d * 0.55, c.z + d * 0.65, c.x, c.y, c.z, true);
+      await fragments.core.update(true);
     },
     descartar() {
       container.removeEventListener("dblclick", aoDuploClique);

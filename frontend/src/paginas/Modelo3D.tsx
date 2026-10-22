@@ -7,11 +7,12 @@
  *  leve de visualização e, se a pessoa for da equipe, guarda o resultado: as
  *  aberturas seguintes, de qualquer pessoa, levam segundos. */
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { api, ErroApi, formatarData, type StatusRevisao, type Usuario } from "../api";
 import { Estado } from "../componentes";
 import Marcacao, { type Gerador } from "../modelo3d/Marcacao";
+import PainelConflitos, { type ModeloConflito, type PedidoVistaConflito } from "../modelo3d/PainelConflitos";
 import {
   converter,
   criarMotor,
@@ -59,10 +60,12 @@ interface VistaOut extends EstadoCena {
   criada_em: string;
 }
 
-/** A vista sendo criada: a foto da tela e a cena no momento do clique. */
+/** A vista sendo criada: a foto da tela e a cena no momento do clique. Vinda
+ *  de um conflito, já traz título, descrição e a disciplina a corrigir. */
 interface RascunhoVista {
   foto: Blob;
   cena: EstadoCena;
+  pedido?: PedidoVistaConflito;
 }
 
 type Etapa = "buscando" | "baixando" | "convertendo" | "carregando" | "pronto" | "erro";
@@ -142,6 +145,7 @@ export default function Modelo3D() {
   // Menu do botão direito (esconder, isolar), na posição do clique.
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
   const [verMarcacoes, setVerMarcacoes] = useState(true);
+  const [conflitos, setConflitos] = useState(false);
   const [temMarcacoes, setTemMarcacoes] = useState(false);
 
   const palco = useRef<HTMLDivElement>(null);
@@ -339,12 +343,33 @@ export default function Modelo3D() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(carregarVistas, [obraId]);
 
-  async function novaVista() {
+  async function novaVista(pedido?: PedidoVistaConflito) {
     if (!motor.current) return;
     const cena = await motor.current.estado();
     const foto = await motor.current.fotografar(cena.camera);
-    setRascunho({ foto, cena });
+    setRascunho({ foto, cena, pedido });
   }
+
+  // Os modelos prontos, para o painel de conflitos (a lista só muda quando
+  // um modelo termina de abrir).
+  const chaveProntos = modelos
+    .filter((m) => m.etapa === "pronto" && m.info)
+    .map((m) => m.id)
+    .join(",");
+  const modelosConflito = useMemo<ModeloConflito[]>(
+    () =>
+      modelos
+        .filter((m) => m.etapa === "pronto" && m.info)
+        .map((m) => ({
+          modelId: String(m.id),
+          disciplina: m.info!.disciplina,
+          documento: m.info!.documento,
+          documentoId: m.info!.documento_id,
+          revisao: m.info!.revisao,
+        })),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [chaveProntos],
+  );
 
   if (vistaId && falhaVista) {
     return <p className="erro-modelo">{falhaVista}</p>;
@@ -426,7 +451,7 @@ export default function Modelo3D() {
           <button
             className="botao pequeno"
             disabled={!todosProntos || !obraId}
-            onClick={novaVista}
+            onClick={() => novaVista()}
             title="Fotografa a tela para marcar e guardar, ou pedir correção"
           >
             Nova vista
@@ -455,12 +480,32 @@ export default function Modelo3D() {
               Limpar cortes
             </button>
           )}
+          <button
+            className={`botao pequeno ${conflitos ? "" : "secundario"}`}
+            disabled={!todosProntos || !obraId}
+            onClick={() => {
+              if (conflitos) void motor.current?.focarConflito(null);
+              setConflitos(!conflitos);
+            }}
+            title="Testa as disciplinas da cena umas contra as outras"
+          >
+            Conflitos
+          </button>
         </div>
         <p className="silencioso dica-modelo">
           Botão esquerdo arrasta para mover; aperte a roda e arraste para girar; gire a roda para aproximar.
           Clique num elemento para ver as propriedades, ou use o botão direito para esconder ou isolar.
           {corte && " Com o corte ligado, dê um duplo clique numa face para cortar ali."}
         </p>
+
+        {conflitos && motor.current && obraId && (
+          <PainelConflitos
+            motor={motor.current}
+            obraId={obraId}
+            modelos={modelosConflito}
+            aoNovaVista={(pedido) => void novaVista(pedido)}
+          />
+        )}
 
         {vista && (
           <div className="vista-aberta">
@@ -565,7 +610,9 @@ export default function Modelo3D() {
           rascunho={rascunho}
           obraId={obraId}
           modelos={modelos}
-          documentoSugerido={modeloDaSelecao?.info?.documento_id ?? null}
+          documentoSugerido={
+            rascunho.pedido ? rascunho.pedido.documentoId : (modeloDaSelecao?.info?.documento_id ?? null)
+          }
           podePedir={obra?.permissoes.includes("solicitar_revisao") ?? false}
           podeMarcar={obra?.permissoes.includes("autorizar_revisao") ?? false}
           podeReprovar={obra?.permissoes.includes("publicar") ?? false}
@@ -680,7 +727,7 @@ function PainelVista({
   aoFechar: (criou: boolean) => void;
 }) {
   const gerador = useRef<Gerador>({ foto: async () => rascunho.foto, marcacoes: async () => null });
-  const [titulo, setTitulo] = useState("");
+  const [titulo, setTitulo] = useState(rascunho.pedido?.titulo ?? "");
   const podeCorrigir = podePedir || podeReprovar;
   const [pedir, setPedir] = useState(podeCorrigir);
   const documentos = modelos
@@ -694,7 +741,7 @@ function PainelVista({
     const d = documentos.find((x) => x.documento_id === inicial);
     return d && caminhoDe(d, podePedir, podeReprovar).caminho ? new Set([d.documento_id]) : new Set();
   });
-  const [descricao, setDescricao] = useState("");
+  const [descricao, setDescricao] = useState(rascunho.pedido?.descricao ?? "");
   const [projetistas, setProjetistas] = useState<Membro[]>([]);
   const [marcados, setMarcados] = useState<Set<number>>(new Set());
   const [enviando, setEnviando] = useState(false);
