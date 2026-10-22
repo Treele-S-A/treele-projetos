@@ -104,7 +104,7 @@ Servidor: `POST /obras/{id}/vistas` (devolve o envio da imagem), `POST
 /vistas/{id}/imagem` (confirma), `GET /vistas/{id}`, `GET /obras/{id}/vistas`;
 `POST /documentos/{id}/solicitacoes` aceita `vista_id` e `mencionados`.
 
-## Conflitos entre disciplinas (22/10/2026, protótipo)
+## Conflitos entre disciplinas (22/10/2026)
 
 Botão **Conflitos** no visualizador, com os modelos das disciplinas na cena.
 Como no Trimble Connect e no Navisworks, um **conjunto** define o teste:
@@ -149,16 +149,48 @@ Medido no SER (EST, HID água e esgoto, ELE, ARQ): instalações × pilares e
 vigas, 59 conflitos (13 s na primeira vez, que calcula as caixas; menos de 2 s
 depois); folga de 5 cm, 107; portas e janelas, 94; instalações entre si, 21.
 
-Limites do protótipo: os conjuntos montados ficam no navegador de quem montou
-(`localStorage`); o resultado não fica guardado nem tem situação (novo,
-ativo, resolvido, aprovado); "entra ~X cm" é estimado pelas caixas.
+"Entra ~X cm" é estimado pelas caixas.
+
+### Guardados no servidor, com situação (22/10/2026)
+
+A detecção roda no navegador; cada rodada é registrada no servidor
+(`api/conflitos.py`, tabelas `conjuntos_conflito`, `rodadas_conflito` e
+`conflitos`), que mantém a situação de cada conflito, como no Navisworks:
+
+| Situação | Quando |
+|---|---|
+| Novo | Apareceu pela primeira vez nesta rodada |
+| Ativo | Continua aparecendo (ou voltou depois de resolvido) |
+| Aprovado | O coordenador aceitou, com justificativa (o furo que o calculista previu). Não volta a ativo quando aparece de novo |
+| Resolvido | Não apareceu numa rodada que tinha **os dois modelos** dele na cena |
+
+- **Mesmo conflito entre revisões**: a mesma peça B (GlobalId) e alguma peça
+  A em comum. O GlobalId não muda entre exportações do mesmo modelo; o
+  agrupamento das peças A (tubo e conexões vizinhas) pode mudar.
+- Rodada sem um dos modelos na cena não resolve os conflitos dele — abrir só a
+  hidráulica e a estrutura não "resolve" os da elétrica.
+- **Conjuntos da obra**, compartilhados. Os prontos qualquer pessoa da equipe
+  usa e nascem na primeira rodada (com as disciplinas da cena de agora); os
+  montados são do coordenador (`gerenciar`). Configurar um pronto cria uma
+  cópia da obra. Os conjuntos do protótipo, que ficavam no navegador, o
+  coordenador leva para a obra ao abrir o painel.
+- **Quem faz o quê**: a equipe detecta e cria vistas; o coordenador
+  (`autorizar_revisao`) aprova e reabre; o comercial não vê.
+- A vista criada de um conflito fica ligada a ele ("Abrir a vista").
+- O painel abre com a lista guardada (filtros Abertos, Aprovados, Resolvidos,
+  Todos) e a última detecção; o resumo da obra soma os abertos por par de
+  disciplinas, contando uma vez o mesmo par de peças em dois conjuntos.
+
+Rotas: `GET/POST /obras/{id}/conjuntos-conflito`, `PATCH/DELETE
+/conjuntos-conflito/{id}`, `POST /conjuntos-conflito/{id}/rodadas`, `GET
+/conjuntos-conflito/{id}/conflitos`, `PATCH /conflitos/{id}` (situação,
+justificativa, vista), `GET /obras/{id}/conflitos/resumo`.
 
 ## Próximos passos
 
-1. Conflitos guardados no servidor, com situação por conflito (novo, ativo,
-   resolvido, aprovado) reconhecida entre revisões pelos GlobalIds, e
-   conjuntos da obra compartilhados pela equipe.
-2. Prazo e situação por apontamento, no padrão BCF, para exportar e importar
+1. Prazo e situação por apontamento, no padrão BCF, para exportar e importar
    de outros programas.
-3. Importar os conflitos do Navisworks (relatório XML) como vistas.
-4. Medidas e árvore por pavimento.
+2. Importar os conflitos do Navisworks (relatório XML) como vistas.
+3. Medidas e árvore por pavimento.
+4. O chat responder sobre conflitos ("quantos abertos na hidráulica do
+   Serra?").

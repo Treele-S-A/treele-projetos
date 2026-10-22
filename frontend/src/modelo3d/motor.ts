@@ -75,6 +75,8 @@ export interface Motor {
   /** Enquadra o conflito: A em destaque (a seleção), B translúcido em
    *  vermelho, para ver a peça que o atravessa. null limpa. */
   focarConflito(conflito: Conflito | null): Promise<void>;
+  /** Os localIds das peças, pelos GlobalIds (conflito de outra rodada). */
+  idsDosGuids(modelId: string, guids: string[]): Promise<number[]>;
   descartar(): void;
 }
 
@@ -394,18 +396,21 @@ export async function criarMotor(
         await fragments.core.update(true);
         return;
       }
-      await highlighter.highlightByID(
-        "select",
-        { [conflito.a.modelId]: new Set(conflito.a.localIds) },
-        true,
-        false,
-      );
-      await highlighter.highlightByID(
-        "conflito",
-        { [conflito.b.modelId]: new Set(conflito.b.localIds) },
-        true,
-        false,
-      );
+      // Um lado pode não estar na cena (conflito de outra rodada, modelo
+      // fechado): enquadra do mesmo jeito, pela região guardada.
+      if (conflito.a.modelId && conflito.a.localIds.length) {
+        await highlighter.highlightByID("select", { [conflito.a.modelId]: new Set(conflito.a.localIds) }, true, false);
+      } else {
+        await highlighter.clear("select");
+      }
+      if (conflito.b.modelId && conflito.b.localIds.length) {
+        await highlighter.highlightByID(
+          "conflito",
+          { [conflito.b.modelId]: new Set(conflito.b.localIds) },
+          true,
+          false,
+        );
+      }
       // O resto vira fantasma: o conflito costuma estar atrás de laje e
       // viga. Depois do destaque, que refaz o material dos que ele pinta.
       // Da primeira vez, todas as peças; depois, só as do conflito anterior,
@@ -433,6 +438,11 @@ export async function criarMotor(
       const d = Math.max(caixa.getSize(new THREE.Vector3()).length(), 1) * 1.5 + 2.5;
       await world.camera.controls.setLookAt(c.x + d * 0.65, c.y + d * 0.55, c.z + d * 0.65, c.x, c.y, c.z, true);
       await fragments.core.update(true);
+    },
+    async idsDosGuids(modelId, guids) {
+      const model = fragments.list.get(modelId);
+      if (!model || !guids.length) return [];
+      return (await model.getLocalIdsByGuids(guids)).filter((i): i is number => i !== null);
     },
     descartar() {
       container.removeEventListener("dblclick", aoDuploClique);

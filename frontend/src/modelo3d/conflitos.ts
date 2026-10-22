@@ -46,6 +46,9 @@ export interface ConjuntoConflito {
 export interface LadoConflito {
   modelId: string;
   localIds: number[];
+  /** Os GlobalIds das peças, na ordem dos localIds: é por eles que o
+   *  servidor reconhece o mesmo conflito na rodada seguinte. */
+  guids: string[];
   nome: string | null;
   categoria: string;
 }
@@ -530,8 +533,13 @@ async function montar(
     for (const ia of g.itensA) pedir(a[ia]);
   }
   const nomes = new Map<string, string | null>();
+  const guids = new Map<string, string>();
   for (const [modelo, ids] of pedidos) {
     const lista = [...ids];
+    const globais = await modelos[modelo].model.getGuidsByLocalIds(lista);
+    lista.forEach((id, n) => {
+      if (globais[n]) guids.set(`${modelo}:${id}`, globais[n]!);
+    });
     const dados = (await modelos[modelo].model.getItemsData(lista, {
       attributesDefault: false,
       attributes: ["Name"],
@@ -543,12 +551,16 @@ async function montar(
     });
   }
 
-  const lado = (itens: Item[]): LadoConflito => ({
-    modelId: modelos[itens[0].modelo].modelId,
-    localIds: [...new Set(itens.map((i) => i.localId))],
-    nome: nomes.get(`${itens[0].modelo}:${itens[0].localId}`) ?? null,
-    categoria: itens[0].categoria,
-  });
+  const lado = (itens: Item[]): LadoConflito => {
+    const localIds = [...new Set(itens.map((i) => i.localId))];
+    return {
+      modelId: modelos[itens[0].modelo].modelId,
+      localIds,
+      guids: localIds.flatMap((id) => guids.get(`${itens[0].modelo}:${id}`) ?? []),
+      nome: nomes.get(`${itens[0].modelo}:${itens[0].localId}`) ?? null,
+      categoria: itens[0].categoria,
+    };
+  };
 
   return grupos
     .map((g, n) => {

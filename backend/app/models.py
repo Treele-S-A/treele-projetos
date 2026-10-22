@@ -21,6 +21,7 @@ from sqlalchemy import (
     BigInteger,
     Boolean,
     DateTime,
+    Float,
     ForeignKey,
     Index,
     Integer,
@@ -557,3 +558,106 @@ class MencaoSolicitacao(Base):
         ForeignKey("solicitacoes_revisao.id", ondelete="CASCADE"), index=True
     )
     usuario_id: Mapped[int] = mapped_column(ForeignKey("usuarios.id", ondelete="CASCADE"))
+
+
+class ConjuntoConflito(Base):
+    """Um conjunto de teste de conflitos da obra (TREELE, 22/10/2026), no
+    sentido do "clash set" do Navisworks e do Trimble Connect: o grupo A, o
+    grupo B, o tipo de teste e a tolerância. Compartilhado pela equipe.
+
+    `pronto` marca os conjuntos que vêm com o sistema (ex.:
+    "instalacoes-estrutura"): qualquer pessoa da equipe os usa, e eles nascem
+    na primeira rodada. Os montados à mão são do coordenador."""
+
+    __tablename__ = "conjuntos_conflito"
+    __table_args__ = (UniqueConstraint("obra_id", "pronto", name="uq_conjunto_pronto"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    obra_id: Mapped[int] = mapped_column(ForeignKey("obras.id", ondelete="CASCADE"), index=True)
+    nome: Mapped[str] = mapped_column(String(80))
+    pronto: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    # {"a": {"disciplinas", "categorias", "excluir"}, "b": {...}, "modo",
+    #  "tolerancia", "folga", "ignorarMesmoModelo"} — o formato da tela.
+    config: Mapped[dict] = mapped_column(JSON, default=dict)
+    criado_por_id: Mapped[int | None] = mapped_column(
+        ForeignKey("usuarios.id", ondelete="SET NULL"), nullable=True
+    )
+    criado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=agora)
+    atualizado_em: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class RodadaConflito(Base):
+    """Uma detecção registrada: quais modelos estavam na cena e o saldo."""
+
+    __tablename__ = "rodadas_conflito"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    conjunto_id: Mapped[int] = mapped_column(
+        ForeignKey("conjuntos_conflito.id", ondelete="CASCADE"), index=True
+    )
+    arquivos: Mapped[list] = mapped_column(JSON, default=list)
+    encontrados: Mapped[int] = mapped_column(Integer, default=0)
+    novos: Mapped[int] = mapped_column(Integer, default=0)
+    reabertos: Mapped[int] = mapped_column(Integer, default=0)
+    resolvidos: Mapped[int] = mapped_column(Integer, default=0)
+    feita_por_id: Mapped[int | None] = mapped_column(
+        ForeignKey("usuarios.id", ondelete="SET NULL"), nullable=True
+    )
+    feita_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=agora)
+
+    feita_por: Mapped["Usuario | None"] = relationship()
+
+
+class Conflito(Base):
+    """Um conflito entre duas peças, que sobrevive às revisões (TREELE,
+    22/10/2026): é reconhecido de uma rodada para outra pelo GlobalId da peça
+    B e de alguma das peças A, que não mudam entre exportações do mesmo
+    modelo.
+
+    Situação, como no Navisworks: novo (apareceu nesta rodada), ativo
+    (continua aparecendo), aprovado (aceito — o furo que o calculista previu)
+    e resolvido (não aparece mais numa rodada com os dois modelos)."""
+
+    __tablename__ = "conflitos"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    conjunto_id: Mapped[int] = mapped_column(
+        ForeignKey("conjuntos_conflito.id", ondelete="CASCADE"), index=True
+    )
+    obra_id: Mapped[int] = mapped_column(ForeignKey("obras.id", ondelete="CASCADE"), index=True)
+    status: Mapped[str] = mapped_column(String(12), index=True, default="novo")
+    tipo: Mapped[str] = mapped_column(String(14), default="interferencia")
+    documento_a_id: Mapped[int | None] = mapped_column(
+        ForeignKey("documentos.id", ondelete="SET NULL"), nullable=True
+    )
+    documento_b_id: Mapped[int | None] = mapped_column(
+        ForeignKey("documentos.id", ondelete="SET NULL"), nullable=True
+    )
+    revisao_a: Mapped[str] = mapped_column(String(10), default="")
+    revisao_b: Mapped[str] = mapped_column(String(10), default="")
+    categoria_a: Mapped[str] = mapped_column(String(60), default="")
+    categoria_b: Mapped[str] = mapped_column(String(60), default="")
+    nome_a: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    nome_b: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    guids_a: Mapped[list] = mapped_column(JSON, default=list)
+    guid_b: Mapped[str] = mapped_column(String(40), index=True)
+    centro: Mapped[list] = mapped_column(JSON, default=list)
+    # {"min": [x, y, z], "max": [x, y, z]}
+    caixa: Mapped[dict] = mapped_column(JSON, default=dict)
+    medida: Mapped[float] = mapped_column(Float, default=0.0)
+    criado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=agora)
+    visto_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=agora)
+    resolvido_em: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    vista_id: Mapped[int | None] = mapped_column(
+        ForeignKey("vistas_modelo.id", ondelete="SET NULL"), nullable=True
+    )
+    # Por que foi aprovado (obrigatório ao aprovar).
+    justificativa: Mapped[str | None] = mapped_column(Text, nullable=True)
+    atualizado_por_id: Mapped[int | None] = mapped_column(
+        ForeignKey("usuarios.id", ondelete="SET NULL"), nullable=True
+    )
+    atualizado_em: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    documento_a: Mapped["Documento | None"] = relationship(foreign_keys=[documento_a_id])
+    documento_b: Mapped["Documento | None"] = relationship(foreign_keys=[documento_b_id])
+    atualizado_por: Mapped["Usuario | None"] = relationship()

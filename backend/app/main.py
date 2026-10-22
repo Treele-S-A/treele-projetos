@@ -15,6 +15,7 @@ from .api import (
     arquivos,
     auth,
     chat,
+    conflitos,
     catalogos,
     documentos,
     eventos,
@@ -91,6 +92,7 @@ for modulo in (
     solicitacoes,
     notificacoes,
     chat,
+    conflitos,
     vistas,
     storage_local,
 ):

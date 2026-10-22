@@ -146,6 +146,8 @@ export default function Modelo3D() {
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
   const [verMarcacoes, setVerMarcacoes] = useState(true);
   const [conflitos, setConflitos] = useState(false);
+  // Muda quando uma vista nasce de um conflito: o painel recarrega a lista.
+  const [versaoConflitos, setVersaoConflitos] = useState(0);
   const [temMarcacoes, setTemMarcacoes] = useState(false);
 
   const palco = useRef<HTMLDivElement>(null);
@@ -503,6 +505,9 @@ export default function Modelo3D() {
             motor={motor.current}
             obraId={obraId}
             modelos={modelosConflito}
+            podeGerenciar={obra?.permissoes.includes("gerenciar") ?? false}
+            podeAprovar={obra?.permissoes.includes("autorizar_revisao") ?? false}
+            versao={versaoConflitos}
             aoNovaVista={(pedido) => void novaVista(pedido)}
           />
         )}
@@ -619,6 +624,7 @@ export default function Modelo3D() {
           aoFechar={(criou) => {
             setRascunho(null);
             if (criou) carregarVistas();
+            if (criou && rascunho.pedido?.conflitoId) setVersaoConflitos((v) => v + 1);
           }}
         />
       )}
@@ -801,6 +807,10 @@ function PainelVista({
       });
       if (!envio.ok) throw new Error("A imagem da vista não subiu. Tente de novo.");
       await api.post(`/vistas/${criada.vista.id}/imagem`);
+      // Vinda de um conflito, a vista fica ligada a ele.
+      if (rascunho.pedido?.conflitoId) {
+        await api.patch(`/conflitos/${rascunho.pedido.conflitoId}`, { vista_id: criada.vista.id }).catch(() => undefined);
+      }
       // Um pedido por disciplina; a falha de uma não segura as outras.
       const resultados: Resultado[] = [];
       for (const { documento, caminho } of selecionados) {
