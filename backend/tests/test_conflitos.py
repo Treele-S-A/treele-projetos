@@ -3,6 +3,7 @@ mesmo conflito é reconhecido entre rodadas pelos GlobalIds, a situação segue
 as regras (novo, ativo, aprovado, resolvido) e cada papel faz a sua parte."""
 
 import pytest
+from sqlalchemy import select
 
 from .conftest import autenticar, enviar_arquivo
 
@@ -160,3 +161,37 @@ def test_rodada_so_com_modelos_da_cena_que_a_pessoa_abre(cliente, c, conjunto):
     assert _rodada(cliente, c["proj"], cid, [c["fora"]], []).status_code == 422
     # A obra não abre o que está em revisão.
     assert _rodada(cliente, c["campo"], cid, [c["ele"]], []).status_code in (403, 404)
+
+
+# ------------------------------------------------------- chat (22/10/2026)
+
+
+def test_chat_consulta_conflitos_com_as_regras_da_tela(cliente, c, conjunto):
+    from app.db import SessionLocal
+    from app.models import Usuario
+    from app.services.chat_ferramentas import Ferramentas, descrever, resumir
+
+    cena = [c["est"], c["hid"]]
+    _rodada(cliente, c["proj"], conjunto["id"], cena,
+            [_achado(c, ["t3"], "v12"), _achado(c, ["t9"], "p33", nome_b="P33")])
+    db = SessionLocal()
+    try:
+        proj = db.scalar(select(Usuario).where(Usuario.email == "projcfl@conflito.teste.com.br"))
+        r = Ferramentas(db, proj).executar("consultar_conflitos", {"obra": "CFL", "disciplina": "hid"})
+        obra = r["conflitos_obras"][0]
+        assert obra["abertos"] >= 2 and "HID × EST" in obra["por_par_de_disciplinas"]
+        assert obra["conjuntos"][0]["feita_por"] == "Projcfl" and obra["conjuntos"][0]["ultima_deteccao"]
+        alvo = next(x for x in obra["conflitos"] if x["peca_b"].endswith("P33"))
+        assert alvo["documento_a"] == "CFL-HID-PE-MOD R00" and alvo["entra_cm"] == 8.0 and alvo["cota_m"] == 2
+        assert alvo["link_documento_b"].startswith("/documentos/")
+        # Busca pelo nome da peça.
+        r = Ferramentas(db, proj).executar("consultar_conflitos", {"obra": "CFL", "busca": "p33", "listar": True})
+        assert [x["peca_b"] for x in r["conflitos_obras"][0]["conflitos"]] == ["Viga: P33"]
+        assert resumir(r) == "1 conflito encontrado"  # o da busca, não o total da obra
+        com = db.scalar(select(Usuario).where(Usuario.email == "comcfl@conflito.teste.com.br"))
+        assert "erro" in Ferramentas(db, com).executar("consultar_conflitos", {"obra": "CFL"})
+    finally:
+        db.close()
+    assert descrever("consultar_conflitos", {"obra": "SER", "disciplina": "HID"}) == (
+        "Consultando os conflitos abertos (HID) na obra SER"
+    )

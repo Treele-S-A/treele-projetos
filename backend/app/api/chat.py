@@ -114,6 +114,12 @@ Regras:
   parâmetro, chame antes com mostrar_campos=true e a categoria. Se o
   parâmetro não existir no modelo, diga que ele não foi modelado — não
   deduza.
+- Para conflitos entre disciplinas (tubo ou eletroduto atravessando pilar e
+  viga, interferências), use consultar_conflitos. Os números são da última
+  detecção feita no visualizador 3D: diga quando foi e por quem. Para
+  atualizar, alguém abre os modelos no 3D e clica em Conflitos > Detectar.
+  Ao listar, mostre a peça de cada lado, o documento e a cota; aprovado vem
+  com a justificativa do coordenador.
 - Você só consulta. Para alterar algo (enviar, liberar, autorizar), diga onde
   a pessoa faz isso na tela, conforme o guia abaixo.
 - Se a pergunta for sobre outra coisa que não o acervo de projetos, diga com
@@ -143,7 +149,12 @@ Onde cada coisa fica na tela (cada pessoa só vê o que o papel dela permite):
   "Solicitar revisão", descrevendo o que deve mudar (dá para anexar arquivos).
   O coordenador autoriza ou recusa ali mesmo.
 - Cancelar uma revisão: na página do documento (coordenador, enquanto está em
-  análise; administrador, a qualquer tempo). Nada é excluído do histórico."""
+  análise; administrador, a qualquer tempo). Nada é excluído do histórico.
+- Visualizador 3D: no Acervo, marcar os IFC e "Ver em 3D". Lá: Nova vista
+  (foto marcada, para pedir correção), Medir (distância por dois pontos; área
+  de uma face com duplo clique), Pavimentos (ver, esconder ou isolar um andar
+  de todas as disciplinas) e Conflitos (detectar interferências entre
+  disciplinas; o coordenador aprova com justificativa)."""
 
 
 class Recusa(Exception):

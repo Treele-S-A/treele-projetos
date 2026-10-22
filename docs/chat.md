@@ -89,6 +89,19 @@ usou o comentário "ESQUADRIAS EXTERNAS" (282 portas), avisou disso e montou
 as tabelas. O chat responde só o que foi modelado: parâmetro que o
 projetista não preencheu não aparece.
 
+### Conflitos entre disciplinas (22/10/2026)
+
+`consultar_conflitos` lê o que as detecções do visualizador 3D guardaram
+(`docs/modelo3d.md`): quantos abertos por par de disciplinas, cada conjunto
+com a última detecção (quando e por quem) e, com `listar` ou até 15
+resultados, os conflitos — peça de cada lado (categoria e nome), documento e
+revisão, cota, quanto uma entra na outra, justificativa da aprovação e link da
+vista. Filtra por disciplina (de qualquer lado), situação (abertos por padrão)
+e trecho do nome da peça ("V12", "P33"). O mesmo par de peças em dois
+conjuntos conta uma vez (`conflitos_unicos`, o mesmo do resumo da tela). O
+comercial não vê. O chat não detecta: diz quando foi a última detecção e que,
+para atualizar, alguém roda Detectar no 3D.
+
 ### Etapas na tela (21/10/2026)
 
 Enquanto o assistente trabalha, a tela mostra o que ele está fazendo: cada

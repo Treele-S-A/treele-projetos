@@ -229,6 +229,39 @@ DECLARACOES = [
         },
     },
     {
+        "name": "consultar_conflitos",
+        "description": (
+            "Conflitos (interferências) entre disciplinas detectados no visualizador 3D: "
+            "tubulação ou eletroduto atravessando pilar e viga, porta contra viga etc. "
+            "Devolve quantos estão abertos por par de disciplinas, cada conjunto de teste "
+            "com a última detecção (quando e por quem) e, com listar=true ou poucos "
+            "resultados, os conflitos: peças, documentos, cota e quanto uma entra na outra. "
+            "Use para 'quantos conflitos abertos na hidráulica', 'o que conflita com a viga "
+            "V12', 'quais conflitos foram aprovados e por quê'."
+        ),
+        "parameters": {
+            "type": "OBJECT",
+            "properties": {
+                "obra": {"type": "STRING", "description": "Código da obra; sem ele, todas."},
+                "disciplina": {
+                    "type": "STRING",
+                    "description": "Código de disciplina (HID, ELE, EST…): conflitos em que ela aparece, de qualquer lado.",
+                },
+                "situacao": {
+                    "type": "STRING",
+                    "format": "enum",
+                    "enum": ["abertos", "novo", "ativo", "aprovado", "resolvido", "todos"],
+                    "description": "Padrão: abertos (novo + ativo).",
+                },
+                "busca": {
+                    "type": "STRING",
+                    "description": "Trecho do nome de uma peça, ex.: 'V12', 'P33', 'esgoto'.",
+                },
+                "listar": {"type": "BOOLEAN", "description": "Devolve a lista dos conflitos (até 40)."},
+            },
+        },
+    },
+    {
         "name": "listar_solicitacoes",
         "description": (
             "Solicitações de revisão (pedidos de alteração em projeto liberado), "
@@ -319,6 +352,7 @@ class Ferramentas:
             "ler_projeto": self.ler_projeto,
             "quantitativos_modelo": self.quantitativos_modelo,
             "consultar_elementos": self.consultar_elementos,
+            "consultar_conflitos": self.consultar_conflitos,
         }.get(nome)
         if metodo is None:
             return {"erro": f"Consulta desconhecida: {nome}."}
@@ -675,6 +709,88 @@ class Ferramentas:
         itens.sort(key=lambda i: i["liberada_em"] or "", reverse=True)
         return {"dias": dias, "total": len(itens), "liberacoes": itens[:LIMITE_DOCUMENTOS]}
 
+    def consultar_conflitos(self, obra=None, disciplina=None, situacao=None, busca=None, listar=False):
+        """Os conflitos guardados pelas detecções do visualizador 3D (22/10/2026),
+        com as mesmas regras da tela: o comercial não vê."""
+        from ..api.conflitos import conflitos_unicos
+        from ..models import ConjuntoConflito, RodadaConflito
+
+        if self.usuario.comercial:
+            return {"erro": "O perfil comercial não acompanha conflitos entre disciplinas."}
+        situacao = situacao or "abertos"
+        disc = (disciplina or "").strip().upper()
+        termo = _normalizar(busca or "")
+        obras = []
+        for ctx in self._contextos(obra):
+            todos = conflitos_unicos(self.db, ctx.obra.id)
+            conjuntos = list(self.db.scalars(
+                select(ConjuntoConflito).where(ConjuntoConflito.obra_id == ctx.obra.id)
+            ))
+            if not todos and not conjuntos:
+                if obra:
+                    obras.append({"obra": ctx.obra.codigo, "aviso": "Nenhuma detecção de conflitos registrada nesta obra."})
+                continue
+
+            def disciplinas(c):
+                return (c.documento_a.disciplina.codigo if c.documento_a else "?",
+                        c.documento_b.disciplina.codigo if c.documento_b else "?")
+
+            def serve(c):
+                if disc and disc not in disciplinas(c):
+                    return False
+                if termo and termo not in _normalizar(f"{c.nome_a or ''} {c.nome_b or ''}"):
+                    return False
+                if situacao == "todos":
+                    return True
+                if situacao == "abertos":
+                    return c.status in ("novo", "ativo")
+                return c.status == situacao
+
+            escolhidos = [c for c in todos if serve(c)]
+            pares: dict[str, dict[str, int]] = defaultdict(lambda: defaultdict(int))
+            for c in todos:
+                if disc and disc not in disciplinas(c):
+                    continue
+                pares[" × ".join(disciplinas(c))][c.status] += 1
+            saida_conjuntos = []
+            for cj in conjuntos:
+                rodada = self.db.scalars(
+                    select(RodadaConflito).where(RodadaConflito.conjunto_id == cj.id)
+                    .order_by(RodadaConflito.feita_em.desc(), RodadaConflito.id.desc()).limit(1)
+                ).first()
+                saida_conjuntos.append({
+                    "nome": cj.nome,
+                    "ultima_deteccao": _data(rodada.feita_em) if rodada else None,
+                    "feita_por": rodada.feita_por.nome if rodada and rodada.feita_por else None,
+                    "encontrados_na_ultima": rodada.encontrados if rodada else None,
+                })
+            item: dict[str, Any] = {
+                "obra": ctx.obra.codigo,
+                "abertos": sum(1 for c in todos if c.status in ("novo", "ativo")
+                               and (not disc or disc in disciplinas(c))),
+                "por_par_de_disciplinas": {k: dict(v) for k, v in sorted(pares.items())},
+                "conjuntos": saida_conjuntos,
+                "encontrados": len(escolhidos),
+            }
+            if listar or len(escolhidos) <= 15:
+                item["conflitos"] = [_conflito(c) for c in sorted(
+                    escolhidos, key=lambda c: (c.centro[1] if c.centro else 0))[:40]]
+                if len(escolhidos) > 40:
+                    item["aviso"] = f"Mostrando 40 de {len(escolhidos)}. Refine por disciplina ou busca."
+            obras.append(item)
+        if not obras:
+            return {"conflitos_obras": [], "aviso": "Nenhuma detecção de conflitos registrada nas suas obras."}
+        return {
+            "conflitos_obras": obras,
+            "como_ler": (
+                "Conflitos achados pela detecção do visualizador 3D (botão Conflitos), na última vez "
+                "que alguém a rodou — diga quando. Situação: novo (apareceu na última detecção), ativo "
+                "(continua), aprovado (aceito pelo coordenador, com justificativa) e resolvido (sumiu "
+                "numa detecção com os dois modelos). 'entra_cm' é quanto uma peça entra na outra "
+                "(estimado); 'cota_m' é a altura na cena. Para atualizar, rodar Detectar de novo no 3D."
+            ),
+        }
+
     def listar_solicitacoes(self, obra=None, situacao=None):
         if self.usuario.comercial:
             return {"erro": "O perfil comercial não acompanha solicitações de revisão."}
@@ -694,6 +810,45 @@ class Ferramentas:
                              "titulo": doc.titulo, "link": f"/documentos/{doc.id}"})
                 itens.append(item)
         return {"total": len(itens), "solicitacoes": itens[:LIMITE_DOCUMENTOS]}
+
+
+# As categorias IFC como a tela mostra (frontend/src/modelo3d/resumo-ifc.ts).
+CATEGORIAS_IFC = {
+    "IFCBEAM": "Viga", "IFCCOLUMN": "Pilar", "IFCSLAB": "Laje / piso", "IFCWALL": "Parede",
+    "IFCWALLSTANDARDCASE": "Parede", "IFCDOOR": "Porta", "IFCWINDOW": "Janela",
+    "IFCMEMBER": "Perfil / montante", "IFCFOOTING": "Fundação", "IFCSTAIR": "Escada",
+    "IFCFLOWSEGMENT": "Tubo / duto", "IFCFLOWFITTING": "Conexão", "IFCFLOWTERMINAL": "Terminal",
+    "IFCFLOWCONTROLLER": "Registro / válvula", "IFCPIPESEGMENT": "Tubo", "IFCPIPEFITTING": "Conexão",
+    "IFCDUCTSEGMENT": "Duto", "IFCCABLECARRIERSEGMENT": "Eletrocalha / eletroduto",
+    "IFCBUILDINGELEMENTPROXY": "Outro elemento",
+}
+
+
+def _categoria(codigo: str) -> str:
+    return CATEGORIAS_IFC.get((codigo or "").upper(), (codigo or "").upper().replace("IFC", "").title())
+
+
+def _conflito(c) -> dict[str, Any]:
+    disc_a = c.documento_a.disciplina.codigo if c.documento_a else None
+    disc_b = c.documento_b.disciplina.codigo if c.documento_b else None
+    saida = {
+        "situacao": c.status,
+        "disciplinas": f"{disc_a} × {disc_b}",
+        "peca_a": f"{_categoria(c.categoria_a)}: {c.nome_a or 'sem nome'}",
+        "peca_b": f"{_categoria(c.categoria_b)}: {c.nome_b or 'sem nome'}",
+        "documento_a": f"{c.documento_a.codigo} R{c.revisao_a}" if c.documento_a else None,
+        "documento_b": f"{c.documento_b.codigo} R{c.revisao_b}" if c.documento_b else None,
+        "link_documento_a": f"/documentos/{c.documento_a_id}" if c.documento_a_id else None,
+        "link_documento_b": f"/documentos/{c.documento_b_id}" if c.documento_b_id else None,
+        "entra_cm" if c.tipo == "interferencia" else "distancia_cm": round(c.medida * 100, 1),
+        "cota_m": round(c.centro[1], 2) if c.centro else None,
+        "visto_em": _data(c.visto_em),
+    }
+    if c.justificativa:
+        saida["justificativa"] = c.justificativa
+    if c.vista_id:
+        saida["link_vista"] = f"/modelos?vista={c.vista_id}"
+    return saida
 
 
 def _data(valor: datetime | None) -> str | None:
@@ -786,6 +941,12 @@ def descrever(nome: str, args: dict[str, Any]) -> str:
         case "quantitativos_modelo":
             busca = f" ({args['busca']})" if args.get("busca") else ""
             return f"Somando quantidades do modelo IFC{busca} na obra {args.get('obra', '')}".strip()
+        case "consultar_conflitos":
+            sit = args.get("situacao") or "abertos"
+            extras = [x for x in (args.get("disciplina"), args.get("busca")) if x]
+            mais = f" ({', '.join(extras)})" if extras else ""
+            obra = f" na obra {args['obra']}" if args.get("obra") else ""
+            return f"Consultando os conflitos {sit}{mais}{obra}"
         case "ler_projeto":
             rev = f" ({args['revisao']})" if args.get("revisao") else ""
             return f"Lendo o PDF de {args.get('codigo', 'uma prancha')}{rev}"
@@ -814,6 +975,9 @@ def resumir(resultado: dict[str, Any]) -> str | None:
     if "modelos" in resultado:
         n = len(resultado["modelos"])
         return f"{n} modelo{'' if n == 1 else 's'} IFC consultado{'' if n == 1 else 's'}"
+    if "conflitos_obras" in resultado:
+        n = sum(o.get("encontrados", 0) for o in resultado["conflitos_obras"])
+        return f"{n} conflito{'' if n == 1 else 's'} encontrado{'' if n == 1 else 's'}"
     if "leitura" in resultado:
         return f"PDF lido ({resultado.get('revisao_lida', '')})".replace(" ()", "")
     return None

@@ -223,6 +223,22 @@ def _saida_conflito(c: Conflito) -> ConflitoOut:
     )
 
 
+PRIORIDADE = {"novo": 0, "ativo": 1, "aprovado": 2, "resolvido": 3}
+
+
+def conflitos_unicos(db: Session, obra_id: int) -> list[Conflito]:
+    """Os conflitos da obra, de todos os conjuntos, contando uma vez o mesmo
+    par de peças que aparece em dois conjuntos (o pronto e um montado com mais
+    tolerância), pela situação mais aberta. A tela (resumo) e o chat usam."""
+    unicos: dict[tuple[str, str], Conflito] = {}
+    for c in db.scalars(select(Conflito).where(Conflito.obra_id == obra_id).order_by(Conflito.id)):
+        chave = (c.guid_b, min(c.guids_a or [""]))
+        atual = unicos.get(chave)
+        if atual is None or PRIORIDADE.get(c.status, 9) < PRIORIDADE.get(atual.status, 9):
+            unicos[chave] = c
+    return list(unicos.values())
+
+
 def _conflitos(db: Session, conjunto_id: int) -> list[Conflito]:
     return list(db.scalars(
         select(Conflito).where(Conflito.conjunto_id == conjunto_id).order_by(Conflito.id)
@@ -498,20 +514,10 @@ def mudar_conflito(
 
 @router.get("/obras/{obra_id}/conflitos/resumo", response_model=ResumoObra)
 def resumo(obra_id: int, usuario: Usuario = Depends(usuario_atual), db: Session = Depends(get_db)):
-    """Por par de disciplinas, quantos em cada situação — todos os conjuntos.
-
-    O mesmo par de peças em dois conjuntos (o pronto e um montado com mais
-    tolerância) conta uma vez, pela situação mais aberta."""
+    """Por par de disciplinas, quantos em cada situação — todos os conjuntos."""
     _contexto(db, usuario, obra_id)
-    prioridade = {"novo": 0, "ativo": 1, "aprovado": 2, "resolvido": 3}
-    unicos: dict[tuple[str, str], Conflito] = {}
-    for c in db.scalars(select(Conflito).where(Conflito.obra_id == obra_id)):
-        chave = (c.guid_b, min(c.guids_a or [""]))
-        atual = unicos.get(chave)
-        if atual is None or prioridade.get(c.status, 9) < prioridade.get(atual.status, 9):
-            unicos[chave] = c
     pares: dict[tuple[str, str], ResumoPar] = {}
-    for c in unicos.values():
+    for c in conflitos_unicos(db, obra_id):
         da = c.documento_a.disciplina.codigo if c.documento_a else "?"
         dbb = c.documento_b.disciplina.codigo if c.documento_b else "?"
         par = pares.setdefault((da, dbb), ResumoPar(disciplina_a=da, disciplina_b=dbb))
