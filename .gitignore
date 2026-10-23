@@ -1,6 +1,9 @@
 # Segredos e dados locais
 .env
 .env.producao
+# Baixados por "vercel env pull": têm os segredos da Vercel.
+.env.local
+.env.*.local
 backend/data/
 backend/.venv/
 

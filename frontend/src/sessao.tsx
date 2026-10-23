@@ -47,6 +47,12 @@ export function ProvedorSessao({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
+    const fragmento = new URLSearchParams(window.location.hash.slice(1));
+    const tokenMicrosoft = fragmento.get("entra_token");
+    if (tokenMicrosoft) {
+      gravarToken(tokenMicrosoft);
+      window.history.replaceState(null, "", window.location.pathname + window.location.search);
+    }
     if (!lerToken()) {
       setCarregando(false);
       return;

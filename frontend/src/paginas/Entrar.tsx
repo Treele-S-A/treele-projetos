@@ -1,5 +1,5 @@
-import { useState, type FormEvent } from "react";
-import { ErroApi } from "../api";
+import { useEffect, useState, type FormEvent } from "react";
+import { api, ErroApi } from "../api";
 import { Aviso, SIMBOLO } from "../componentes";
 import { useSessao } from "../sessao";
 
@@ -8,8 +8,16 @@ export default function Entrar() {
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
   const [manter, setManter] = useState(false);
-  const [erro, setErro] = useState<string | null>(null);
+  const [erro, setErro] = useState<string | null>(() => {
+    return new URLSearchParams(window.location.hash.slice(1)).get("entra_erro");
+  });
   const [enviando, setEnviando] = useState(false);
+
+  useEffect(() => {
+    if (new URLSearchParams(window.location.hash.slice(1)).has("entra_erro")) {
+      window.history.replaceState(null, "", window.location.pathname + window.location.search);
+    }
+  }, []);
 
   async function aoEnviar(e: FormEvent) {
     e.preventDefault();
@@ -19,6 +27,19 @@ export default function Entrar() {
       await entrar(email.trim(), senha, manter);
     } catch (ex) {
       setErro(ex instanceof ErroApi ? ex.message : "Não foi possível entrar.");
+      setEnviando(false);
+    }
+  }
+
+  async function aoMicrosoft() {
+    setErro(null);
+    setEnviando(true);
+    try {
+      const { configurado } = await api.get<{ configurado: boolean }>("/auth/microsoft/status");
+      if (!configurado) throw new Error("Login Microsoft ainda não configurado neste sistema.");
+      window.location.assign(`${api.base}/auth/microsoft/start`);
+    } catch (ex) {
+      setErro(ex instanceof Error ? ex.message : "Não foi possível iniciar o login Microsoft.");
       setEnviando(false);
     }
   }
@@ -75,6 +96,18 @@ export default function Entrar() {
               {enviando ? "Entrando…" : "Entrar"}
             </button>
           </form>
+          <div className="entrar-microsoft">
+            <span>ou</span>
+            <button
+              className="botao-entra"
+              type="button"
+              disabled={enviando}
+              onClick={aoMicrosoft}
+            >
+              <span className="marca-microsoft" aria-hidden="true"><i /><i /><i /><i /></span>
+              Entrar com Microsoft Entra ID
+            </button>
+          </div>
         </div>
         <p className="legenda">Sem acesso? Peça ao coordenador da obra.</p>
       </div>

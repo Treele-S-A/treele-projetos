@@ -5,7 +5,8 @@ pydantic>=2.9
 pydantic-settings>=2.6
 email-validator>=2.2
 python-multipart>=0.0.17
-pyjwt>=2.9
+# [crypto]: o login Microsoft confere a assinatura RS256 do id_token.
+pyjwt[crypto]>=2.9
 
 # Chat do acervo: chamada HTTP ao modelo de IA (services/chat_modelo.py).
 httpx>=0.27

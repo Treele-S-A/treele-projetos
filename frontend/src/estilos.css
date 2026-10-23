@@ -1140,6 +1140,43 @@ table.tabela {
   color: var(--tinta-invertida-2);
 }
 
+.entrar-microsoft {
+  padding: 0 30px 30px;
+  text-align: center;
+}
+
+.entrar-microsoft > span {
+  display: block;
+  margin-bottom: 14px;
+  color: var(--tinta-3);
+  font-size: 12px;
+}
+
+.botao-entra {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 11px 14px;
+  border: 1px solid var(--traco-medio);
+  border-radius: 8px;
+  background: var(--folha);
+  color: var(--tinta);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.botao-entra:hover { background: var(--nevoa); }
+.botao-entra:disabled { opacity: .6; cursor: not-allowed; }
+.marca-microsoft { display: grid; grid-template-columns: repeat(2, 7px); gap: 2px; }
+.marca-microsoft i { display: block; width: 7px; height: 7px; }
+.marca-microsoft i:nth-child(1) { background: #f25022; }
+.marca-microsoft i:nth-child(2) { background: #7fba00; }
+.marca-microsoft i:nth-child(3) { background: #00a4ef; }
+.marca-microsoft i:nth-child(4) { background: #ffb900; }
+
 /* --------------------------------------------------------------------------
    Obras — a carteira da treèle
    -------------------------------------------------------------------------- */

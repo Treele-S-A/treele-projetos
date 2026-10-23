@@ -124,6 +124,12 @@ class Settings(BaseSettings):
     # (ver endereco_site).
     site_url: str = ""
 
+    # Login Microsoft opcional (Entra ID). O segredo pertence somente ao
+    # backend; sem os três, o botão avisa que não está configurado.
+    entra_tenant_id: str = ""
+    entra_client_id: str = ""
+    entra_client_secret: str = ""
+
     @field_validator("db_schema")
     @classmethod
     def _schema_seguro(cls, valor: str) -> str:

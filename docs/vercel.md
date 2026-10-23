@@ -138,6 +138,48 @@ Clique em **Deploy**. O build leva uns 2 minutos.
 
 ## 6. Conferir
 
+### Login Microsoft Entra ID do Projetos
+
+O Projetos usa autenticação própria no FastAPI e apenas o banco Postgres do
+Supabase. O botão Microsoft não utiliza Supabase Auth. Ele aceita somente
+contas do locatário Microsoft da Treele com e-mail `@treele.com.br`. No
+primeiro acesso, cria o usuário ativo sem privilégios de administrador e sem
+vínculo com obras. Um administrador deve atribuir as obras; contas já
+desativadas continuam bloqueadas.
+
+Crie um **registro de aplicativo separado** no Microsoft Entra, do tipo
+**somente este diretório organizacional**. Em **Authentication**, configure a
+plataforma **Web** com esta URI de retorno:
+
+`https://projetos.treele.com.br/api/auth/microsoft/callback`
+
+Crie um client secret e copie o campo **Value**, nunca o Secret ID. Configure
+estas variáveis **somente no serviço da API em Production** na Vercel:
+
+| Variável | Valor |
+|---|---|
+| `ENTRA_TENANT_ID` | Directory (tenant) ID do aplicativo |
+| `ENTRA_CLIENT_ID` | Application (client) ID |
+| `ENTRA_CLIENT_SECRET` | Value do client secret, oculto e nunca no Git |
+| `SITE_URL` | `https://projetos.treele.com.br` |
+
+Depois de configurar, é necessário um novo deploy para o backend receber as
+variáveis. O endpoint `/api/auth/microsoft/status` informa se as três
+credenciais estão presentes, sem expor seus valores. Para desenvolvimento
+local, registre também a URI Web
+`http://localhost:8000/auth/microsoft/callback` e defina as mesmas variáveis
+apenas no `.env` local do backend. O cookie que protege o login é do host da
+API, então o início e a volta precisam usar o mesmo nome: crie
+`frontend/.env.development.local` (fora do Git) com
+`VITE_API=http://localhost:8000` e abra a interface em
+`http://localhost:5173`, que é o primeiro endereço de `CORS_ORIGINS` e para
+onde a volta da Microsoft leva.
+
+O login por e-mail e senha existente continua disponível. A autorização por
+obra continua no banco próprio, após o Entra confirmar a identidade.
+
+### Conferir implantação
+
 Abra `https://<nome-do-projeto>.vercel.app/api/saude`. Tem que aparecer:
 
 ```json
