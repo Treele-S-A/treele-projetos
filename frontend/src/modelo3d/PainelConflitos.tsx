@@ -346,9 +346,11 @@ export default function PainelConflitos({
             nome_a: c.a.nome?.slice(0, 300) ?? null,
             nome_b: c.b.nome?.slice(0, 300) ?? null,
             tipo: c.tipo,
-            centro: c.centro,
-            caixa_min: c.caixa.min,
-            caixa_max: c.caixa.max,
+            // Guardados na coordenada do projeto: a cota sai a real, e o ponto
+            // vale qualquer que seja o primeiro modelo aberto.
+            centro: motor.paraProjeto(c.centro),
+            caixa_min: motor.paraProjeto(c.caixa.min),
+            caixa_max: motor.paraProjeto(c.caixa.max),
             medida: c.medida,
           })),
         },
@@ -388,10 +390,10 @@ export default function PainelConflitos({
       tipo: c.tipo,
       a: await lado(c.documento_a_id, c.guids_a, c.categoria_a, c.nome_a),
       b: await lado(c.documento_b_id, [c.guid_b], c.categoria_b, c.nome_b),
-      centro,
+      centro: motor.paraCena(centro),
       caixa: {
-        min: (c.caixa.min ?? centro) as [number, number, number],
-        max: (c.caixa.max ?? centro) as [number, number, number],
+        min: motor.paraCena((c.caixa.min ?? centro) as [number, number, number]),
+        max: motor.paraCena((c.caixa.max ?? centro) as [number, number, number]),
       },
       medida: c.medida,
     };

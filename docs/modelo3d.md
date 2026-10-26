@@ -192,6 +192,15 @@ A detecção roda no navegador; cada rodada é registrada no servidor
   Todos) e a última detecção; o resumo da obra soma os abertos por par de
   disciplinas, contando uma vez o mesmo par de peças em dois conjuntos.
 
+- **Ponto e caixa guardados na coordenada do projeto** (a do IFC, com Y para
+  cima), não na da cena (`motor.paraProjeto`/`paraCena`, a mesma conversão
+  da câmera do BCF). A cena começa onde está o primeiro modelo aberto. No
+  UNO, com o executivo da arquitetura (que vem na altitude, 881 m) aberto
+  primeiro, a caixa de areia saía "na cota -882,75 m", e um conflito guardado
+  numa sessão apontava para o lugar errado em outra (26/10/2026). Os
+  guardados antes disso se corrigem na próxima rodada, que regrava ponto e
+  caixa de cada conflito achado de novo.
+
 Rotas: `GET/POST /obras/{id}/conjuntos-conflito`, `PATCH/DELETE
 /conjuntos-conflito/{id}`, `POST /conjuntos-conflito/{id}/rodadas`, `GET
 /conjuntos-conflito/{id}/conflitos`, `PATCH /conflitos/{id}` (situação,
@@ -263,6 +272,17 @@ sai nas coordenadas do primeiro modelo da cena (no SER, a estrutura).
   **Nova vista** abre a vista com título e descrição do tópico, para pedir a
   correção pelo caminho de sempre. O importado não fica guardado — vira vista
   quando alguém a cria.
+
+**No Revit (BIMcollab BCF Manager)** a câmera chega certa, mas as peças só
+são achadas no modelo **aberto**, não nos vinculados: o Revit não dá ao
+plugin o GlobalId das peças de um vínculo, e o BCF Manager avisa que "nenhum
+dos componentes da vista foram encontrados" (teste no UNO, 26/10/2026). Para
+o projetista achar as peças, ele abre o BCF no próprio RVT da disciplina,
+aquele de onde saiu o IFC. Num arquivo de coordenação, só com vínculos, sai
+só a câmera, e a caixa de corte do plugin ajuda a enxergar o trecho. O
+BCF Manager também precisa usar a mesma base de coordenadas da exportação do
+IFC (ponto de levantamento, coordenadas compartilhadas ou ponto base); ele
+não aceita a origem interna.
 
 Armadilhas da biblioteca, já contornadas em `motor.ts`:
 

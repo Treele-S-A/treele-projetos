@@ -133,6 +133,11 @@ export interface Motor {
   focarConflito(conflito: Conflito | null, animar?: boolean): Promise<void>;
   /** Os localIds das peças, pelos GlobalIds (conflito de outra rodada). */
   idsDosGuids(modelId: string, guids: string[]): Promise<number[]>;
+  /** Da cena para as coordenadas do projeto (as do IFC), e de volta. A cena
+   *  começa onde está o primeiro modelo aberto, então um ponto guardado na
+   *  coordenada da cena mudaria com a ordem dos modelos; o do projeto não. */
+  paraProjeto(p: [number, number, number]): [number, number, number];
+  paraCena(p: [number, number, number]): [number, number, number];
   /** Só a câmera no conflito, sem destaque nem redesenho. */
   cameraNoConflito(conflito: Conflito): Promise<void>;
   /** Os pavimentos do modelo, na ordem da elevação. */
@@ -639,6 +644,14 @@ export async function criarMotor(
       const model = fragments.list.get(modelId);
       if (!model || !guids.length) return [];
       return (await model.getLocalIdsByGuids(guids)).filter((i): i is number => i !== null);
+    },
+    // A mesma conversão que o BCF usa na câmera.
+    paraProjeto(p) {
+      const m = fragments.baseCoordinationMatrix.clone().invert();
+      return new THREE.Vector3(...p).applyMatrix4(m).toArray() as [number, number, number];
+    },
+    paraCena(p) {
+      return new THREE.Vector3(...p).applyMatrix4(fragments.baseCoordinationMatrix).toArray() as [number, number, number];
     },
     async pavimentos(modelId) {
       const model = fragments.list.get(modelId);
