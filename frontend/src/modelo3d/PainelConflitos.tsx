@@ -133,6 +133,26 @@ function chaveAntiga(obraId: number) {
   return `treele.conflitos.${obraId}`;
 }
 
+// As disciplinas escondidas da lista ficam lembradas neste navegador, por obra
+// (TREELE, 27/10/2026: "os de elétrica fiquem salvos, mas não quero
+// visualizá-los agora"). Só a lista muda: o conflito continua guardado,
+// detectado e contado no quadro da obra.
+function chaveOcultas(obraId: number) {
+  return `treele.conflitos.ocultas.${obraId}`;
+}
+
+function lerOcultas(obraId: number): Set<string> {
+  try {
+    return new Set(JSON.parse(localStorage.getItem(chaveOcultas(obraId)) ?? "[]") as string[]);
+  } catch {
+    return new Set();
+  }
+}
+
+function semAcento(texto: string) {
+  return texto.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+}
+
 function medidaTexto(m: number): string {
   if (m < 0.01) return `${Math.round(m * 1000)} mm`;
   return `${(m * 100).toFixed(m < 0.1 ? 1 : 0).replace(".", ",")} cm`;
@@ -180,6 +200,8 @@ export default function PainelConflitos({
   const [lista, setLista] = useState<ConflitoServidor[] | null>(null);
   const [ultimaVez, setUltimaVez] = useState<{ segundos: number; encontrados: number } | null>(null);
   const [filtro, setFiltro] = useState<Filtro>("abertos");
+  const [ocultas, setOcultas] = useState<Set<string>>(() => lerOcultas(obraId));
+  const [busca, setBusca] = useState("");
   const [resumo, setResumo] = useState<ResumoObra | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [ativo, setAtivo] = useState<number | null>(null);
@@ -511,11 +533,58 @@ export default function PainelConflitos({
     aoNovaVista({ ...textoDoConflito(c), documentoId: c.documento_a_id, conflitoId: c.id });
   }
 
+  function alternarDisciplina(d: string) {
+    const nova = new Set(ocultas);
+    if (nova.has(d)) nova.delete(d);
+    else nova.add(d);
+    setOcultas(nova);
+    try {
+      localStorage.setItem(chaveOcultas(obraId), JSON.stringify([...nova]));
+    } catch {
+      // Sem armazenamento, o filtro vale só até fechar a tela.
+    }
+  }
+
+  function limparFiltros() {
+    setOcultas(new Set());
+    try {
+      localStorage.removeItem(chaveOcultas(obraId));
+    } catch {
+      // idem
+    }
+    setBusca("");
+  }
+
+  // Disciplinas e busca valem antes da situação: as contagens das abas e o
+  // BCF exportado são os da lista que está na tela.
+  const termo = semAcento(busca.trim());
+  const filtrada = (lista ?? []).filter(
+    (c) =>
+      !ocultas.has(c.disciplina_a ?? "") &&
+      !ocultas.has(c.disciplina_b ?? "") &&
+      (!termo ||
+        semAcento(
+          [
+            nomeCategoria(c.categoria_a),
+            nomeCategoria(c.categoria_b),
+            c.nome_a ?? "",
+            c.nome_b ?? "",
+            c.documento_a ?? "",
+            c.documento_b ?? "",
+          ].join(" "),
+        ).includes(termo)),
+  );
+  const escondidosPeloFiltro = (lista?.length ?? 0) - filtrada.length;
+  const disciplinasDaLista = [
+    ...new Set((lista ?? []).flatMap((c) => [c.disciplina_a, c.disciplina_b]).filter((d): d is string => !!d)),
+  ].sort();
+  const comDisciplina = (d: string) =>
+    (lista ?? []).filter((c) => passa(c, filtro) && (c.disciplina_a === d || c.disciplina_b === d)).length;
   const ordem: Record<Situacao, number> = { novo: 0, ativo: 1, aprovado: 2, resolvido: 3 };
-  const visiveis = (lista ?? [])
+  const visiveis = filtrada
     .filter((c) => passa(c, filtro))
     .sort((p, q) => ordem[p.status] - ordem[q.status] || (p.centro[1] ?? 0) - (q.centro[1] ?? 0));
-  const contagem = (f: Filtro) => (lista ?? []).filter((c) => passa(c, f)).length;
+  const contagem = (f: Filtro) => filtrada.filter((c) => passa(c, f)).length;
   const rodada = opcao?.servidor?.ultima_rodada;
 
   return (
@@ -652,6 +721,43 @@ export default function PainelConflitos({
               </button>
             ))}
           </div>
+          {disciplinasDaLista.length > 1 && (
+            <div className="filtros-conflito disciplinas" aria-label="Disciplinas">
+              {disciplinasDaLista.map((d) => (
+                <button
+                  key={d}
+                  aria-pressed={!ocultas.has(d)}
+                  className={ocultas.has(d) ? "oculta" : undefined}
+                  onClick={() => alternarDisciplina(d)}
+                  title={
+                    ocultas.has(d)
+                      ? `Mostrar os conflitos com ${d}`
+                      : `Esconder da lista os conflitos com ${d} (continuam guardados)`
+                  }
+                >
+                  {d} <span>{comDisciplina(d)}</span>
+                </button>
+              ))}
+            </div>
+          )}
+          {(lista.length > 0 || busca) && (
+            <input
+              className="busca-conflito"
+              type="search"
+              placeholder="Buscar peça, categoria ou documento"
+              value={busca}
+              onChange={(e) => setBusca(e.target.value)}
+            />
+          )}
+          {escondidosPeloFiltro > 0 && (
+            <p className="silencioso" style={{ fontSize: 11.5, margin: "2px 0" }}>
+              {escondidosPeloFiltro} fora da lista pelo filtro
+              {ocultas.size > 0 && ` (sem ${[...ocultas].sort().join(", ")})`} ·{" "}
+              <button className="link-pequeno" onClick={limparFiltros}>
+                Mostrar todos
+              </button>
+            </p>
+          )}
           {visiveis.length > 0 && (
             <div className="linha" style={{ gap: 8, margin: "2px 0" }}>
               <button
@@ -676,7 +782,11 @@ export default function PainelConflitos({
           )}
           {visiveis.length === 0 && (
             <p className="silencioso" style={{ fontSize: 12.5, margin: "6px 0 0" }}>
-              {filtro === "abertos" ? "Nenhum conflito aberto neste conjunto." : "Nada aqui."}
+              {escondidosPeloFiltro > 0
+                ? "Nada aqui com estes filtros."
+                : filtro === "abertos"
+                  ? "Nenhum conflito aberto neste conjunto."
+                  : "Nada aqui."}
             </p>
           )}
           <ol className="lista-conflitos">

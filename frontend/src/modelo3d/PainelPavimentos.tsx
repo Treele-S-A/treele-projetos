@@ -153,11 +153,26 @@ export default function PainelPavimentos({
     setEscondidos(new Set());
   }
 
+  // Para ver 2 de 50 andares: esconde tudo e marca só os que quer. Esconde
+  // também o que não está em pavimento nenhum (terreno, entorno).
+  async function ocultarTodos() {
+    await motor.isolarPecas({});
+    setEscondidos(new Set(grupos.map((g) => g.chave)));
+  }
+
   return (
     <div className="painel-pavimentos">
-      <div className="linha">
+      <div className="linha" style={{ gap: 10 }}>
         <span className="rotulo">Pavimentos</span>
         <div className="espaco" />
+        <button
+          className="link-pequeno"
+          disabled={grupos.length === 0}
+          onClick={ocultarTodos}
+          title="Esconde todos os pavimentos; depois marque só os que quer ver"
+        >
+          Ocultar todos
+        </button>
         <button
           className="link-pequeno"
           onClick={async () => {

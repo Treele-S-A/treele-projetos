@@ -188,6 +188,13 @@ A detecção roda no navegador; cada rodada é registrada no servidor
 - **Quem faz o quê**: a equipe detecta e cria vistas; o coordenador
   (`autorizar_revisao`) aprova e reabre; o comercial não vê.
 - A vista criada de um conflito fica ligada a ele ("Abrir a vista").
+- **Filtrar a lista** (27/10/2026): abaixo das abas, um botão por disciplina
+  esconde da lista os conflitos com ela ("os de elétrica ficam salvos, mas
+  não quero vê-los agora"), e uma busca filtra por peça, categoria ou
+  documento. Só a tela muda: os conflitos continuam guardados, detectados e
+  contados no quadro da obra. As abas e o BCF exportado seguem o filtro, e um
+  aviso diz quantos ficaram de fora ("Mostrar todos" limpa). As disciplinas
+  escondidas ficam lembradas no navegador, por obra.
 - O painel abre com a lista guardada (filtros Abertos, Aprovados, Resolvidos,
   Todos) e a última detecção; o resumo da obra soma os abertos por par de
   disciplinas, contando uma vez o mesmo par de peças em dois conjuntos.
@@ -217,7 +224,9 @@ unidade (m, cm, mm) sai do maior valor. O nome que aparece é o que diz "pav" e
 é mais curto; os outros ficam no detalhe. Cada linha: ligar e desligar,
 **Isolar** (só aquele andar, de todas as disciplinas, enquadrado) e, aberta,
 cada modelo com as categorias e quantas peças — clicar numa categoria isola
-só ela naquele andar. **Mostrar todos** volta tudo.
+só ela naquele andar. **Mostrar todos** volta tudo. **Ocultar todos**
+(27/10/2026) esconde tudo, inclusive o que não está em pavimento nenhum,
+para depois marcar só os 2 andares que se quer ver, em vez de desmarcar 48.
 
 O enquadramento usa as caixas calculadas da geometria (`caixaDasPecas`), não
 o `getMergedBox` da biblioteca (mesmo problema do `getBoxes`).

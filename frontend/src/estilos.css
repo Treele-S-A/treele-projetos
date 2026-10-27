@@ -2298,6 +2298,23 @@ table.tabela {
 .filtros-conflito button span {
   opacity: 0.75;
 }
+/* Disciplinas: ligada é a normal; a escondida fica riscada. */
+.filtros-conflito.disciplinas button.oculta {
+  border-style: dashed;
+  color: var(--tinta-3);
+  text-decoration: line-through;
+  opacity: 0.6;
+}
+.busca-conflito {
+  width: 100%;
+  padding: 5px 8px;
+  border: 1px solid var(--traco-medio);
+  border-radius: 8px;
+  background: var(--folha);
+  color: var(--tinta);
+  font: inherit;
+  font-size: 12.5px;
+}
 .situacao-conflito {
   display: inline-block;
   padding: 0 6px;
