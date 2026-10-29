@@ -13,7 +13,7 @@ PDF = b"%PDF-1.7\n" + b"0" * 200
 
 @pytest.fixture(scope="module")
 def obra(cliente, admin):
-    r = cliente.post("/obras", json={"codigo": "INC", "nome": "Obra incêndio"}, headers=admin)
+    r = cliente.post("/obras", json={"codigo": "INC", "nome": "Obra incêndio", "endereco": "Rua de Teste, 100 – Centro – Curitiba – PR"}, headers=admin)
     assert r.status_code == 201, r.text
     return r.json()
 

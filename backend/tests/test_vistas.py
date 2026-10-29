@@ -29,8 +29,8 @@ def _put(cliente, url, conteudo):
 
 @pytest.fixture(scope="module")
 def c(cliente, admin):
-    obra = cliente.post("/obras", json={"codigo": "VST", "nome": "Obra vistas"}, headers=admin).json()
-    outra = cliente.post("/obras", json={"codigo": "VIX", "nome": "Outra"}, headers=admin).json()
+    obra = cliente.post("/obras", json={"codigo": "VST", "nome": "Obra vistas", "endereco": "Rua de Teste, 100 – Centro – Curitiba – PR"}, headers=admin).json()
+    outra = cliente.post("/obras", json={"codigo": "VIX", "nome": "Outra", "endereco": "Rua de Teste, 100 – Centro – Curitiba – PR"}, headers=admin).json()
     _, coord = _pessoa(cliente, admin, obra, "coordvis", "coordenador")
     proj_id, proj = _pessoa(cliente, admin, obra, "projvis", "projetista")
     proj2_id, proj2 = _pessoa(cliente, admin, obra, "projdois", "projetista")

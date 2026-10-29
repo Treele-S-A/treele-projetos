@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { useParams } from "react-router-dom";
 import {
   api,
@@ -68,6 +68,7 @@ export default function Configuracoes() {
         </div>
       </div>
 
+      <Endereco obra={obra} aoSalvar={recarregarObras} />
       <Logo obra={obra} aoSalvar={recarregarObras} />
       <Identidade obra={obra} aoSalvar={recarregarObras} />
       <Responsavel obra={obra} aoSalvar={recarregarObras} />
@@ -79,6 +80,69 @@ export default function Configuracoes() {
         aoSalvar={recarregarObras}
       />
     </>
+  );
+}
+
+/* ------------------------------------------------------------------ endereço */
+
+/** Endereço do empreendimento (TREELE, 29/10/2026): vai na ata de análise
+ *  crítica. Obrigatório na obra nova; as antigas preenchem aqui. */
+function Endereco({ obra, aoSalvar }: { obra: Obra; aoSalvar: () => Promise<void> }) {
+  const [texto, setTexto] = useState(obra.endereco ?? "");
+  const [erro, setErro] = useState<ErroApi | null>(null);
+  const [ok, setOk] = useState(false);
+  const [salvando, setSalvando] = useState(false);
+
+  async function salvar(e: FormEvent) {
+    e.preventDefault();
+    setErro(null);
+    setOk(false);
+    setSalvando(true);
+    try {
+      await api.patch(`/obras/${obra.id}`, { endereco: texto.trim() });
+      await aoSalvar();
+      setOk(true);
+    } catch (ex) {
+      setErro(ex instanceof ErroApi ? ex : new ErroApi(0, "Não foi possível salvar o endereço."));
+    } finally {
+      setSalvando(false);
+    }
+  }
+
+  return (
+    <div className="folha">
+      <div className="folha-titulo">
+        <strong>Endereço do empreendimento</strong>
+        <span className="silencioso" style={{ fontSize: 12 }}>
+          Vai na ata de análise crítica dos projetos
+        </span>
+      </div>
+      <form className="folha-corpo" onSubmit={salvar}>
+        {erro && <Aviso tom="erro" titulo={erro.message} itens={erro.erros} />}
+        {ok && <Aviso tom="ok">Endereço salvo.</Aviso>}
+        {!obra.endereco && !ok && (
+          <Aviso tom="atencao">Esta obra ainda não tem endereço: as atas de análise crítica saem sem ele.</Aviso>
+        )}
+        <div className="filtros">
+          <label className="campo" style={{ flex: "1 1 420px" }}>
+            <span className="rotulo">Endereço</span>
+            <input
+              value={texto}
+              onChange={(e) => setTexto(e.target.value)}
+              placeholder="Rua João Mazzarotto, 526 – Capão Raso – Curitiba – PR"
+              minLength={5}
+              maxLength={300}
+              required
+            />
+          </label>
+          <div>
+            <button className="botao" disabled={salvando || texto.trim() === (obra.endereco ?? "")}>
+              {salvando ? "Salvando…" : "Salvar endereço"}
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
   );
 }
 

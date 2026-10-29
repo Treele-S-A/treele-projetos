@@ -27,7 +27,7 @@ WEBP = b"RIFF\x24\x00\x00\x00WEBPVP8 " + b"\x00" * 64
 @pytest.fixture(scope="module")
 def obra(cliente, admin):
     r = cliente.post(
-        "/obras", json={"codigo": "MIL001", "nome": "Residencial Milos"}, headers=admin
+        "/obras", json={"codigo": "MIL001", "nome": "Residencial Milos", "endereco": "Rua de Teste, 100 – Centro – Curitiba – PR"}, headers=admin
     )
     assert r.status_code == 201, r.text
     return r.json()

@@ -123,6 +123,9 @@ class Settings(BaseSettings):
     # Ata de análise crítica (PRO-FL-005) antes de liberar para obra — requisito
     # do SIAC (TREELE, 29/10/2026). Desligar só nos testes que não tratam dela.
     ata_analise_obrigatoria: bool = True
+    # Quem assina "Analisado por" na ata (ENG-FL-001), sempre o mesmo
+    # (TREELE, 29/10/2026).
+    ata_analisado_por: str = "Luigi Gasparin Ogliari"
 
     # Endereço das telas, para os links dos e-mails. Vazio = descobre sozinho
     # (ver endereco_site).

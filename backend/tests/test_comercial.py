@@ -13,7 +13,7 @@ PDF = b"%PDF-1.7\n" + b"0" * 200
 
 
 def _obra(cliente, admin, codigo):
-    r = cliente.post("/obras", json={"codigo": codigo, "nome": f"Obra {codigo}"}, headers=admin)
+    r = cliente.post("/obras", json={"codigo": codigo, "nome": f"Obra {codigo}", "endereco": "Rua de Teste, 100 – Centro – Curitiba – PR"}, headers=admin)
     assert r.status_code == 201, r.text
     return r.json()
 
@@ -206,9 +206,9 @@ def test_nao_mexe_em_equipe_configuracao_nem_usuarios(cliente, cenario, comercia
         ).status_code
         == 403
     )
-    assert cliente.post("/obras", json={"codigo": "CMZ", "nome": "Nova"}, headers=comercial).status_code == 403
+    assert cliente.post("/obras", json={"codigo": "CMZ", "nome": "Nova", "endereco": "Rua de Teste, 100 – Centro – Curitiba – PR"}, headers=comercial).status_code == 403
     assert (
-        cliente.post("/disciplinas", json={"codigo": "XYZ", "nome": "Nova"}, headers=comercial).status_code
+        cliente.post("/disciplinas", json={"codigo": "XYZ", "nome": "Nova", "endereco": "Rua de Teste, 100 – Centro – Curitiba – PR"}, headers=comercial).status_code
         == 403
     )
 

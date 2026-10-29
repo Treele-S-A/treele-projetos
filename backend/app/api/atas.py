@@ -16,7 +16,8 @@ from sqlalchemy.orm import Session
 from ..db import get_db
 from ..deps import montar_contexto, usuario_atual
 from ..enums import StatusRevisao
-from ..models import AtaAnalise, Obra, ObraMembro, Usuario
+from ..config import settings
+from ..models import AtaAnalise, Obra, ObraMembro, Revisao, Usuario
 from ..schemas import Pagina
 from ..services import atas as servico
 from ..services import auditoria
@@ -71,12 +72,30 @@ class AtaLinha(BaseModel):
     nao_conformes: int
 
 
+class SituacaoRevisao(BaseModel):
+    """A revisão hoje — a ata é de antes da decisão: a reprovação (motivo, quem,
+    quando) e a revisão nova que trouxe a correção entram na "Solicitação de
+    alterações" da ata."""
+
+    id: int
+    documento: str
+    revisao: str
+    status: str
+    reprovada_em: datetime | None = None
+    reprovada_por: str | None = None
+    motivo: str | None = None
+    recebida_em: datetime | None = None
+
+
 class AtaOut(AtaLinha):
     obra_nome: str
+    obra_endereco: str | None
     formulario: str
     titulo: str
     itens: list[dict]
     observacoes: str | None
+    analisado_por: str
+    situacao: list[SituacaoRevisao]
 
 
 def _linha(ata: AtaAnalise) -> dict:
@@ -95,14 +114,40 @@ def _linha(ata: AtaAnalise) -> dict:
     }
 
 
-def _completa(ata: AtaAnalise) -> AtaOut:
+def _situacao(db: Session, revisao) -> SituacaoRevisao:
+    reprovada = revisao.status == StatusRevisao.reprovado
+    seguinte = None
+    if reprovada:
+        # Recebimento da correção: a primeira revisão do documento depois desta.
+        seguinte = db.scalar(
+            select(Revisao)
+            .where(Revisao.documento_id == revisao.documento_id, Revisao.ordem > revisao.ordem)
+            .order_by(Revisao.ordem)
+            .limit(1)
+        )
+    return SituacaoRevisao(
+        id=revisao.id,
+        documento=revisao.documento.codigo,
+        revisao=revisao.numero,
+        status=revisao.status.value,
+        reprovada_em=revisao.reprovada_em if reprovada else None,
+        reprovada_por=revisao.reprovada_por.nome if reprovada and revisao.reprovada_por else None,
+        motivo=revisao.observacao if reprovada else None,
+        recebida_em=seguinte.criada_em if seguinte else None,
+    )
+
+
+def _completa(db: Session, ata: AtaAnalise) -> AtaOut:
     return AtaOut(
         **_linha(ata),
         obra_nome=ata.obra.nome,
+        obra_endereco=ata.obra.endereco,
         formulario=ata.formulario,
         titulo=servico.checklist()["titulo"],
         itens=ata.itens,
         observacoes=ata.observacoes,
+        analisado_por=settings.ata_analisado_por,
+        situacao=[_situacao(db, r) for r in ata.revisoes],
     )
 
 
@@ -206,7 +251,7 @@ def criar(
     )
     db.commit()
     db.refresh(ata)
-    return _completa(ata)
+    return _completa(db, ata)
 
 
 def _obras_visiveis(db: Session, usuario: Usuario):
@@ -271,4 +316,4 @@ def detalhe(
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Ata não encontrada.")
     ctx = montar_contexto(db, usuario, ata.obra_id)
     ctx.somente_equipe()
-    return _completa(ata)
+    return _completa(db, ata)

@@ -26,7 +26,7 @@ def _admin_novo(cliente, admin, apelido):
 
 def test_obra_nova_tem_todos_os_admins_como_coordenadores(cliente, admin):
     outro = _admin_novo(cliente, admin, "admin-antes-da-obra")
-    obra = cliente.post("/obras", json={"codigo": "ADM1", "nome": "Obra adm"}, headers=admin).json()
+    obra = cliente.post("/obras", json={"codigo": "ADM1", "nome": "Obra adm", "endereco": "Rua de Teste, 100 – Centro – Curitiba – PR"}, headers=admin).json()
 
     eu = cliente.get("/auth/eu", headers=admin).json()["id"]
     assert _papel(cliente, admin, obra["id"], eu) == "coordenador"
@@ -34,7 +34,7 @@ def test_obra_nova_tem_todos_os_admins_como_coordenadores(cliente, admin):
 
 
 def test_admin_novo_vira_coordenador_das_obras_que_ja_existem(cliente, admin):
-    obra = cliente.post("/obras", json={"codigo": "ADM2", "nome": "Obra adm 2"}, headers=admin).json()
+    obra = cliente.post("/obras", json={"codigo": "ADM2", "nome": "Obra adm 2", "endereco": "Rua de Teste, 100 – Centro – Curitiba – PR"}, headers=admin).json()
     novo = _admin_novo(cliente, admin, "admin-depois-da-obra")
     assert _papel(cliente, admin, obra["id"], novo) == "coordenador"
     # E aparece como coordenador para ele mesmo, na lista de obras.
@@ -47,7 +47,7 @@ def test_admin_novo_vira_coordenador_das_obras_que_ja_existem(cliente, admin):
 
 
 def test_admin_nao_sai_da_equipe_nem_troca_de_papel(cliente, admin):
-    obra = cliente.post("/obras", json={"codigo": "ADM3", "nome": "Obra adm 3"}, headers=admin).json()
+    obra = cliente.post("/obras", json={"codigo": "ADM3", "nome": "Obra adm 3", "endereco": "Rua de Teste, 100 – Centro – Curitiba – PR"}, headers=admin).json()
     eu = cliente.get("/auth/eu", headers=admin).json()["id"]
     membros = cliente.get(f"/obras/{obra['id']}/membros", headers=admin).json()
     meu = next(m for m in membros if m["usuario_id"] == eu)
@@ -63,7 +63,7 @@ def test_admin_nao_sai_da_equipe_nem_troca_de_papel(cliente, admin):
 def test_subida_corrige_o_que_ja_existia(cliente, admin):
     """O que existia antes da regra (admin fora da equipe, ou com outro papel)
     é corrigido na subida do sistema, que chama esta mesma função."""
-    obra = cliente.post("/obras", json={"codigo": "ADM4", "nome": "Obra adm 4"}, headers=admin).json()
+    obra = cliente.post("/obras", json={"codigo": "ADM4", "nome": "Obra adm 4", "endereco": "Rua de Teste, 100 – Centro – Curitiba – PR"}, headers=admin).json()
     eu = cliente.get("/auth/eu", headers=admin).json()["id"]
     with SessionLocal() as db:
         membro = db.query(ObraMembro).filter_by(obra_id=obra["id"], usuario_id=eu).one()

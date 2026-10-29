@@ -116,12 +116,15 @@ class ObraCriar(BaseModel):
     codigo: str = Field(min_length=1, max_length=32, pattern=r"^[A-Za-z0-9]+$")
     nome: str = Field(min_length=2, max_length=200)
     cliente: str | None = None
+    # Obrigatório na obra nova (TREELE, 29/10/2026): vai na ata de análise crítica.
+    endereco: str = Field(min_length=5, max_length=300)
     regra_companheiro: dict[str, list[str]] | None = None
 
 
 class ObraAtualizar(BaseModel):
     nome: str | None = None
     cliente: str | None = None
+    endereco: str | None = Field(default=None, max_length=300)
     ativa: bool | None = None
     regra_companheiro: dict[str, list[str]] | None = None
     # 0 limpa o responsável; None (ausente) deixa como está.
@@ -135,6 +138,7 @@ class ObraOut(Modelo):
     codigo: str
     nome: str
     cliente: str | None
+    endereco: str | None = None
     ativa: bool
     regra_companheiro: dict
     responsavel: UsuarioOut | None = None

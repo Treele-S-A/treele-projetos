@@ -35,7 +35,7 @@ def _doc_liberado(cliente, admin, obra, prancha):
 @pytest.fixture(scope="module")
 def cenario(cliente, admin):
     obras = [
-        cliente.post("/obras", json={"codigo": c, "nome": f"Obra {c}"}, headers=admin).json()
+        cliente.post("/obras", json={"codigo": c, "nome": f"Obra {c}", "endereco": "Rua de Teste, 100 – Centro – Curitiba – PR"}, headers=admin).json()
         for c in ("PNA", "PNB")
     ]
     campo = _usuario(cliente, admin, obras[0], "campo", "obra")

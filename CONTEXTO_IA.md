@@ -9,12 +9,13 @@ Documentos: **`README.md`** (rodar local, fases), `docs/roteiro.md` (fases segui
 
 - **29/10/2026:** no ar a **ata de análise crítica (PRO-FL-005)**, exigida para o SIAC. Nenhuma revisão é liberada
   para obra sem o checklist da disciplina preenchido num pop-up. Com algum "N", a ata fica registrada e a revisão não é
-  liberada. As atas aparecem na revisão e em "Atas de análise crítica", no menu lateral. Detalhes em
-  `docs/ata-analise-critica.md`.
+  liberada. As atas aparecem na revisão e em "Atas de análise crítica", no menu lateral, no modelo ENG-FL-001
+  ("Analisado por" fixo: Luigi Gasparin Ogliari). A obra ganhou o campo **endereço**, obrigatório ao criar obra.
+  Detalhes em `docs/ata-analise-critica.md`.
 - **Próximo passo:** a TREELE usar a ata nas próximas liberações e dizer se o agrupamento de itens por disciplina está
   certo. Disciplinas sem bloco na planilha (GAS, INC, CLI…) só têm os itens de representação gráfica. Depois, seguir
   `docs/roteiro.md`.
-- **Pendente com a TREELE:** confirmar se a sondagem fica com Fundação (FUN) e se os requisitos de desempenho de
+- **Pendente com a TREELE:** preencher o endereço das obras já cadastradas (Configurações da obra); confirmar se a sondagem fica com Fundação (FUN) e se os requisitos de desempenho de
   vedação (VED) ficam com Arquitetura (ARQ).
 
 ## O que é
@@ -45,3 +46,4 @@ Uma linha por trabalho, a mais recente no fim: `AAAA-MM-DD · pessoa · IA usada
 - 2026-10-28 · TI (titreele) · Claude Code · criado este `CONTEXTO_IA.md`, `CLAUDE.md` e `AGENTS.md` com as regras obrigatórias de registro · (este commit)
 - 2026-10-29 · Estágio de projetos (Vinícius) · Claude Code · ata de análise crítica PRO-FL-005 obrigatória antes de liberar para obra: checklist por disciplina, lista de atas no menu e link na revisão · (este commit)
 - 2026-10-29 · Estágio de projetos (Vinícius) · Claude Code · ata: caixa "Marcar todos como S" no topo do checklist, no lugar do "Restantes: S" de cada grupo · (este commit)
+- 2026-10-29 · Estágio de projetos (Vinícius) · Claude Code · ata no modelo ENG-FL-001 (itens analisados, solicitação de alterações com a reprovação, analisado por) e endereço da obra, obrigatório ao criar · (este commit)

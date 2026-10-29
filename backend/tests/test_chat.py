@@ -45,8 +45,8 @@ def _gemini(monkeypatch):
 
 @pytest.fixture(scope="module")
 def cenario(cliente, admin):
-    a = cliente.post("/obras", json={"codigo": "CHA", "nome": "Obra chat A"}, headers=admin).json()
-    b = cliente.post("/obras", json={"codigo": "CHB", "nome": "Obra chat B"}, headers=admin).json()
+    a = cliente.post("/obras", json={"codigo": "CHA", "nome": "Obra chat A", "endereco": "Rua de Teste, 100 – Centro – Curitiba – PR"}, headers=admin).json()
+    b = cliente.post("/obras", json={"codigo": "CHB", "nome": "Obra chat B", "endereco": "Rua de Teste, 100 – Centro – Curitiba – PR"}, headers=admin).json()
     _enviar(cliente, admin, a, "CHA-ARQ-PE-001-R00.pdf", True, "Planta baixa do térreo")
     _enviar(cliente, admin, a, "CHA-EST-PE-001-R00.pdf", False, "Forma do térreo")
     _enviar(cliente, admin, a, "CHA-COM-PE-001-R00.pdf", True, "Folder de vendas")

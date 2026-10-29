@@ -33,7 +33,7 @@ cenario_obra: dict = {}
 
 @pytest.fixture(scope="module")
 def c(cliente, admin):
-    obra = cliente.post("/obras", json={"codigo": OBRA, "nome": "Obra download"}, headers=admin).json()
+    obra = cliente.post("/obras", json={"codigo": OBRA, "nome": "Obra download", "endereco": "Rua de Teste, 100 – Centro – Curitiba – PR"}, headers=admin).json()
     cenario_obra.update(obra)
     pessoas = {
         "coord": _usuario(cliente, admin, obra, "coorddlt", "coordenador"),

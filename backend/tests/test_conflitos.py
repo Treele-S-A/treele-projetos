@@ -27,8 +27,8 @@ def _pessoa(cliente, admin, obra, apelido, papel, comercial=False):
 
 @pytest.fixture(scope="module")
 def c(cliente, admin):
-    obra = cliente.post("/obras", json={"codigo": "CFL", "nome": "Obra conflitos"}, headers=admin).json()
-    outra = cliente.post("/obras", json={"codigo": "CFX", "nome": "Outra"}, headers=admin).json()
+    obra = cliente.post("/obras", json={"codigo": "CFL", "nome": "Obra conflitos", "endereco": "Rua de Teste, 100 – Centro – Curitiba – PR"}, headers=admin).json()
+    outra = cliente.post("/obras", json={"codigo": "CFX", "nome": "Outra", "endereco": "Rua de Teste, 100 – Centro – Curitiba – PR"}, headers=admin).json()
     coord = _pessoa(cliente, admin, obra, "coordcfl", "coordenador")
     proj = _pessoa(cliente, admin, obra, "projcfl", "projetista")
     campo = _pessoa(cliente, admin, obra, "campocfl", "obra")

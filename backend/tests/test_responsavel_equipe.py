@@ -21,7 +21,7 @@ def _usuario(cliente, admin, apelido):
 
 
 def _obra(cliente, admin, codigo):
-    r = cliente.post("/obras", json={"codigo": codigo, "nome": f"Obra {codigo}"}, headers=admin)
+    r = cliente.post("/obras", json={"codigo": codigo, "nome": f"Obra {codigo}", "endereco": "Rua de Teste, 100 – Centro – Curitiba – PR"}, headers=admin)
     assert r.status_code == 201, r.text
     return r.json()
 

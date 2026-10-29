@@ -10,6 +10,7 @@ export default function Obras() {
   const [codigo, setCodigo] = useState("");
   const [nome, setNome] = useState("");
   const [cliente, setCliente] = useState("");
+  const [endereco, setEndereco] = useState("");
   const [erro, setErro] = useState<ErroApi | null>(null);
   const [salvando, setSalvando] = useState(false);
 
@@ -22,12 +23,14 @@ export default function Obras() {
         codigo: codigo.trim().toUpperCase(),
         nome: nome.trim(),
         cliente: cliente.trim() || null,
+        endereco: endereco.trim(),
       });
       await recarregarObras();
       setAbrindoForm(false);
       setCodigo("");
       setNome("");
       setCliente("");
+      setEndereco("");
     } catch (ex) {
       setErro(ex instanceof ErroApi ? ex : new ErroApi(0, "Não foi possível criar a obra."));
     } finally {
@@ -80,6 +83,18 @@ export default function Obras() {
               <label className="campo">
                 <span className="rotulo">Cliente</span>
                 <input value={cliente} onChange={(e) => setCliente(e.target.value)} />
+              </label>
+              <label className="campo" style={{ flex: "1 1 100%" }}>
+                <span className="rotulo">Endereço</span>
+                <input
+                  value={endereco}
+                  onChange={(e) => setEndereco(e.target.value)}
+                  placeholder="Rua João Mazzarotto, 526 – Capão Raso – Curitiba – PR"
+                  minLength={5}
+                  maxLength={300}
+                  title="Vai na ata de análise crítica dos projetos."
+                  required
+                />
               </label>
             </div>
             <p className="silencioso" style={{ fontSize: 12, margin: "12px 0 0" }}>

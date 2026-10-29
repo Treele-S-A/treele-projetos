@@ -26,7 +26,7 @@ def _pessoa(cliente, admin, obra, apelido, papel):
 
 @pytest.fixture(scope="module")
 def c(cliente, admin):
-    obra = cliente.post("/obras", json={"codigo": "M3D", "nome": "Obra 3D"}, headers=admin).json()
+    obra = cliente.post("/obras", json={"codigo": "M3D", "nome": "Obra 3D", "endereco": "Rua de Teste, 100 – Centro – Curitiba – PR"}, headers=admin).json()
     coord = _pessoa(cliente, admin, obra, "coordm3d", "coordenador")
     campo = _pessoa(cliente, admin, obra, "campom3d", "obra")
     ids = {}

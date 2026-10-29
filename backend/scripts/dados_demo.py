@@ -142,6 +142,7 @@ def principal():
                 "codigo": args.obra.upper(),
                 "nome": args.nome_obra,
                 "cliente": "Construtora Exemplo",
+                "endereco": "Rua Exemplo, 100 – Centro – Curitiba – PR",
             },
         )
         print(f"Obra {obra['codigo']} criada.")

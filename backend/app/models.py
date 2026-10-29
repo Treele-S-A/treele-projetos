@@ -86,6 +86,10 @@ class Obra(Base):
     codigo: Mapped[str] = mapped_column(String(32), unique=True, index=True)
     nome: Mapped[str] = mapped_column(String(200))
     cliente: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    # Endereço do empreendimento (TREELE, 29/10/2026): vai na ata de análise
+    # crítica. Obrigatório ao criar; as obras antigas ficam vazias até alguém
+    # preencher nas configurações.
+    endereco: Mapped[str | None] = mapped_column(String(300), nullable=True)
     ativa: Mapped[bool] = mapped_column(Boolean, default=True)
 
     # Regra de arquivo companheiro, verificada na hora de liberar para obra.

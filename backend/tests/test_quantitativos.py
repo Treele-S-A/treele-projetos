@@ -55,7 +55,7 @@ def _pessoa(cliente, admin, obra, apelido, papel):
 
 @pytest.fixture(scope="module")
 def c(cliente, admin):
-    obra = cliente.post("/obras", json={"codigo": "QTD", "nome": "Obra quantitativos"}, headers=admin).json()
+    obra = cliente.post("/obras", json={"codigo": "QTD", "nome": "Obra quantitativos", "endereco": "Rua de Teste, 100 – Centro – Curitiba – PR"}, headers=admin).json()
     coord = _pessoa(cliente, admin, obra, "coordqtd", "coordenador")
     campo = _pessoa(cliente, admin, obra, "campoqtd", "obra")
     arq = enviar_arquivo(cliente, admin, obra["id"], "QTD-ARQ-PE-MOD-R00.ifc", IFC).json()

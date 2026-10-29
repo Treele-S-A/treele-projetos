@@ -35,7 +35,7 @@ def _usuario(cliente, admin, obra, apelido, papel):
 
 @pytest.fixture(scope="module")
 def obra(cliente, admin):
-    r = cliente.post("/obras", json={"codigo": "SOL", "nome": "Obra solicitação"}, headers=admin)
+    r = cliente.post("/obras", json={"codigo": "SOL", "nome": "Obra solicitação", "endereco": "Rua de Teste, 100 – Centro – Curitiba – PR"}, headers=admin)
     assert r.status_code == 201, r.text
     return r.json()
 

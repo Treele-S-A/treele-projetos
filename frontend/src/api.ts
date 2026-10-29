@@ -133,6 +133,8 @@ export interface Obra {
   codigo: string;
   nome: string;
   cliente: string | null;
+  /** Endereço do empreendimento — vai na ata de análise crítica. */
+  endereco: string | null;
   ativa: boolean;
   regra_companheiro: Record<string, string[]>;
   responsavel: Usuario | null;
@@ -376,8 +378,23 @@ export interface AtaLinha {
   nao_conformes: number;
 }
 
+/** A revisão hoje: a reprovação (depois da ata) e a correção recebida. */
+export interface SituacaoRevisaoAta {
+  id: number;
+  documento: string;
+  revisao: string;
+  status: StatusRevisao;
+  reprovada_em: string | null;
+  reprovada_por: string | null;
+  motivo: string | null;
+  recebida_em: string | null;
+}
+
 export interface Ata extends AtaLinha {
   obra_nome: string;
+  obra_endereco: string | null;
+  analisado_por: string;
+  situacao: SituacaoRevisaoAta[];
   formulario: string;
   titulo: string;
   itens: (ItemChecklist & { grupo: string; resposta: "S" | "N" | "NA"; comentario: string | null })[];

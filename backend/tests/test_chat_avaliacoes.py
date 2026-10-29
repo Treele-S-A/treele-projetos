@@ -16,8 +16,8 @@ CONVERSA = [
 
 @pytest.fixture(scope="module")
 def pessoas(cliente, admin):
-    obra = cliente.post("/obras", json={"codigo": "AVL", "nome": "Obra avaliação"}, headers=admin).json()
-    outra = cliente.post("/obras", json={"codigo": "AVX", "nome": "Outra"}, headers=admin).json()
+    obra = cliente.post("/obras", json={"codigo": "AVL", "nome": "Obra avaliação", "endereco": "Rua de Teste, 100 – Centro – Curitiba – PR"}, headers=admin).json()
+    outra = cliente.post("/obras", json={"codigo": "AVX", "nome": "Outra", "endereco": "Rua de Teste, 100 – Centro – Curitiba – PR"}, headers=admin).json()
     cabs = {}
     for apelido in ("ana", "bia"):
         email = f"{apelido}@aval.teste.com.br"

@@ -15,7 +15,7 @@ from .test_chat import _enviar
 
 @pytest.fixture(scope="module")
 def obra(cliente, admin):
-    o = cliente.post("/obras", json={"codigo": "ETP", "nome": "Obra etapas"}, headers=admin).json()
+    o = cliente.post("/obras", json={"codigo": "ETP", "nome": "Obra etapas", "endereco": "Rua de Teste, 100 – Centro – Curitiba – PR"}, headers=admin).json()
     _enviar(cliente, admin, o, "ETP-HID-PE-001-R00.pdf", True, "Água fria")
     _enviar(cliente, admin, o, "ETP-HID-PE-002-R00.pdf", True, "Esgoto")
     return o

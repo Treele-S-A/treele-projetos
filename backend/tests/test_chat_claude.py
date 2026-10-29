@@ -14,7 +14,7 @@ from .test_chat import PDF, SENHA, _enviar, _usuario
 
 @pytest.fixture(scope="module")
 def cenario(cliente, admin):
-    a = cliente.post("/obras", json={"codigo": "CLA", "nome": "Obra Claude"}, headers=admin).json()
+    a = cliente.post("/obras", json={"codigo": "CLA", "nome": "Obra Claude", "endereco": "Rua de Teste, 100 – Centro – Curitiba – PR"}, headers=admin).json()
     _enviar(cliente, admin, a, "CLA-ARQ-PE-001-R00.pdf", True, "Planta baixa do térreo")
     _enviar(cliente, admin, a, "CLA-EST-PE-001-R00.pdf", False, "Forma do térreo")
     _enviar(cliente, admin, a, "CLA-COM-PE-001-R00.pdf", True, "Folder de vendas")

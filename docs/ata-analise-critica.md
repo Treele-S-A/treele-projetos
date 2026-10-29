@@ -25,6 +25,38 @@ obra sem a ata de análise crítica preenchida.
 
    A página da ata imprime ou salva em PDF (botão "Imprimir ou salvar PDF").
 
+## O documento: modelo ENG-FL-001
+
+A ata segue o modelo Word da Treèle, "ENG-FL-001 – Ata Análise Crítica de
+Projeto Arquitetônico" (pedido de 29/10/2026). A página reproduz esse modelo e
+repete o cabeçalho e a faixa do rodapé em cada página impressa.
+
+- **Cabeçalho**: logo da treèle, "Análise crítica de projeto {disciplina}" e,
+  à direita, ENG-FL-001 com a data da ata. O adjetivo vem da disciplina:
+  arquitetônico, estrutural, hidrossanitário, elétrico… (`ADJETIVO` em
+  `paginas/Ata.tsx`).
+- **Projeto**: "Projeto {disciplina} do empreendimento {nome}, localizado na
+  {endereço}", mais os documentos e as revisões analisados. O endereço vem da
+  obra:
+  - é obrigatório ao criar uma obra;
+  - nas obras antigas, preenche-se em Configurações da obra → Endereço do
+    empreendimento.
+- **Itens analisados**: o que foi respondido no checklist, com SIM, NÃO e N/A.
+  O modelo só tem SIM e NÃO; a coluna N/A foi acrescentada para os itens que
+  não se aplicam. O comentário de cada item vem logo abaixo dele.
+- **Solicitação de alterações**: só tem linha quando a revisão foi
+  **reprovada**. Cada linha traz:
+  - a revisão;
+  - a data e quem reprovou;
+  - o motivo da reprovação (obrigatório) como alteração solicitada;
+  - como data do recebimento, a data em que chegou a revisão seguinte do
+    documento.
+
+  A reprovação vem depois da ata, por isso a página lê a situação atual da
+  revisão.
+- **Analisado por**: sempre "Luigi Gasparin Ogliari" (`ATA_ANALISADO_POR`,
+  em `config.py`).
+
 - **Uma ata por liberação**: as revisões da mesma obra e disciplina liberadas
   juntas cabem numa ata só. Um lote com várias disciplinas abre um checklist
   por disciplina, em sequência.

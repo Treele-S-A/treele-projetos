@@ -103,6 +103,7 @@ def criar(
         codigo=codigo,
         nome=dados.nome.strip(),
         cliente=dados.cliente,
+        endereco=dados.endereco.strip(),
         regra_companheiro=dados.regra_companheiro
         or {"dwg": ["pdf"], "rvt": ["ifc"]},
     )
@@ -138,6 +139,8 @@ def atualizar(
         ctx.obra.nome = dados.nome.strip()
     if dados.cliente is not None:
         ctx.obra.cliente = dados.cliente
+    if dados.endereco is not None:
+        ctx.obra.endereco = dados.endereco.strip() or None
     if dados.ativa is not None:
         ctx.obra.ativa = dados.ativa
     if dados.regra_companheiro is not None:

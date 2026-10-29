@@ -36,7 +36,7 @@ def _usuario(cliente, admin, obra, apelido, papel):
 
 @pytest.fixture(scope="module")
 def obra(cliente, admin):
-    r = cliente.post("/obras", json={"codigo": OBRA, "nome": "Obra da ata"}, headers=admin)
+    r = cliente.post("/obras", json={"codigo": OBRA, "nome": "Obra da ata", "endereco": "Rua de Teste, 100 – Centro – Curitiba – PR"}, headers=admin)
     assert r.status_code == 201, r.text
     return r.json()
 
@@ -125,6 +125,9 @@ def test_ata_conforme_libera_e_fica_ligada_as_revisoes(cliente, p, obra):
     assert ata["id"] in [a["id"] for a in lista["itens"]]
     detalhe = cliente.get(f"/atas/{ata['id']}", headers=p["proj"]).json()
     assert detalhe["itens"][0]["resposta"] == "NA" and detalhe["observacoes"] == "Ok."
+    # Modelo ENG-FL-001: endereço da obra e quem assina.
+    assert detalhe["obra_endereco"].startswith("Rua de Teste") and detalhe["analisado_por"] == "Luigi Gasparin Ogliari"
+    assert [s["status"] for s in detalhe["situacao"]] == ["liberado_para_obra"] * 2
 
 
 def test_item_n_exige_comentario_e_impede_liberar(cliente, p, obra):
@@ -149,6 +152,35 @@ def test_item_n_exige_comentario_e_impede_liberar(cliente, p, obra):
     r = cliente.post("/atas", json={"revisao_ids": [rev["id"]], "respostas": _respostas(de_novo)}, headers=p["coord"])
     assert r.status_code == 201 and r.json()["resultado"] == "conforme"
     assert cliente.post(f"/revisoes/{rev['id']}/publicar", json={}, headers=p["coord"]).status_code == 200
+
+
+def test_reprovacao_entra_na_solicitacao_de_alteracoes(cliente, p, obra):
+    rev = _enviar(cliente, p["proj"], obra, "HID", "003")
+    [grupo] = cliente.post("/atas/pendentes", json={"revisao_ids": [rev["id"]]}, headers=p["coord"]).json()
+    primeiro = grupo["formulario"]["grupos"][0]["itens"][0]["id"]
+    ata = cliente.post(
+        "/atas",
+        json={"revisao_ids": [rev["id"]], "respostas": _respostas(grupo, "S", {primeiro: ("N", "Fora do padrão.")})},
+        headers=p["coord"],
+    ).json()
+    sem = cliente.get(f"/atas/{ata['id']}", headers=p["coord"]).json()["situacao"][0]
+    assert sem["motivo"] is None and sem["reprovada_em"] is None
+    motivo = "Corrigir a nomenclatura e reemitir."
+    assert cliente.post(f"/revisoes/{rev['id']}/reprovar", json={"observacao": motivo}, headers=p["coord"]).status_code == 200
+    s = cliente.get(f"/atas/{ata['id']}", headers=p["coord"]).json()["situacao"][0]
+    assert s["motivo"] == motivo and s["reprovada_por"] == "Coordata Lima" and s["recebida_em"] is None
+    # A correção chega numa revisão nova: é a data do recebimento.
+    r = enviar_arquivo(cliente, p["proj"], obra["id"], f"{OBRA}-HID-PE-003-R01.pdf", PDF)
+    assert r.status_code == 200, r.text
+    s = cliente.get(f"/atas/{ata['id']}", headers=p["coord"]).json()["situacao"][0]
+    assert s["recebida_em"] is not None
+
+
+def test_endereco_obrigatorio_na_obra_nova(cliente, admin, obra):
+    r = cliente.post("/obras", json={"codigo": "SEMEND", "nome": "Sem endereço"}, headers=admin)
+    assert r.status_code == 422
+    r = cliente.patch(f"/obras/{obra['id']}", json={"endereco": "Rua Nova, 9 – Curitiba – PR"}, headers=admin)
+    assert r.status_code == 200 and r.json()["endereco"] == "Rua Nova, 9 – Curitiba – PR"
 
 
 def test_so_quem_libera_faz_a_ata_e_uma_disciplina_por_ata(cliente, p, obra):

@@ -12,7 +12,7 @@ DWG = b"AC1032" + b"\x00" * 200
 
 @pytest.fixture(scope="module")
 def obra(cliente, admin):
-    r = cliente.post("/obras", json={"codigo": "VIS", "nome": "Obra visualizar"}, headers=admin)
+    r = cliente.post("/obras", json={"codigo": "VIS", "nome": "Obra visualizar", "endereco": "Rua de Teste, 100 – Centro – Curitiba – PR"}, headers=admin)
     assert r.status_code == 201, r.text
     return r.json()
 

@@ -2749,82 +2749,6 @@ table.tabela {
 .linha-ata {
   font-size: 13px;
 }
-.documento-ata {
-  max-width: 1000px;
-  padding: 28px 32px;
-}
-.ata-cabecalho {
-  display: flex;
-  gap: 16px;
-  align-items: flex-start;
-  padding-bottom: 14px;
-  border-bottom: 2px solid var(--petroleo);
-}
-.ata-cabecalho h1 {
-  margin: 2px 0;
-  font-family: var(--fonte-titulo);
-  font-size: 22px;
-}
-.ata-simbolo {
-  width: 44px;
-  height: 44px;
-}
-.ata-codigo {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  align-items: flex-end;
-  font-size: 15px;
-  font-weight: 700;
-}
-.ata-campos {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
-  gap: 10px 18px;
-  margin: 16px 0;
-}
-.ata-campos dt {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--tinta-3);
-}
-.ata-campos dd {
-  margin: 2px 0 0;
-}
-.documento-ata h2 {
-  margin: 20px 0 8px;
-  font-family: var(--fonte-titulo);
-  font-size: 15px;
-  color: var(--petroleo);
-}
-.tabela-ata td {
-  vertical-align: top;
-  font-size: 12.5px;
-}
-.grupo-tabela-ata td {
-  background: var(--nevoa);
-  font-weight: 700;
-  color: var(--petroleo);
-}
-.tabela-ata tr.linha-nao td {
-  background: var(--obsoleto-fundo);
-}
-.resposta-ata {
-  font-weight: 700;
-  text-align: center;
-}
-.resposta-ata.S {
-  color: var(--liberado);
-}
-.resposta-ata.N {
-  color: var(--obsoleto);
-}
-.ata-rodape {
-  margin-top: 22px;
-  font-size: 11.5px;
-}
 @media print {
   .prancheta,
   .nao-imprimir,
@@ -2837,18 +2761,195 @@ table.tabela {
     margin: 0 !important;
     padding: 0 !important;
   }
-  .documento-ata {
+  .eng-fl {
     max-width: none;
-    padding: 0;
-    border: 0;
+    margin: 0;
     box-shadow: none;
   }
-  .tabela-ata tr {
+  .eng-fl tr {
     break-inside: avoid;
   }
+  /* A faixa do rodapé, em toda página impressa. */
+  .eng-fl-barra {
+    position: fixed;
+    right: 0;
+    bottom: 0;
+    left: 0;
+  }
+  @page {
+    size: A4;
+    margin: 12mm 14mm 14mm;
+  }
+}
+
+/* Ata no modelo ENG-FL-001 da Treèle (29/10/2026) */
+.eng-fl {
+  --eng-fl-faixa: #00465c;
+  --eng-fl-traco: #c9d1d4;
+  position: relative;
+  max-width: 820px;
+  margin: 0 auto 24px;
+  padding: 26px 34px 40px;
+  background: #fff;
+  color: #1d2b30;
+  font-family: Calibri, Carlito, "Segoe UI", Arial, sans-serif;
+  font-size: 13px;
+  box-shadow: 0 2px 14px rgba(0, 48, 63, 0.12);
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+.eng-fl table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.eng-fl-pagina > thead td,
+.eng-fl-pagina > tfoot td,
+.eng-fl-pagina > tbody > tr > td {
+  padding: 0;
+}
+.eng-fl-cabecalho {
+  display: grid;
+  grid-template-columns: 150px 1fr auto;
+  gap: 16px;
+  align-items: end;
+  padding-bottom: 14px;
+}
+.eng-fl-cabecalho img {
+  width: 130px;
+}
+.eng-fl-cabecalho h1 {
+  margin: 0;
+  color: var(--eng-fl-faixa);
+  font-family: inherit;
+  font-size: 17px;
+  font-weight: 700;
+  text-align: center;
+  text-transform: uppercase;
+}
+.eng-fl-controle {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  color: var(--eng-fl-faixa);
+  font-size: 11.5px;
+  line-height: 1.3;
+}
+.eng-fl-corpo {
+  border: 1px solid var(--eng-fl-traco);
+}
+.eng-fl-faixa {
+  padding: 5px 8px;
+  background: var(--eng-fl-faixa);
+  color: #fff;
+  font-size: 12.5px;
+  font-weight: 700;
+  text-align: center;
+  text-transform: uppercase;
+}
+.eng-fl-faixa.espacada {
+  letter-spacing: 0.28em;
+}
+.eng-fl-faixa.esquerda {
+  text-align: left;
+}
+.eng-fl-projeto {
+  padding: 6px 8px 22px;
+}
+.eng-fl-projeto p {
+  margin: 0 0 6px;
+  line-height: 1.4;
+}
+.eng-fl-documentos {
+  color: #4a5a60;
+  font-size: 12px;
+}
+.eng-fl-itens {
+  padding: 4px 8px 8px;
+}
+.eng-fl-itens th {
+  width: 42px;
+  padding: 2px 0;
+  color: var(--eng-fl-faixa);
+  font-size: 12.5px;
+  text-align: center;
+}
+.eng-fl-itens th:last-child {
+  width: auto;
+}
+.eng-fl-itens td {
+  padding: 1px 0;
+  text-align: center;
+  vertical-align: top;
+}
+.eng-fl-grupo td {
+  padding: 8px 0 2px !important;
+  color: var(--eng-fl-faixa);
+  font-weight: 700;
+  text-align: left !important;
+}
+.marca-ata {
+  font-size: 14px;
+  line-height: 1.2;
+}
+.eng-fl-texto {
+  padding-left: 6px !important;
+  text-align: left !important;
+  line-height: 1.35;
+  white-space: pre-line;
+}
+.eng-fl-comentario {
+  display: block;
+  color: #9c2f22;
+  font-size: 12px;
+}
+.eng-fl-observacoes {
+  margin: 10px 0 0;
+  white-space: pre-line;
+}
+.eng-fl-solicitacoes th {
+  padding: 6px 4px;
+  border: 1px solid var(--eng-fl-traco);
+  background: #f2f4f5;
+  color: var(--eng-fl-faixa);
+  font-size: 11.5px;
+  font-weight: 400;
+  text-align: center;
+}
+.eng-fl-solicitacoes td {
+  padding: 6px;
+  border: 1px solid var(--eng-fl-traco);
+  text-align: center;
+  vertical-align: middle;
+}
+.eng-fl-solicitacoes td.eng-fl-alteracao {
+  text-align: left;
+  white-space: pre-line;
+}
+.eng-fl-vazia td {
+  height: 28px;
+}
+.eng-fl-doc {
+  display: block;
+  font-size: 10.5px;
+  color: #4a5a60;
+}
+.eng-fl-assinatura {
+  padding: 8px;
+}
+.eng-fl-rodape-espaco {
+  height: 18px;
+}
+.eng-fl-barra {
+  height: 16px;
+  margin: 18px -34px -40px;
+  background: var(--eng-fl-faixa);
 }
 .marcar-todos-ata {
   margin: 10px 0 0;
   font-size: 13px;
   font-weight: 600;
 }
+.eng-fl-solicitacoes th:nth-child(1) { width: 9%; }
+.eng-fl-solicitacoes th:nth-child(2) { width: 11%; }
+.eng-fl-solicitacoes th:nth-child(3) { width: 17%; }
+.eng-fl-solicitacoes th:nth-child(5) { width: 12%; }

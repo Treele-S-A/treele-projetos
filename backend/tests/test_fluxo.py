@@ -13,7 +13,7 @@ IFC = b"ISO-10303-21;\n" + b"0" * 200
 def obra(cliente, admin):
     r = cliente.post(
         "/obras",
-        json={"codigo": "TRL001", "nome": "Residencial Aurora", "cliente": "TREELE"},
+        json={"codigo": "TRL001", "nome": "Residencial Aurora", "cliente": "TREELE", "endereco": "Rua de Teste, 100 – Centro – Curitiba – PR"},
         headers=admin,
     )
     assert r.status_code == 201, r.text
