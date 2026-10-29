@@ -728,3 +728,82 @@ class AtaAnalise(Base):
     @property
     def codigo(self) -> str:
         return f"ATA-{self.obra.codigo}-{self.numero:03d}"
+
+
+class FornecedorProjeto(Base):
+    """Fornecedor de projetos — o cadastro do PRO-FL-002 (TREELE, 29/10/2026).
+
+    A qualificação documental sai do registro no conselho e do portfólio, como
+    na planilha: qualificado com registro (ou N.A.) e portfólio; sem um dos
+    dois, desqualificado. A avaliação de desempenho fica em
+    AvaliacaoFornecedor, uma por entrega contratada."""
+
+    __tablename__ = "fornecedores_projeto"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    cod_sienge: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    razao_social: Mapped[str] = mapped_column(String(200))
+    nome_fantasia: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    cnpj: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    contato: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    email: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    telefone: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    observacoes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # "SIM" | "NAO" | "NA" (não se aplica); vazio = ainda não conferido.
+    registro_conselho: Mapped[str | None] = mapped_column(String(3), nullable=True)
+    portfolio: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    # Escopos atendidos (ARQ, ELE, HID…) e padrões de empreendimento (MCMV, SBPE, ALTO).
+    escopos: Mapped[list] = mapped_column(JSON, default=list)
+    padroes: Mapped[list] = mapped_column(JSON, default=list)
+    ativo: Mapped[bool] = mapped_column(Boolean, default=True)
+    criado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=agora)
+    atualizado_em: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    avaliacoes: Mapped[list["AvaliacaoFornecedor"]] = relationship(
+        back_populates="fornecedor", cascade="all, delete-orphan",
+        order_by="AvaliacaoFornecedor.data.desc(), AvaliacaoFornecedor.id.desc()",
+    )
+
+    @property
+    def qualificacao(self) -> str | None:
+        if not self.registro_conselho:
+            return None
+        if self.registro_conselho != "NAO" and self.portfolio:
+            return "qualificado"
+        return "desqualificado"
+
+
+class AvaliacaoFornecedor(Base):
+    """Avaliação de desempenho ao término das entregas contratadas (PRO-FL-002,
+    5.3): qualidade do serviço, conformidade da documentação, prazo de entrega
+    e atendimento/comunicação, de 1 a 10. Média 6 ou mais: continua
+    qualificado; abaixo, desqualificado, com o motivo registrado."""
+
+    __tablename__ = "avaliacoes_fornecedor"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    fornecedor_id: Mapped[int] = mapped_column(
+        ForeignKey("fornecedores_projeto.id", ondelete="CASCADE"), index=True
+    )
+    obra_id: Mapped[int | None] = mapped_column(
+        ForeignKey("obras.id", ondelete="SET NULL"), nullable=True
+    )
+    # O nome do empreendimento como estava (ou um de fora do sistema).
+    empreendimento: Mapped[str] = mapped_column(String(200))
+    escopo: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    data: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    qualidade: Mapped[int] = mapped_column(Integer)
+    documentacao: Mapped[int] = mapped_column(Integer)
+    prazo: Mapped[int] = mapped_column(Integer)
+    atendimento: Mapped[int] = mapped_column(Integer)
+    media: Mapped[float] = mapped_column(Float)
+    continua_qualificado: Mapped[bool] = mapped_column(Boolean)
+    motivo: Mapped[str | None] = mapped_column(Text, nullable=True)
+    comentario: Mapped[str | None] = mapped_column(Text, nullable=True)
+    avaliado_por_id: Mapped[int | None] = mapped_column(
+        ForeignKey("usuarios.id", ondelete="SET NULL"), nullable=True
+    )
+    criada_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=agora)
+
+    fornecedor: Mapped["FornecedorProjeto"] = relationship(back_populates="avaliacoes")
+    avaliado_por: Mapped["Usuario | None"] = relationship()

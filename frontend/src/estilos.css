@@ -292,6 +292,21 @@ textarea {
   margin: 10px 12px;
 }
 
+/* Título do módulo, em cima da linha que separa os módulos (29/10/2026). */
+.menu .modulo-menu {
+  margin: 14px 12px 6px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--petroleo-traco);
+  color: var(--tinta-invertida-2);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.menu .modulo-menu:first-child {
+  margin-top: 2px;
+}
+
 .rodape-rail {
   padding: 14px 20px 16px;
   border-top: 1px solid var(--petroleo-traco);
@@ -1426,7 +1441,8 @@ table.tabela {
     white-space: nowrap;
   }
 
-  .menu .divisor {
+  .menu .divisor,
+  .menu .modulo-menu {
     display: none;
   }
 
@@ -2953,3 +2969,355 @@ table.tabela {
 .eng-fl-solicitacoes th:nth-child(2) { width: 11%; }
 .eng-fl-solicitacoes th:nth-child(3) { width: 17%; }
 .eng-fl-solicitacoes th:nth-child(5) { width: 12%; }
+
+/* Fornecedores de projetos — PRO-FL-002 (29/10/2026) */
+.placar-fornecedores {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.placar {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 12px 14px;
+  border: 1px solid var(--traco-fino);
+  border-left: 4px solid var(--traco-medio);
+  border-radius: var(--raio-folha);
+  background: var(--folha);
+  color: var(--tinta-2);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.placar strong {
+  font-family: var(--fonte-titulo);
+  font-size: 24px;
+  color: var(--tinta);
+}
+.placar span {
+  font-size: 12.5px;
+}
+.placar.qualificado { border-left-color: var(--liberado-marca); }
+.placar.desqualificado { border-left-color: var(--obsoleto-marca); }
+.placar.pendente { border-left-color: var(--revisao-marca); }
+.placar.sem_avaliacao { border-left-color: var(--marca-azul); }
+.placar.ativo {
+  border-color: var(--petroleo);
+  box-shadow: 0 0 0 1px var(--petroleo);
+}
+.tabela-fornecedores td {
+  vertical-align: middle;
+}
+.linha-clicavel {
+  cursor: pointer;
+}
+.tabela-fornecedores tr.inativo td {
+  opacity: 0.55;
+}
+.nome-fornecedor {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--link);
+  font: inherit;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+.sub-fornecedor,
+.contato-fornecedor span {
+  display: block;
+  font-size: 11.5px;
+}
+.contato-fornecedor span:first-child {
+  font-size: 13px;
+}
+.chips-escopo {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+}
+.chip-escopo {
+  padding: 0 6px;
+  border: 1px solid var(--traco-medio);
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-weight: 600;
+  line-height: 17px;
+  color: var(--tinta-2);
+}
+.chip-escopo.padrao {
+  border-color: transparent;
+  background: var(--azul-claro);
+  color: var(--link);
+}
+.selo-fornecedor {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.selo-fornecedor.qualificado { background: var(--liberado-fundo); color: var(--liberado); }
+.selo-fornecedor.desqualificado { background: var(--obsoleto-fundo); color: var(--obsoleto); }
+.selo-fornecedor.pendente { background: var(--revisao-fundo); color: var(--revisao); }
+.desempenho-linha {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.mostrador {
+  flex: none;
+}
+.barras-avaliacao {
+  display: inline-flex;
+  gap: 2px;
+  align-items: flex-end;
+  width: 26px;
+  height: 26px;
+}
+.barras-avaliacao span {
+  flex: 1;
+  border-radius: 1px;
+}
+.painel-lateral {
+  justify-content: flex-end;
+  align-items: stretch;
+  padding: 0;
+}
+.painel-fornecedor {
+  display: flex;
+  flex-direction: column;
+  width: min(620px, 100%);
+  height: 100%;
+  background: var(--folha);
+  box-shadow: -12px 0 40px rgba(0, 48, 63, 0.25);
+}
+.painel-fornecedor-topo {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 18px 20px 10px;
+}
+.abas-fornecedor {
+  margin: 0 20px 6px;
+  align-self: flex-start;
+}
+.painel-fornecedor-corpo {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 20px 24px;
+}
+.subtitulo-painel {
+  margin: 18px 0 8px;
+  font-family: var(--fonte-titulo);
+  font-size: 13.5px;
+  color: var(--petroleo);
+}
+.cartao-desempenho {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  padding: 14px;
+  border: 1px solid var(--traco-fino);
+  border-radius: var(--raio-folha);
+  background: var(--nevoa);
+}
+.veredito {
+  display: block;
+  font-size: 14.5px;
+}
+.veredito.ok { color: var(--liberado); }
+.veredito.nao { color: var(--obsoleto); }
+.motivo-desqualificacao {
+  margin: 6px 0 0;
+  padding: 6px 8px;
+  border-radius: var(--raio);
+  background: var(--obsoleto-fundo);
+  color: var(--obsoleto);
+  font-size: 12.5px;
+}
+.criterios-ultima {
+  display: grid;
+  gap: 6px;
+  margin-top: 14px;
+}
+.criterio-barra {
+  display: grid;
+  grid-template-columns: 190px 1fr 24px;
+  gap: 10px;
+  align-items: center;
+  font-size: 12.5px;
+}
+.trilho {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--traco-fino);
+  overflow: hidden;
+}
+.trilho span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+}
+.tendencia {
+  width: 100%;
+  max-width: 420px;
+  height: auto;
+}
+.linha-do-tempo {
+  list-style: none;
+  margin: 0;
+  padding: 0 0 0 14px;
+  border-left: 2px solid var(--traco-fino);
+}
+.linha-do-tempo li {
+  position: relative;
+  display: flex;
+  gap: 12px;
+  padding: 8px 0 12px;
+}
+.linha-do-tempo li::before {
+  content: "";
+  position: absolute;
+  left: -20px;
+  top: 22px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--liberado-marca);
+}
+.linha-do-tempo li.nao::before {
+  background: var(--obsoleto-marca);
+}
+.notas-criterios {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--tinta-2);
+}
+.form-avaliacao {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.regua {
+  margin: 0;
+  padding: 10px 12px 8px;
+  border: 1px solid var(--traco-fino);
+  border-radius: var(--raio-folha);
+}
+.regua legend {
+  padding: 0 4px;
+  font-size: 13.5px;
+}
+.dica-criterio {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 12px;
+}
+.regua-notas {
+  display: grid;
+  grid-template-columns: repeat(10, 1fr);
+  gap: 4px;
+}
+.nota {
+  height: 34px;
+  border: 1px solid var(--traco-medio);
+  border-radius: var(--raio);
+  background: var(--folha);
+  color: var(--tinta-2);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 100ms ease, color 100ms ease;
+}
+.nota:hover {
+  border-color: var(--cor-nota);
+  color: var(--cor-nota);
+}
+.nota.cheia {
+  border-color: var(--cor-nota);
+  background: color-mix(in srgb, var(--cor-nota) 18%, white);
+  color: var(--cor-nota);
+}
+.nota.escolhida {
+  background: var(--cor-nota);
+  color: #fff;
+}
+.regua-faixas {
+  display: grid;
+  grid-template-columns: 3fr 2fr 2fr 3fr;
+  margin-top: 3px;
+  font-size: 10.5px;
+}
+.regua-faixas span:nth-child(2),
+.regua-faixas span:nth-child(3) {
+  text-align: center;
+}
+.regua-faixas span:last-child {
+  text-align: right;
+}
+.resultado-avaliacao {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  padding: 12px 14px;
+  border-radius: var(--raio-folha);
+  background: var(--nevoa);
+}
+.resultado-avaliacao.ok {
+  background: var(--liberado-fundo);
+  color: var(--liberado);
+}
+.resultado-avaliacao.nao {
+  background: var(--obsoleto-fundo);
+  color: var(--obsoleto);
+}
+.grade-campos {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 12px;
+}
+.grade-campos .campo {
+  display: flex;
+  flex-direction: column;
+}
+.grade-campos .largo {
+  grid-column: 1 / -1;
+}
+.chips-escolha {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.chips-escolha button {
+  padding: 4px 10px;
+  border: 1px solid var(--traco-medio);
+  border-radius: 999px;
+  background: var(--folha);
+  color: var(--tinta-2);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.chips-escolha button.marcado {
+  border-color: var(--petroleo);
+  background: var(--petroleo);
+  color: #fff;
+}
+@media (max-width: 640px) {
+  .grade-campos {
+    grid-template-columns: 1fr;
+  }
+  .criterio-barra {
+    grid-template-columns: 1fr 1fr 24px;
+  }
+}

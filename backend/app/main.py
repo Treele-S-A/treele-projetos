@@ -18,6 +18,7 @@ from .api import (
     chat,
     conflitos,
     catalogos,
+    fornecedores,
     documentos,
     eventos,
     notificacoes,
@@ -96,6 +97,7 @@ for modulo in (
     conflitos,
     vistas,
     atas,
+    fornecedores,
     storage_local,
 ):
     app.include_router(modulo.router, prefix=settings.api_prefix)

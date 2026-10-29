@@ -2,21 +2,24 @@
 
 Documentos: **`README.md`** (rodar local, fases), `docs/roteiro.md` (fases seguintes), `docs/hospedagem.md`,
 `docs/vercel.md`, `docs/render.md`, `docs/permissoes.md`, `docs/nomenclatura.md`, `docs/modelo3d.md`,
-`docs/chat.md`, `docs/notificacoes.md`, `docs/backup.md`, `docs/ata-analise-critica.md`. Mapa de todos os sistemas:
+`docs/chat.md`, `docs/notificacoes.md`, `docs/backup.md`, `docs/ata-analise-critica.md`, `docs/fornecedores.md`. Mapa de todos os sistemas:
 `C:\GitHub\Desenvolvimento\MAPA_SISTEMAS.md`.
 
 ## Onde paramos
 
-- **29/10/2026:** no ar a **ata de análise crítica (PRO-FL-005)**, exigida para o SIAC. Nenhuma revisão é liberada
-  para obra sem o checklist da disciplina preenchido num pop-up. Com algum "N", a ata fica registrada e a revisão não é
-  liberada. As atas aparecem na revisão e em "Atas de análise crítica", no menu lateral, no modelo ENG-FL-001
-  ("Analisado por" fixo: Luigi Gasparin Ogliari). A obra ganhou o campo **endereço**, obrigatório ao criar obra.
-  Detalhes em `docs/ata-analise-critica.md`.
-- **Próximo passo:** a TREELE usar a ata nas próximas liberações e dizer se o agrupamento de itens por disciplina está
-  certo. Disciplinas sem bloco na planilha (GAS, INC, CLI…) só têm os itens de representação gráfica. Depois, seguir
-  `docs/roteiro.md`.
-- **Pendente com a TREELE:** preencher o endereço das obras já cadastradas (Configurações da obra); confirmar se a sondagem fica com Fundação (FUN) e se os requisitos de desempenho de
-  vedação (VED) ficam com Arquitetura (ARQ).
+- **29/10/2026:** no ar:
+  - a **ata de análise crítica (PRO-FL-005 / modelo ENG-FL-001)**, obrigatória antes de liberar para obra, com PDF;
+  - o campo **endereço** da obra;
+  - o módulo **Fornecedores de projetos (PRO-FL-002)**: cadastro, qualificação documental e avaliação de desempenho,
+    com os 2 fornecedores da planilha importados;
+  - o **menu lateral** em três módulos, Projetos, Configurações e Qualidade, cada um com o título acima da linha.
+
+  Detalhes em `docs/ata-analise-critica.md` e `docs/fornecedores.md`.
+- **Próximo passo:** a TREELE usar a ata e os fornecedores e dizer o que ajustar. Depois, seguir `docs/roteiro.md`.
+- **Pendente com a TREELE:**
+  - preencher o endereço das obras já cadastradas (Configurações da obra);
+  - cadastrar os demais fornecedores;
+  - confirmar se a sondagem fica com Fundação (FUN) e se o desempenho de vedação (VED) fica com Arquitetura.
 
 ## O que é
 Gestão de revisões de projetos de engenharia e arquitetura: nomenclatura padronizada, catálogo por
@@ -48,3 +51,4 @@ Uma linha por trabalho, a mais recente no fim: `AAAA-MM-DD · pessoa · IA usada
 - 2026-10-29 · Estágio de projetos (Vinícius) · Claude Code · ata: caixa "Marcar todos como S" no topo do checklist, no lugar do "Restantes: S" de cada grupo · (este commit)
 - 2026-10-29 · Estágio de projetos (Vinícius) · Claude Code · ata no modelo ENG-FL-001 (itens analisados, solicitação de alterações com a reprovação, analisado por) e endereço da obra, obrigatório ao criar · (este commit)
 - 2026-10-29 · Estágio de projetos (Vinícius) · Claude Code · ata em PDF (Ver PDF / Baixar PDF na página da ata), gerado no servidor no modelo ENG-FL-001 com ReportLab · (este commit)
+- 2026-10-29 · Estágio de projetos (Vinícius) · Claude Code · módulo Fornecedores de projetos (PRO-FL-002) com avaliação de desempenho; menu lateral em três módulos (Projetos, Configurações, Qualidade) · (este commit)

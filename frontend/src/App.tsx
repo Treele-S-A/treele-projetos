@@ -25,6 +25,7 @@ import Registro from "./paginas/Registro";
 import SolicitacoesGerais from "./paginas/SolicitacoesGerais";
 import Atas from "./paginas/Atas";
 import Ata from "./paginas/Ata";
+import Fornecedores from "./paginas/Fornecedores";
 import Usuarios from "./paginas/Usuarios";
 
 // O visualizador 3D (three.js + leitor de IFC) só carrega quando alguém abre um
@@ -140,6 +141,9 @@ function Moldura() {
   );
 
   const pode = (p: string) => obra?.permissoes.includes(p) ?? false;
+  // Fornecedores de projetos (PRO-FL-002): quem avalia — administrador e
+  // coordenadores (TREELE, 29/10/2026).
+  const veFornecedores = !!usuario?.admin || obras.some((o) => o.papel === "coordenador");
 
   return (
     <div className="app">
@@ -171,55 +175,52 @@ function Moldura() {
           </div>
         )}
 
+        {/* Três módulos (TREELE, 29/10/2026): Projetos, Configurações e
+            Qualidade, cada um com o título acima da linha. Módulo sem nenhum
+            item para a pessoa não aparece. */}
         <div className="menu">
-          {obra ? (
-            <>
-              <NavLink
-                to={`/obras/${obra.id}/acervo`}
-                className={({ isActive }) => (isActive ? "ativo" : "")}
-              >
-                Acervo
-              </NavLink>
-              {pode("enviar") && (
-                <NavLink
-                  to={`/obras/${obra.id}/enviar`}
-                  className={({ isActive }) => (isActive ? "ativo" : "")}
-                >
-                  Enviar arquivos
-                </NavLink>
-              )}
-              {pode("gerenciar") && (
-                <>
-                  <NavLink
-                    to={`/obras/${obra.id}/configuracoes`}
-                    className={({ isActive }) => (isActive ? "ativo" : "")}
-                  >
-                    Configurações da obra
-                  </NavLink>
-                  <NavLink
-                    to={`/obras/${obra.id}/registro`}
-                    className={({ isActive }) => (isActive ? "ativo" : "")}
-                  >
-                    Registro de atividades
-                  </NavLink>
-                </>
-              )}
-              {/* Engenheiro responsável sem papel de coordenador: só a equipe. */}
-              {!pode("gerenciar") && pode("adicionar_membro") && (
-                <NavLink
-                  to={`/obras/${obra.id}/configuracoes`}
-                  className={({ isActive }) => (isActive ? "ativo" : "")}
-                >
-                  Equipe da obra
-                </NavLink>
-              )}
-              <div className="divisor" />
-            </>
-          ) : null}
-
+          <div className="modulo-menu">Projetos</div>
+          {obra && (
+            <NavLink
+              to={`/obras/${obra.id}/acervo`}
+              className={({ isActive }) => (isActive ? "ativo" : "")}
+            >
+              Acervo
+            </NavLink>
+          )}
+          {obra && pode("enviar") && (
+            <NavLink
+              to={`/obras/${obra.id}/enviar`}
+              className={({ isActive }) => (isActive ? "ativo" : "")}
+            >
+              Enviar arquivos
+            </NavLink>
+          )}
           <NavLink to="/obras" className={({ isActive }) => (isActive ? "ativo" : "")} end>
             Todas as obras
           </NavLink>
+          {obra && pode("gerenciar") && (
+            <NavLink
+              to={`/obras/${obra.id}/registro`}
+              className={({ isActive }) => (isActive ? "ativo" : "")}
+            >
+              Registro de atividades
+            </NavLink>
+          )}
+          {usuario?.admin && (
+            <NavLink
+              to="/solicitacoes"
+              className={({ isActive }) => `com-contador ${isActive ? "ativo" : ""}`}
+            >
+              Solicitações de revisão
+              <Contador
+                total={aguardando}
+                rotulo={(n) =>
+                  n === 1 ? "1 aguardando autorização" : `${n} aguardando autorização`
+                }
+              />
+            </NavLink>
+          )}
           {!usuario?.comercial && (
             <NavLink
               to="/notificacoes"
@@ -232,29 +233,49 @@ function Moldura() {
               />
             </NavLink>
           )}
-          {/* Atas de análise crítica (TREELE, 29/10/2026): registro da equipe. */}
-          {!usuario?.comercial && (
-            <NavLink to="/atas" className={({ isActive }) => (isActive ? "ativo" : "")}>
-              Atas de análise crítica
-            </NavLink>
-          )}
-          {usuario?.admin && (
+
+          {(usuario?.admin || (obra && (pode("gerenciar") || pode("adicionar_membro")))) && (
             <>
-              <NavLink
-                to="/solicitacoes"
-                className={({ isActive }) => `com-contador ${isActive ? "ativo" : ""}`}
-              >
-                Solicitações de revisão
-                <Contador
-                  total={aguardando}
-                  rotulo={(n) =>
-                    n === 1 ? "1 aguardando autorização" : `${n} aguardando autorização`
-                  }
-                />
+              <div className="modulo-menu">Configurações</div>
+              {obra && pode("gerenciar") && (
+                <NavLink
+                  to={`/obras/${obra.id}/configuracoes`}
+                  className={({ isActive }) => (isActive ? "ativo" : "")}
+                >
+                  Configurações da obra
+                </NavLink>
+              )}
+              {usuario?.admin && (
+                <NavLink to="/usuarios" className={({ isActive }) => (isActive ? "ativo" : "")}>
+                  Usuários
+                </NavLink>
+              )}
+              {/* Engenheiro responsável sem papel de coordenador: só a equipe. */}
+              {obra && !pode("gerenciar") && pode("adicionar_membro") && (
+                <NavLink
+                  to={`/obras/${obra.id}/configuracoes`}
+                  className={({ isActive }) => (isActive ? "ativo" : "")}
+                >
+                  Equipe da obra
+                </NavLink>
+              )}
+            </>
+          )}
+
+          {!usuario?.comercial && (
+            <>
+              <div className="modulo-menu">Qualidade</div>
+              <NavLink to="/atas" className={({ isActive }) => (isActive ? "ativo" : "")}>
+                Atas de análise crítica
               </NavLink>
-              <NavLink to="/usuarios" className={({ isActive }) => (isActive ? "ativo" : "")}>
-                Usuários
-              </NavLink>
+              {veFornecedores && (
+                <NavLink
+                  to="/fornecedores"
+                  className={({ isActive }) => (isActive ? "ativo" : "")}
+                >
+                  Fornecedores de projetos
+                </NavLink>
+              )}
             </>
           )}
         </div>
@@ -335,6 +356,7 @@ export default function App() {
         <Route path="/solicitacoes" element={<SolicitacoesGerais />} />
         <Route path="/atas" element={<Atas />} />
         <Route path="/atas/:ataId" element={<Ata />} />
+        <Route path="/fornecedores" element={<Fornecedores />} />
         <Route path="*" element={<Navigate to={inicial} replace />} />
       </Route>
     </Routes>
