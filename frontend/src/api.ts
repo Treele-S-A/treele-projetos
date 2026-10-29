@@ -392,6 +392,8 @@ export interface SituacaoRevisaoAta {
 
 export interface Ata extends AtaLinha {
   obra_nome: string;
+  /** "arquitetônico", "hidrossanitário"…: o título da ata (ENG-FL-001). */
+  adjetivo: string;
   obra_endereco: string | null;
   analisado_por: string;
   situacao: SituacaoRevisaoAta[];

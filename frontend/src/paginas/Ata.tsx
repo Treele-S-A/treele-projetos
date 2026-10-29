@@ -1,31 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { api, ErroApi, type Ata as AtaDados } from "../api";
+import { api, ErroApi, lerToken, type Ata as AtaDados } from "../api";
 import { Aviso, Carregando } from "../componentes";
-
-/** Como cada disciplina entra no título: "Análise crítica de projeto
- *  arquitetônico" (o modelo ENG-FL-001 é o da arquitetura). */
-const ADJETIVO: Record<string, string> = {
-  ARQ: "arquitetônico",
-  EST: "estrutural",
-  FUN: "de fundação",
-  CON: "de contenção",
-  HID: "hidrossanitário",
-  DRE: "de drenagem",
-  ELE: "elétrico",
-  INC: "de incêndio",
-  GAS: "de gás",
-  CLI: "de climatização",
-  TEL: "de telecomunicações",
-  PAI: "paisagístico",
-  IMP: "de impermeabilização",
-  ESQ: "de esquadrias",
-  TOP: "topográfico",
-  CTL: "de conforto térmico e lumínico",
-  LUM: "luminotécnico",
-  SPD: "de SPDA",
-  INT: "de interiores",
-};
 
 function dataCurta(iso: string | null) {
   return iso ? new Date(iso).toLocaleDateString("pt-BR") : "-";
@@ -43,6 +19,7 @@ export default function Ata() {
   const { ataId } = useParams();
   const [ata, setAta] = useState<AtaDados | null>(null);
   const [erro, setErro] = useState<string | null>(null);
+  const [gerando, setGerando] = useState(false);
 
   useEffect(() => {
     let vivo = true;
@@ -59,10 +36,42 @@ export default function Ata() {
     };
   }, [ataId]);
 
-  if (erro) return <Aviso tom="erro">{erro}</Aviso>;
+  /** O PDF da ata (ENG-FL-001), gerado no servidor: o mesmo arquivo para
+   *  todos. "Ver" abre a aba no clique, ainda vazia, para o navegador não
+   *  bloquear como pop-up (ver visualizarArquivo). */
+  async function pdf(modo: "ver" | "baixar") {
+    if (!ata) return;
+    const aba = modo === "ver" ? window.open("", "_blank") : null;
+    if (aba) aba.document.title = `${ata.codigo}.pdf`;
+    setGerando(true);
+    setErro(null);
+    try {
+      const r = await fetch(`${api.base}/atas/${ata.id}/pdf`, {
+        headers: { Authorization: `Bearer ${lerToken()}` },
+      });
+      if (!r.ok) throw new Error(String(r.status));
+      const url = URL.createObjectURL(await r.blob());
+      if (aba) {
+        aba.location.href = url;
+      } else {
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = `${ata.codigo}.pdf`;
+        link.click();
+        setTimeout(() => URL.revokeObjectURL(url), 60_000);
+      }
+    } catch {
+      aba?.close();
+      setErro("Não foi possível gerar o PDF da ata.");
+    } finally {
+      setGerando(false);
+    }
+  }
+
+  if (erro && !ata) return <Aviso tom="erro">{erro}</Aviso>;
   if (!ata) return <Carregando texto="Abrindo a ata" />;
 
-  const adjetivo = ADJETIVO[ata.disciplina] ?? `de ${ata.disciplina_nome.toLowerCase()}`;
+  const adjetivo = ata.adjetivo;
   const grupos: { titulo: string; itens: AtaDados["itens"] }[] = [];
   for (const i of ata.itens) {
     if (grupos[grupos.length - 1]?.titulo !== i.grupo) grupos.push({ titulo: i.grupo, itens: [] });
@@ -83,10 +92,23 @@ export default function Ata() {
             {ata.codigo} · {ata.resultado === "conforme" ? "conforme" : `não conforme (${ata.nao_conformes})`}
           </div>
         </div>
-        <button className="botao" onClick={() => window.print()}>
-          Imprimir ou salvar PDF
-        </button>
+        <div className="linha" style={{ gap: 8 }}>
+          <button className="botao" onClick={() => pdf("ver")} disabled={gerando}>
+            {gerando ? "Gerando o PDF…" : "Ver PDF"}
+          </button>
+          <button className="botao secundario" onClick={() => pdf("baixar")} disabled={gerando}>
+            Baixar PDF
+          </button>
+          <button className="botao secundario pequeno" onClick={() => window.print()}>
+            Imprimir
+          </button>
+        </div>
       </div>
+      {erro && (
+        <div className="nao-imprimir">
+          <Aviso tom="erro">{erro}</Aviso>
+        </div>
+      )}
 
       <article className="eng-fl">
         {/* thead/tfoot: o navegador repete o cabeçalho e o rodapé em cada página impressa. */}

@@ -17,6 +17,8 @@ httpx>=0.27
 # (services/pdf_leitura.py). PDFium, o motor de PDF do Chrome.
 pypdfium2>=5.0
 pillow>=11
+# Ata de análise crítica em PDF, no modelo ENG-FL-001 (services/ata_pdf.py).
+reportlab>=4.2,<5
 
 # Necessário só com STORAGE_BACKEND=s3 (MinIO/S3/R2/B2)
 boto3>=1.35

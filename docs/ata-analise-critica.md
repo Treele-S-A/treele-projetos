@@ -23,7 +23,10 @@ obra sem a ata de análise crítica preenchida.
    - em **Atas de análise crítica**, no menu lateral, com filtros por obra,
      disciplina, resultado e documento.
 
-   A página da ata imprime ou salva em PDF (botão "Imprimir ou salvar PDF").
+   Na página da ata, **Ver PDF** e **Baixar PDF** trazem o arquivo
+   `ATA-UNO-007.pdf`, gerado no servidor no modelo ENG-FL-001: é o mesmo
+   arquivo para todos, sem depender da impressão do navegador. **Imprimir**
+   continua disponível.
 
 ## O documento: modelo ENG-FL-001
 
@@ -56,6 +59,11 @@ repete o cabeçalho e a faixa do rodapé em cada página impressa.
   revisão.
 - **Analisado por**: sempre "Luigi Gasparin Ogliari" (`ATA_ANALISADO_POR`,
   em `config.py`).
+
+O PDF sai de `services/ata_pdf.py` (ReportLab): `GET /atas/{id}/pdf`, com o
+mesmo controle de acesso da ata. O logo está em
+`services/logo-treele-construtora.png`. O adjetivo do título vem de
+`ADJETIVOS`, em `services/atas.py`, e a página da ata usa o mesmo.
 
 - **Uma ata por liberação**: as revisões da mesma obra e disciplina liberadas
   juntas cabem numa ata só. Um lote com várias disciplinas abre um checklist

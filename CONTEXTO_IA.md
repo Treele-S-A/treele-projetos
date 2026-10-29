@@ -47,3 +47,4 @@ Uma linha por trabalho, a mais recente no fim: `AAAA-MM-DD · pessoa · IA usada
 - 2026-10-29 · Estágio de projetos (Vinícius) · Claude Code · ata de análise crítica PRO-FL-005 obrigatória antes de liberar para obra: checklist por disciplina, lista de atas no menu e link na revisão · (este commit)
 - 2026-10-29 · Estágio de projetos (Vinícius) · Claude Code · ata: caixa "Marcar todos como S" no topo do checklist, no lugar do "Restantes: S" de cada grupo · (este commit)
 - 2026-10-29 · Estágio de projetos (Vinícius) · Claude Code · ata no modelo ENG-FL-001 (itens analisados, solicitação de alterações com a reprovação, analisado por) e endereço da obra, obrigatório ao criar · (este commit)
+- 2026-10-29 · Estágio de projetos (Vinícius) · Claude Code · ata em PDF (Ver PDF / Baixar PDF na página da ata), gerado no servidor no modelo ENG-FL-001 com ReportLab · (este commit)

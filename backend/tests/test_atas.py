@@ -128,6 +128,11 @@ def test_ata_conforme_libera_e_fica_ligada_as_revisoes(cliente, p, obra):
     # Modelo ENG-FL-001: endereço da obra e quem assina.
     assert detalhe["obra_endereco"].startswith("Rua de Teste") and detalhe["analisado_por"] == "Luigi Gasparin Ogliari"
     assert [s["status"] for s in detalhe["situacao"]] == ["liberado_para_obra"] * 2
+    assert detalhe["adjetivo"] == "elétrico"
+    # O PDF no modelo ENG-FL-001, para quem é da obra.
+    r = cliente.get(f"/atas/{ata['id']}/pdf", headers=p["proj"])
+    assert r.status_code == 200 and r.headers["content-type"] == "application/pdf"
+    assert r.content.startswith(b"%PDF") and ata["codigo"] in r.headers["content-disposition"]
 
 
 def test_item_n_exige_comentario_e_impede_liberar(cliente, p, obra):

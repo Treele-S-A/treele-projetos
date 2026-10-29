@@ -27,6 +27,21 @@ from ..models import AtaAnalise, Revisao, Usuario
 
 RESPOSTAS = {"S", "N", "NA"}
 
+# "Análise crítica de projeto arquitetônico": o modelo ENG-FL-001 é o da
+# arquitetura; as outras disciplinas entram no mesmo título.
+ADJETIVOS = {
+    "ARQ": "arquitetônico", "EST": "estrutural", "FUN": "de fundação", "CON": "de contenção",
+    "HID": "hidrossanitário", "DRE": "de drenagem", "ELE": "elétrico", "INC": "de incêndio",
+    "GAS": "de gás", "CLI": "de climatização", "TEL": "de telecomunicações", "PAI": "paisagístico",
+    "IMP": "de impermeabilização", "ESQ": "de esquadrias", "TOP": "topográfico",
+    "CTL": "de conforto térmico e lumínico", "LUM": "luminotécnico", "SPD": "de SPDA",
+    "INT": "de interiores",
+}
+
+
+def adjetivo(codigo: str, nome: str) -> str:
+    return ADJETIVOS.get(codigo.upper(), f"de {nome.lower()}")
+
 
 @lru_cache
 def checklist() -> dict:

@@ -8,7 +8,7 @@
 
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from pydantic import BaseModel, Field
 from sqlalchemy import Text, cast, func, select
 from sqlalchemy.orm import Session
@@ -19,6 +19,7 @@ from ..enums import StatusRevisao
 from ..config import settings
 from ..models import AtaAnalise, Obra, ObraMembro, Revisao, Usuario
 from ..schemas import Pagina
+from ..services import ata_pdf
 from ..services import atas as servico
 from ..services import auditoria
 from .revisoes import _carregar
@@ -89,6 +90,8 @@ class SituacaoRevisao(BaseModel):
 
 class AtaOut(AtaLinha):
     obra_nome: str
+    # "arquitetônico", "hidrossanitário"…: o título da ata (ENG-FL-001).
+    adjetivo: str
     obra_endereco: str | None
     formulario: str
     titulo: str
@@ -141,6 +144,7 @@ def _completa(db: Session, ata: AtaAnalise) -> AtaOut:
     return AtaOut(
         **_linha(ata),
         obra_nome=ata.obra.nome,
+        adjetivo=servico.adjetivo(ata.disciplina.codigo, ata.disciplina.nome),
         obra_endereco=ata.obra.endereco,
         formulario=ata.formulario,
         titulo=servico.checklist()["titulo"],
@@ -317,3 +321,23 @@ def detalhe(
     ctx = montar_contexto(db, usuario, ata.obra_id)
     ctx.somente_equipe()
     return _completa(db, ata)
+
+
+@router.get("/{ata_id}/pdf")
+def pdf(
+    ata_id: int,
+    usuario: Usuario = Depends(usuario_atual),
+    db: Session = Depends(get_db),
+):
+    """A ata em PDF, no modelo ENG-FL-001 (services/ata_pdf.py)."""
+    ata = db.get(AtaAnalise, ata_id)
+    if ata is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Ata não encontrada.")
+    ctx = montar_contexto(db, usuario, ata.obra_id)
+    ctx.somente_equipe()
+    conteudo = ata_pdf.gerar(_completa(db, ata).model_dump())
+    return Response(
+        conteudo,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'inline; filename="{ata.codigo}.pdf"'},
+    )
