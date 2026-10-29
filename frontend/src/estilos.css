@@ -2847,3 +2847,8 @@ table.tabela {
     break-inside: avoid;
   }
 }
+.marcar-todos-ata {
+  margin: 10px 0 0;
+  font-size: 13px;
+  font-weight: 600;
+}

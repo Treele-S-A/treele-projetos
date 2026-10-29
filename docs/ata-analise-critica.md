@@ -8,7 +8,8 @@ obra sem a ata de análise crítica preenchida.
 1. O coordenador clica em **Liberar para obra…**, na revisão ou no lote do
    Acervo. Se falta a ata, abre antes o pop-up com o checklist.
 2. Cada item recebe uma resposta: **S**, **N** ou **N/A**. Item **N** exige
-   comentário. "Restantes: S" e "Restantes: N/A" preenchem o que falta num
+   comentário. No topo, **Marcar todos como S** marca o checklist inteiro;
+   depois se ajustam só os N e N/A. "Restantes: N/A" preenche o que falta num
    grupo. Há também um campo de observações gerais.
 3. **Salvar e gerar ata de análise crítica** registra a ata, numerada por obra
    (`ATA-UNO-007`). Depois disso:

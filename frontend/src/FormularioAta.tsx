@@ -64,6 +64,19 @@ export default function FormularioAta({
     });
   }
 
+  // Todos como S de uma vez (TREELE, 29/10/2026): depois, só os N e N/A
+  // mudam um a um. Desmarcar limpa as respostas S.
+  const todosS = itens.length > 0 && itens.every((i) => respostas[i.id] === "S");
+  function marcarTodosS(marcar: boolean) {
+    if (marcar) {
+      const outras = itens.filter((i) => respostas[i.id] && respostas[i.id] !== "S").length;
+      if (outras && !window.confirm(`${outras} ite${outras === 1 ? "m já está" : "ns já estão"} como N ou N/A. Trocar tudo para S?`)) return;
+      setRespostas(Object.fromEntries(itens.map((i) => [i.id, "S" as Resposta])));
+    } else {
+      setRespostas((atual) => Object.fromEntries(Object.entries(atual).filter(([, r]) => r !== "S")));
+    }
+  }
+
   async function salvar() {
     setTentou(true);
     if (!completo) {
@@ -113,6 +126,16 @@ export default function FormularioAta({
                     .map((r) => `${r.documento} R${r.revisao}`)
                     .join(", ")}${grupo.revisoes.length > 6 ? "…" : ""}`}
             </div>
+            <label className="opcao-aviso marcar-todos-ata">
+              <input
+                type="checkbox"
+                checked={todosS}
+                onChange={(e) => marcarTodosS(e.target.checked)}
+                disabled={salvando}
+              />
+              Marcar todos como S
+              <span className="silencioso">— depois, ajuste os que forem N ou N/A</span>
+            </label>
           </div>
           <button className="botao secundario pequeno" onClick={fechar} disabled={salvando}>
             Fechar
@@ -136,9 +159,6 @@ export default function FormularioAta({
                     {ids.filter((id) => respostas[id]).length} de {ids.length}
                   </span>
                   <div className="espaco" />
-                  <button className="link-pequeno" onClick={() => marcarGrupo(ids, "S")} disabled={salvando}>
-                    Restantes: S
-                  </button>
                   <button className="link-pequeno" onClick={() => marcarGrupo(ids, "NA")} disabled={salvando}>
                     Restantes: N/A
                   </button>

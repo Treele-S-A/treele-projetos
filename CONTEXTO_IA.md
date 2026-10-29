@@ -44,3 +44,4 @@ Uma linha por trabalho, a mais recente no fim: `AAAA-MM-DD · pessoa · IA usada
 
 - 2026-10-28 · TI (titreele) · Claude Code · criado este `CONTEXTO_IA.md`, `CLAUDE.md` e `AGENTS.md` com as regras obrigatórias de registro · (este commit)
 - 2026-10-29 · Estágio de projetos (Vinícius) · Claude Code · ata de análise crítica PRO-FL-005 obrigatória antes de liberar para obra: checklist por disciplina, lista de atas no menu e link na revisão · (este commit)
+- 2026-10-29 · Estágio de projetos (Vinícius) · Claude Code · ata: caixa "Marcar todos como S" no topo do checklist, no lugar do "Restantes: S" de cada grupo · (este commit)
