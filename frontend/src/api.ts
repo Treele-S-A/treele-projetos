@@ -183,6 +183,8 @@ export interface Revisao {
   /** Vista marcada do modelo 3D que mostra o que foi reprovado. */
   vista_reprovacao_id: number | null;
   arquivos: Arquivo[];
+  /** A ata de análise crítica que vale para esta revisão. */
+  ata?: AtaResumo | null;
 }
 
 export interface RevisaoResumo {
@@ -315,6 +317,71 @@ export interface Verificacao {
   impedimentos: string[];
   tipos_presentes: string[];
   regra_companheiro: Record<string, string[]>;
+  /** Falta a ata de análise crítica conforme: o botão de liberar abre o checklist. */
+  falta_ata: boolean;
+  /** O que a ata impede, em palavras (sem ata, ou ata não conforme). */
+  ata_impedimento: string | null;
+}
+
+/** Ata de análise crítica (PRO-FL-005) — TREELE, 29/10/2026. */
+export interface AtaResumo {
+  id: number;
+  codigo: string;
+  resultado: "conforme" | "nao_conforme";
+  criada_em: string;
+}
+
+export interface ItemChecklist {
+  id: string;
+  item: string;
+  disc: string;
+  texto: string;
+}
+
+export interface FormularioAta {
+  formulario: string;
+  titulo: string;
+  blocos: string[];
+  grupos: { titulo: string; itens: ItemChecklist[] }[];
+}
+
+export interface RevisaoDaAta {
+  id: number;
+  documento: string;
+  titulo: string | null;
+  revisao: string;
+}
+
+/** Revisões de uma obra e disciplina que pedem ata, com o formulário. */
+export interface GrupoAta {
+  obra_id: number;
+  obra: string;
+  disciplina: string;
+  disciplina_nome: string;
+  revisoes: RevisaoDaAta[];
+  formulario: FormularioAta;
+}
+
+export interface AtaLinha {
+  id: number;
+  codigo: string;
+  obra_id: number;
+  obra: string;
+  disciplina: string;
+  disciplina_nome: string;
+  resultado: "conforme" | "nao_conforme";
+  revisoes: RevisaoDaAta[];
+  criada_por: string | null;
+  criada_em: string;
+  nao_conformes: number;
+}
+
+export interface Ata extends AtaLinha {
+  obra_nome: string;
+  formulario: string;
+  titulo: string;
+  itens: (ItemChecklist & { grupo: string; resposta: "S" | "N" | "NA"; comentario: string | null })[];
+  observacoes: string | null;
 }
 
 export interface Membro {

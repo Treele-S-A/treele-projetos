@@ -20,6 +20,9 @@ os.environ["SECRET_KEY"] = "chave-de-teste"
 os.environ["ADMIN_EMAIL"] = "admin@teste.com.br"
 os.environ["ADMIN_SENHA"] = "senha-de-teste-1234"
 os.environ["BASE_URL"] = "http://testserver"
+# A ata de análise crítica antes de liberar tem os próprios testes
+# (test_atas.py, que a ligam); nos outros, liberar continua sendo um passo só.
+os.environ["ATA_ANALISE_OBRIGATORIA"] = "false"
 
 from fastapi.testclient import TestClient  # noqa: E402
 

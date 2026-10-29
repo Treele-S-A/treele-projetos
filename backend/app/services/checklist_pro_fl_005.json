@@ -1,0 +1,3028 @@
+{
+ "formulario": "PRO-FL-005",
+ "titulo": "Checklist de Verificação e Análise Crítica de Projetos",
+ "revisao": "02",
+ "data": "06/08/2026",
+ "rgf": [
+  {
+   "id": "l12",
+   "item": "1.1",
+   "disc": "RGF",
+   "texto": "A nomenclatura dos arquivos estão de acordo com o padrão Treèle?"
+  },
+  {
+   "id": "l13",
+   "item": "1.2",
+   "disc": "RGF",
+   "texto": "O carimbo padrão foi preenchido conforme padrão Treèle?"
+  },
+  {
+   "id": "l169",
+   "item": "1.3",
+   "disc": "RGF",
+   "texto": "Foram representados os eixos estruturais e de amarração conforme projeto de arquitetura?"
+  },
+  {
+   "id": "l170",
+   "item": "1.4",
+   "disc": "RGF",
+   "texto": "Foram cotadas todas as alvenarias estruturais em relação aos eixos?"
+  },
+  {
+   "id": "l171",
+   "item": "1.5",
+   "disc": "RGF",
+   "texto": "Foram cotados todos os pilares em relação aos eixos?"
+  },
+  {
+   "id": "l172",
+   "item": "1.6",
+   "disc": "RGF",
+   "texto": "Foram indicados os eixos de simetria da torre?"
+  },
+  {
+   "id": "l173",
+   "item": "1.7",
+   "disc": "RGF",
+   "texto": "Foram indicados assunto e escala para cada desenho da prancha?"
+  }
+ ],
+ "blocos": {
+  "SOND": {
+   "nome": "Sondagem",
+   "itens": [
+    {
+     "id": "l14",
+     "item": "2.2",
+     "disc": "SOND",
+     "grupo": "Sondagem",
+     "texto": "Locação dos furos com cotas em relação às divisas do terreno."
+    },
+    {
+     "id": "l15",
+     "item": "2.3",
+     "disc": "SOND",
+     "grupo": "Sondagem",
+     "texto": "Indicação do RN (verificar compatibilidade com Levantamento Topográfico)."
+    },
+    {
+     "id": "l16",
+     "item": "2.4",
+     "disc": "SOND",
+     "grupo": "Sondagem",
+     "texto": "Indicação da cota de nível do topo do furo."
+    },
+    {
+     "id": "l17",
+     "item": "2.5",
+     "disc": "SOND",
+     "grupo": "Sondagem",
+     "texto": "Numeração do furo (SP01, SP02...)"
+    },
+    {
+     "id": "l18",
+     "item": "2.6",
+     "disc": "SOND",
+     "grupo": "Sondagem",
+     "texto": "Cota de nível de topo do furo conforme RN do Levantamento Topográfico fornecido."
+    },
+    {
+     "id": "l19",
+     "item": "2.7",
+     "disc": "SOND",
+     "grupo": "Sondagem",
+     "texto": "Data de início e término da sondagem."
+    },
+    {
+     "id": "l20",
+     "item": "2.8",
+     "disc": "SOND",
+     "grupo": "Sondagem",
+     "texto": "Indicação Medidas de nível d'água com data, hora e profundidade do furo por ocasião da medida."
+    },
+    {
+     "id": "l21",
+     "item": "2.9",
+     "disc": "SOND",
+     "grupo": "Sondagem",
+     "texto": "Profundidade atingida."
+    },
+    {
+     "id": "l22",
+     "item": "2.10",
+     "disc": "SOND",
+     "grupo": "Sondagem",
+     "texto": "Perfil Geológico."
+    },
+    {
+     "id": "l23",
+     "item": "2.11",
+     "disc": "SOND",
+     "grupo": "Sondagem",
+     "texto": "Resistência e compaticidade do solo."
+    },
+    {
+     "id": "l24",
+     "item": "2.12",
+     "disc": "SOND",
+     "grupo": "Sondagem",
+     "texto": "Indicação de peso e altura da queda."
+    },
+    {
+     "id": "l25",
+     "item": "2.13",
+     "disc": "SOND",
+     "grupo": "Sondagem",
+     "texto": "Diâmetro da Sondagem."
+    },
+    {
+     "id": "l26",
+     "item": "2.14",
+     "disc": "SOND",
+     "grupo": "Sondagem",
+     "texto": "Descrição do solo."
+    },
+    {
+     "id": "l27",
+     "item": "2.15",
+     "disc": "SOND",
+     "grupo": "Sondagem",
+     "texto": "Resultado dos ensaios de penetração com número de golpes e avanço em centímetros."
+    },
+    {
+     "id": "l28",
+     "item": "2.16",
+     "disc": "SOND",
+     "grupo": "Sondagem",
+     "texto": "Motivo da paralisação."
+    }
+   ]
+  },
+  "TOP": {
+   "nome": "Levantamento planialtimétrico",
+   "itens": [
+    {
+     "id": "l31",
+     "item": "2.1",
+     "disc": "PLAN",
+     "grupo": "Planialtimétrico",
+     "texto": "Indicação de Norte."
+    },
+    {
+     "id": "l32",
+     "item": "2.2",
+     "disc": "PLAN",
+     "grupo": "Planialtimétrico",
+     "texto": "Indicação de limites de Matrícula do terreno."
+    },
+    {
+     "id": "l33",
+     "item": "2.3",
+     "disc": "PLAN",
+     "grupo": "Planialtimétrico",
+     "texto": "Indicação de limites reais do terreno."
+    },
+    {
+     "id": "l34",
+     "item": "2.4",
+     "disc": "PLAN",
+     "grupo": "Planialtimétrico",
+     "texto": "Indicação de RN (Oficial da Prefeitura, demarcado no local, coordenada UTM)."
+    },
+    {
+     "id": "l35",
+     "item": "2.5",
+     "disc": "PLAN",
+     "grupo": "Planialtimétrico",
+     "texto": "Indicação de medidas, rumos e azimutes."
+    },
+    {
+     "id": "l36",
+     "item": "2.6",
+     "disc": "PLAN",
+     "grupo": "Planialtimétrico",
+     "texto": "Cotas no nível do mar."
+    },
+    {
+     "id": "l37",
+     "item": "2.7",
+     "disc": "PLAN",
+     "grupo": "Planialtimétrico",
+     "texto": "Indicação das curvas de nível e respecitvas cotas (mínimo de metro em metro)."
+    },
+    {
+     "id": "l38",
+     "item": "2.8",
+     "disc": "PLAN",
+     "grupo": "Planialtimétrico",
+     "texto": "Árvores existentes com cota de raiz e espécie."
+    },
+    {
+     "id": "l39",
+     "item": "2.9",
+     "disc": "PLAN",
+     "grupo": "Planialtimétrico",
+     "texto": "Indicação de áreas alagadas."
+    },
+    {
+     "id": "l40",
+     "item": "2.10",
+     "disc": "PLAN",
+     "grupo": "Planialtimétrico",
+     "texto": "Indicação de edificações existentes."
+    },
+    {
+     "id": "l41",
+     "item": "2.11",
+     "disc": "PLAN",
+     "grupo": "Planialtimétrico",
+     "texto": "Indicação das cotas dos vizinhos."
+    },
+    {
+     "id": "l42",
+     "item": "2.12",
+     "disc": "PLAN",
+     "grupo": "Planialtimétrico",
+     "texto": "Descrição das edificações e usos dos vizinhos."
+    },
+    {
+     "id": "l43",
+     "item": "2.13",
+     "disc": "PLAN",
+     "grupo": "Planialtimétrico",
+     "texto": "Indicação de postes existentes."
+    },
+    {
+     "id": "l44",
+     "item": "2.14",
+     "disc": "PLAN",
+     "grupo": "Planialtimétrico",
+     "texto": "Indicação de bocas de lobo existentes."
+    },
+    {
+     "id": "l45",
+     "item": "2.15",
+     "disc": "PLAN",
+     "grupo": "Planialtimétrico",
+     "texto": "Indicação de taludes."
+    },
+    {
+     "id": "l46",
+     "item": "2.16",
+     "disc": "PLAN",
+     "grupo": "Planialtimétrico",
+     "texto": "Indicação de eixos com início/ término no centro das ruas laterais (quando houver)."
+    },
+    {
+     "id": "l47",
+     "item": "2.17",
+     "disc": "PLAN",
+     "grupo": "Planialtimétrico",
+     "texto": "Indicação dos nomes das ruas do entorno."
+    }
+   ]
+  },
+  "ARQ": {
+   "nome": "Arquitetura",
+   "itens": [
+    {
+     "id": "l48",
+     "item": "2.1",
+     "disc": "ARQ",
+     "grupo": "Arquitetura",
+     "texto": "Foi indicado a dimensão dos vão dos caixilhos e portas?"
+    },
+    {
+     "id": "l49",
+     "item": "2.2",
+     "disc": "ARQ",
+     "grupo": "Arquitetura",
+     "texto": "Confirmar se todas as chamadas de detalhes nas plantas correspondem ao detalhe correto no caderno da arquitetura."
+    },
+    {
+     "id": "l50",
+     "item": "2.3",
+     "disc": "ARQ",
+     "grupo": "Arquitetura",
+     "texto": "Verificar cortes em pelo menos dois sentidos em regiões de escadas de emergência, do embasamento ao ático."
+    },
+    {
+     "id": "l51",
+     "item": "2.4",
+     "disc": "ARQ",
+     "grupo": "Arquitetura",
+     "texto": "Os caixilhos foram classificados (dimensões e tipologias), quantificados e as vistas apresentadas no projeto?"
+    },
+    {
+     "id": "l52",
+     "item": "2.5",
+     "disc": "ARQ",
+     "grupo": "Arquitetura",
+     "texto": "Verificar numeração de torres e apartamentos entre Prefeitura X Planta de contratos."
+    },
+    {
+     "id": "l53",
+     "item": "2.6",
+     "disc": "ARQ",
+     "grupo": "Arquitetura",
+     "texto": "Verificar nomenclatura dos ambientes entre Prefeitura X Planta de contratos."
+    },
+    {
+     "id": "l54",
+     "item": "2.7",
+     "disc": "ARQ",
+     "grupo": "Arquitetura",
+     "texto": "Verificar vagas no Memorial de Incorporação X Prefeitura."
+    },
+    {
+     "id": "l55",
+     "item": "2.8",
+     "disc": "ARQ",
+     "grupo": "Arquitetura",
+     "texto": "Verificar arquitetura com memorial descritivo e folder de venda."
+    },
+    {
+     "id": "l56",
+     "item": "2.9",
+     "disc": "ARQ",
+     "grupo": "Arquitetura",
+     "texto": "Foram representadas as indicações dos códigos e tabela de vãos dos caixilhos (alumínio, madeira e ferro)?"
+    },
+    {
+     "id": "l57",
+     "item": "2.10",
+     "disc": "ARQ",
+     "grupo": "Arquitetura",
+     "texto": "Foram indicados os níveis do PB= piso bruto / CP=contra piso / PA= piso acabado para todos os ambientes?"
+    },
+    {
+     "id": "l58",
+     "item": "2.11",
+     "disc": "ARQ",
+     "grupo": "Arquitetura",
+     "texto": "Comparar acabamentos do projeto com Memorial Descritivo."
+    },
+    {
+     "id": "l59",
+     "item": "2.12",
+     "disc": "ARQ",
+     "grupo": "Arquitetura",
+     "texto": "Confirmar com memorial de incorporação os ambientes que serão entregues acabados de piso."
+    },
+    {
+     "id": "l60",
+     "item": "2.13",
+     "disc": "ARQ",
+     "grupo": "Arquitetura",
+     "texto": "Foram indicados a altura piso-teto (PD) e área de todos os ambientes?\n(Obs.:p/ banhos 2,35m mínimo em geral e 2,40m para regiões que atendam ao Código Sanitário) (Outros ambientes mín. 2,50m)"
+    },
+    {
+     "id": "l61",
+     "item": "2.14",
+     "disc": "ARQ",
+     "grupo": "Arquitetura",
+     "texto": "Para espessura de acabamentos de paredes: pintura sobre gesso = 0,5cm / cerâmica = 1,5cm / emboço = 3,0cm"
+    },
+    {
+     "id": "l62",
+     "item": "2.15",
+     "disc": "ARQ",
+     "grupo": "Arquitetura",
+     "texto": "Foram representadas as indicações dos acabamentos?"
+    },
+    {
+     "id": "l63",
+     "item": "2.16",
+     "disc": "ARQ",
+     "grupo": "Arquitetura",
+     "texto": "Foram representados em 1 partamento de cada tipologia os layouts em todos os ambientes, de acordo com o definido por Produtos/Incorporação?"
+    },
+    {
+     "id": "l64",
+     "item": "2.17",
+     "disc": "ARQ",
+     "grupo": "Arquitetura",
+     "texto": "Foram representados e indicados os cortes parciais do pavimento (transversal e longitudinal) passando obrigatoriamente pela escada, prumadas dos elevadores e preferencialmente pela cozinha e área de serviço das unidades?"
+    },
+    {
+     "id": "l65",
+     "item": "2.18",
+     "disc": "ARQ",
+     "grupo": "Arquitetura",
+     "texto": "Foram representados e indicados os cortes ampliados (esc.:1:25), com indicação dos desníveis e informações relevantes?"
+    },
+    {
+     "id": "l66",
+     "item": "2.19",
+     "disc": "ARQ",
+     "grupo": "Arquitetura",
+     "texto": "A numeração dos finais dos apartamentos estão de acordo com as informações fornecidas pela Incorporação e projeto legal (final 1, 2, 3, etc.)?"
+    },
+    {
+     "id": "l67",
+     "item": "2.20",
+     "disc": "ARQ",
+     "grupo": "Arquitetura",
+     "texto": "As dimensões internas (acabadas) dos ambientes da Planta de Contrato e Projeto Legal estão sendo respeitadas, contemplando as espessuras dos respectivos acabamentos descritos no Memorial de Vendas?"
+    },
+    {
+     "id": "l68",
+     "item": "2.21",
+     "disc": "ARQ",
+     "grupo": "Arquitetura",
+     "texto": "O nome dos ambientes da Planta de Contrato, Projeto Legal e Memorial de Vendas estão sendo respeitadas?"
+    },
+    {
+     "id": "l69",
+     "item": "2.22",
+     "disc": "ARQ",
+     "grupo": "Arquitetura",
+     "texto": "O Projeto de Arquitetura está em conformidade com o Projetos Legal? (altura dos pavimentos, sentido das escadas, notas específicas, etc.)"
+    },
+    {
+     "id": "l70",
+     "item": "2.23",
+     "disc": "ARQ",
+     "grupo": "Arquitetura",
+     "texto": "O Projeto de Arquitetura está em conformidade com as imagens, maquete, decorado e Memorial de Vendas? (ambientes, acabamentos, caixilhos, estrutura, etc.)"
+    },
+    {
+     "id": "l71",
+     "item": "2.24",
+     "disc": "ARQ",
+     "grupo": "Arquitetura",
+     "texto": "Para torres em estrutura convencional, as paredes externas (e divisa entre apartamentos e circulação) estão projetadas preferencialmente com blocos de alvenaria com espessura 19cm?"
+    },
+    {
+     "id": "l72",
+     "item": "2.25",
+     "disc": "ARQ",
+     "grupo": "Arquitetura",
+     "texto": "O número de pavimentos tipo no projeto está igual ao projeto legal?"
+    },
+    {
+     "id": "l73",
+     "item": "2.26",
+     "disc": "ARQ",
+     "grupo": "Arquitetura",
+     "texto": "As espaletas para fixação de portas atendem dimensões mínimas de 6 cm junto a alvenaria/pilares e 5 cm para painéis drywall ?"
+    },
+    {
+     "id": "l74",
+     "item": "2.27",
+     "disc": "ARQ",
+     "grupo": "Arquitetura",
+     "texto": "Os caixilhos foram locados de acordo c/ critério de espaleta mínima de 6 cm e não estão encostados em pilares ?"
+    },
+    {
+     "id": "l75",
+     "item": "2.28",
+     "disc": "ARQ",
+     "grupo": "Arquitetura",
+     "texto": "Os vãos horizontais e verticais para janelas foram projetados considerando as folgas abaixo? (atenção para revestimento cerâmico de fachada)\na) folga horizontal = vão final 1\nb) folga vertical (estrutura convencional) = vão final 3\nc) folga vertical (alvenaria estrutural) = vão final 1"
+    },
+    {
+     "id": "l76",
+     "item": "2.29",
+     "disc": "ARQ",
+     "grupo": "Arquitetura",
+     "texto": "Estrutura Convencional: A face superior dos caixilhos está locada próxima aos fundos de vigas evitando a necessidade de vergas?"
+    },
+    {
+     "id": "l77",
+     "item": "2.30",
+     "disc": "ARQ",
+     "grupo": "Arquitetura",
+     "texto": "Alvenaria Estrutural: A face superior dos caixilhos está locada sob a última fiada de blocos canaleta logo abaixo da laje?"
+    },
+    {
+     "id": "l78",
+     "item": "2.31",
+     "disc": "ARQ",
+     "grupo": "Arquitetura",
+     "texto": "Foi previsto tento de pedra com espessura de 2,0 cm para as soleiras dos caixilhos das varandas com 3cm de altura em relação a soleira ?"
+    },
+    {
+     "id": "l79",
+     "item": "2.32",
+     "disc": "ARQ",
+     "grupo": "Arquitetura",
+     "texto": "Existem indicação e detalhes de alçapões, escada marinheiro, corrimão, grelhas, suportes para condensadoras etc?"
+    },
+    {
+     "id": "l80",
+     "item": "2.33",
+     "disc": "ARQ",
+     "grupo": "Arquitetura",
+     "texto": "Foram representados os forros de gesso em locais onde hajam instalações no pavimento acima ou que sejam solicitados pelo projeto de decoração? As áreas de forro / sanca estão com espaço interno mínimo conforme solicitado pelo projetista de instalações?"
+    },
+    {
+     "id": "l81",
+     "item": "2.34",
+     "disc": "ARQ",
+     "grupo": "Arquitetura",
+     "texto": "As área de forro/sanca com passagem de dutos de chaminé de aquecedores e/ou tubulação de gás possuem indicação de grelha para ventilação permanente?"
+    },
+    {
+     "id": "l82",
+     "item": "2.35",
+     "disc": "ARQ",
+     "grupo": "Arquitetura",
+     "texto": "Foi previsto forro tabicado na região das varandas, panos ≥ 40m² e áreas comuns no pavimento térreo?"
+    },
+    {
+     "id": "l83",
+     "item": "2.36",
+     "disc": "ARQ",
+     "grupo": "Arquitetura",
+     "texto": "Elementos como molduras, peitoris, etc estão representados em planta?"
+    },
+    {
+     "id": "l84",
+     "item": "2.37",
+     "disc": "ARQ",
+     "grupo": "Arquitetura",
+     "texto": "O furo para coifa foi locado na alvenaria com dimensões de 26 x 16 cm e a sua esquadria está de acordo com o padrão das esquadrias de alumínio e a cor da fachada?"
+    },
+    {
+     "id": "l85",
+     "item": "2.38",
+     "disc": "ARQ",
+     "grupo": "Arquitetura",
+     "texto": "Verificar se não há interferência da bancada do banheiro com a guarnição da porta."
+    },
+    {
+     "id": "l86",
+     "item": "2.39",
+     "disc": "ARQ",
+     "grupo": "Arquitetura",
+     "texto": "Os boxes estão com medidas mínimas acabadas de 0,80 x 0,96m para empreendimentos MAP e 0,80 x 0,80cm para empreendimentos ECO?"
+    },
+    {
+     "id": "l87",
+     "item": "2.40",
+     "disc": "ARQ",
+     "grupo": "Arquitetura",
+     "texto": "Os vasos sanitários estão locados afastamento minimo de 32,5cm em seu eixo em relação à parede/bancada ?"
+    },
+    {
+     "id": "l88",
+     "item": "2.41",
+     "disc": "ARQ",
+     "grupo": "Arquitetura",
+     "texto": "As especificações das banheiras (compr,largura,etc) estão definidas no projeto ?"
+    },
+    {
+     "id": "l89",
+     "item": "2.42",
+     "disc": "ARQ",
+     "grupo": "Arquitetura",
+     "texto": "As folhas de porta atendem as dimensões de 62,72,82 (e 92 cm para porta de serviço para empreendimentos MAP)?"
+    },
+    {
+     "id": "l90",
+     "item": "2.43",
+     "disc": "ARQ",
+     "grupo": "Arquitetura",
+     "texto": "Os acessos (circulação e escadas) respeitam a largura mínima de 1,20m (acabado), conforme itens 6.6.4.3 e 6.9.1.1 da NBR 9050? Atenção à obstrutução desses espaços por quadros, hidrantes, escadas marinheiro, etc."
+    },
+    {
+     "id": "l91",
+     "item": "2.44",
+     "disc": "ARQ",
+     "grupo": "Arquitetura",
+     "texto": "Foram nomeadas as prumadas dos elevadores (elevador 1, 2, etc.)?"
+    },
+    {
+     "id": "l92",
+     "item": "2.45",
+     "disc": "ARQ",
+     "grupo": "Arquitetura",
+     "texto": "Foi respeitada a largura mínima de 1,50m em frente a porta dos elevadores?"
+    },
+    {
+     "id": "l93",
+     "item": "2.46",
+     "disc": "ARQ",
+     "grupo": "Arquitetura",
+     "texto": "Foi verificada a interferência dos shafts de instalações com as esquadrias de acabamento dos elevadores?"
+    },
+    {
+     "id": "l94",
+     "item": "2.47",
+     "disc": "ARQ",
+     "grupo": "Arquitetura",
+     "texto": "As esquadrias dos shafts elétricos e hidráulicos foram classificadas (dimensões e tipologia) e os detalhamentos apresentadas no projeto?"
+    },
+    {
+     "id": "l95",
+     "item": "2.48",
+     "disc": "ARQ",
+     "grupo": "Arquitetura",
+     "texto": "O sentido de abertura das portas das unidades está compatibilizado com Planta de Contrato e Imagens?"
+    },
+    {
+     "id": "l96",
+     "item": "2.49",
+     "disc": "ARQ",
+     "grupo": "Arquitetura",
+     "texto": "A altura mínima do guarda-corpo de 1,10m do piso acabado e espaçamentos máximos entre os perfis de 11cm, conforme NBR-14718 foi atendido? (ECO-mudamos a altura dos GC para mín 1,20m?)"
+    },
+    {
+     "id": "l97",
+     "item": "2.50",
+     "disc": "ARQ",
+     "grupo": "Arquitetura",
+     "texto": "Os gradis de varandas com unidade condensadora possuem ventilação específica e dimensionada de acordo com o projeto de ar condicionado?"
+    },
+    {
+     "id": "l98",
+     "item": "2.51",
+     "disc": "ARQ",
+     "grupo": "Arquitetura",
+     "texto": "As áreas para ármarios dos quartos estão com profundidade mínima de 60cm e existe espaço suficiente para instalação da caixinha do interruptor?"
+    },
+    {
+     "id": "l99",
+     "item": "2.52",
+     "disc": "ARQ",
+     "grupo": "Arquitetura",
+     "texto": "Os motores das banheiras estão locados fora das regiões de armário e louças sanitárias?"
+    },
+    {
+     "id": "l100",
+     "item": "2.53",
+     "disc": "ARQ",
+     "grupo": "Arquitetura",
+     "texto": "Foi verificado a paginação de piso e posição dos ralos? Consideramos 0,5cm de rejunte para piso cerâmico e 0,2cm de rejunte para piso em porcelanato."
+    },
+    {
+     "id": "l101",
+     "item": "2.54",
+     "disc": "ARQ",
+     "grupo": "Arquitetura",
+     "texto": "As bancadas foram dimensionadas de acordo com padrão da empresa ?"
+    },
+    {
+     "id": "l102",
+     "item": "2.55",
+     "disc": "ARQ",
+     "grupo": "Arquitetura",
+     "texto": "As bancadas foram identificadas e detalhadas?"
+    },
+    {
+     "id": "l103",
+     "item": "2.56",
+     "disc": "ARQ",
+     "grupo": "Arquitetura",
+     "texto": "Foi conferido o uso de carenagem ou fechamento em drywall sob as bancadas dos lavatórios de acordo com o padrão do empreendimento?"
+    },
+    {
+     "id": "l104",
+     "item": "2.57",
+     "disc": "ARQ",
+     "grupo": "Arquitetura",
+     "texto": "As mãos francesas estão detalhadas e locadas considerando-se a posição das cubas e lava-louças?"
+    },
+    {
+     "id": "l105",
+     "item": "2.58",
+     "disc": "ARQ",
+     "grupo": "Arquitetura",
+     "texto": "O caminhamento do duto do ventokit em banhos sem ventilação está indicado e representado em linha tracejada?"
+    },
+    {
+     "id": "l106",
+     "item": "2.59",
+     "disc": "ARQ",
+     "grupo": "Arquitetura",
+     "texto": "Foi considerado em projeto o uso de torneira de mesa?"
+    },
+    {
+     "id": "l107",
+     "item": "2.60",
+     "disc": "ARQ",
+     "grupo": "Arquitetura",
+     "texto": "Verificar se o Produto veio projetado o espaço com largura mínima de 80 cm para fogão de 6 bocas e 65 cm para fogão de 4 bocas?"
+    },
+    {
+     "id": "l108",
+     "item": "2.61",
+     "disc": "ARQ",
+     "grupo": "Arquitetura",
+     "texto": "As cubas em inox estão com a especificações definidas e detalhadas no projeto?"
+    },
+    {
+     "id": "l109",
+     "item": "2.62",
+     "disc": "ARQ",
+     "grupo": "Arquitetura",
+     "texto": "Os caixilhos das cozinhas possuem ventilação permanente na parte superior / inferior de acordo com a vazão solicitada no projeto de gás (hidráulica)?"
+    },
+    {
+     "id": "l110",
+     "item": "2.63",
+     "disc": "ARQ",
+     "grupo": "Arquitetura",
+     "texto": "A posição dos aquecedores está definida e locada através de critério técnico da instalação hidráulica e atende a necessidade da tiragem através da fachada ?"
+    },
+    {
+     "id": "l111",
+     "item": "2.64",
+     "disc": "ARQ",
+     "grupo": "Arquitetura",
+     "texto": "As áreas de serviço estão dimensionadas considerando as dimensões dos equipamentos (MLR,MSR,TQ e aquecedor) conforme breafing e os afastamentos entre eles ?"
+    },
+    {
+     "id": "l112",
+     "item": "2.65",
+     "disc": "ARQ",
+     "grupo": "Arquitetura",
+     "texto": "O espaço para alojar tanque + MLR está com largura acabada mínima de 1,40m?"
+    },
+    {
+     "id": "l113",
+     "item": "2.66",
+     "disc": "ARQ",
+     "grupo": "Arquitetura",
+     "texto": "Quando o tanque ou aquedecedor de passagem estiverm locados em frente à alvenaria estrutural, prever enchimento."
+    },
+    {
+     "id": "l114",
+     "item": "2.67",
+     "disc": "ARQ",
+     "grupo": "Arquitetura",
+     "texto": "O tanque foi especificado de acordo com as diretrizes da empresa e padrão do empreendimento, quanto a sua capacidade e modelo?"
+    },
+    {
+     "id": "l115",
+     "item": "2.68",
+     "disc": "ARQ",
+     "grupo": "Arquitetura",
+     "texto": "A porta corta-fogo abre no sentido da rota de fuga?"
+    },
+    {
+     "id": "l116",
+     "item": "2.69",
+     "disc": "ARQ",
+     "grupo": "Arquitetura",
+     "texto": "As PCFs estão identificadas e detalhadas?"
+    },
+    {
+     "id": "l117",
+     "item": "2.70",
+     "disc": "ARQ",
+     "grupo": "Arquitetura",
+     "texto": "Está indicado no projeto o tempo de resistência ao fogo das PCFs e o seu detalhamento?"
+    },
+    {
+     "id": "l118",
+     "item": "2.71",
+     "disc": "ARQ",
+     "grupo": "Arquitetura",
+     "texto": "O corrimão da escada atende a IT Bombeiros?"
+    },
+    {
+     "id": "l119",
+     "item": "2.72",
+     "disc": "ARQ",
+     "grupo": "Arquitetura",
+     "texto": "A escada atende a fórmula de Blondel (63 ≤ (2espelho + piso) ≥ 64) da IT.11 para o Estado de São Paulo ou (63 ≤ (2espelho + piso) ≥ 65), conforme item 6.6.3 da NBR 9050 para demais localidades onde não haja IT específica?"
+    },
+    {
+     "id": "l120",
+     "item": "2.73",
+     "disc": "ARQ",
+     "grupo": "Arquitetura",
+     "texto": "As escadas possuem dimensões espelho 16cm < e < 18cm; e piso 28cm < p < 32cm, conforme item 6.6.3 da NBR 9050?"
+    },
+    {
+     "id": "l121",
+     "item": "2.74",
+     "disc": "ARQ",
+     "grupo": "Arquitetura",
+     "texto": "As escadas possuem passagem livre mínima de 2,00m de altura? (Exemplo de COE especícifico: item 12.3.1 do Código de Obras e Edificações (COE) de São Paulo?"
+    },
+    {
+     "id": "l122",
+     "item": "2.75",
+     "disc": "ARQ",
+     "grupo": "Arquitetura",
+     "texto": "As escadas enclausuradas protegidas (sem pressurização ou duto de entrada/saída de ar) dispõe de janela com área mínima de ventilação real (sem caixilho) de 0,80m², conforme IT bombeiros usual da regional? (Exemplo de IT Bombeiros IT.11 do Estado de São Paulo)"
+    },
+    {
+     "id": "l123",
+     "item": "2.76",
+     "disc": "ARQ",
+     "grupo": "Arquitetura",
+     "texto": "Foi conferido o sentido de subida da escada?"
+    },
+    {
+     "id": "l124",
+     "item": "2.77",
+     "disc": "ARQ",
+     "grupo": "Arquitetura",
+     "texto": "Foi conferido o prosseguimeno da escada em relação aos pavimentos abaixo e acima?"
+    },
+    {
+     "id": "l125",
+     "item": "2.78",
+     "disc": "ARQ",
+     "grupo": "Arquitetura",
+     "texto": "Foi verficado se existe a locação do módulo de referência para cadeirante conforme NBR 9050?"
+    },
+    {
+     "id": "l126",
+     "item": "2.79",
+     "disc": "ARQ",
+     "grupo": "Arquitetura",
+     "texto": "Foi verificado se as paredes dos dutos de entrada e saída de ar estão atendendo a NBR 9077"
+    },
+    {
+     "id": "l127",
+     "item": "2.80",
+     "disc": "ARQ",
+     "grupo": "Arquitetura",
+     "texto": "Foi prevista a separação entre as caixas de elevadores adjacentes nos projetos? Verificar o tipo de fechamento exigido na NBR 16042 para elevadores com ou sem casa de máquinas, são exigências diferentes."
+    },
+    {
+     "id": "l128",
+     "item": "2.81",
+     "disc": "ARQ",
+     "grupo": "Arquitetura",
+     "texto": "Verificar se todas as portas das áreas comuns estão com mínimo de 80cm."
+    },
+    {
+     "id": "l129",
+     "item": "2.82",
+     "disc": "ARQ",
+     "grupo": "Arquitetura",
+     "texto": "Checar desníveis estruturais conforme diretriz e caderno de detalhes,"
+    },
+    {
+     "id": "l130",
+     "item": "3.1",
+     "disc": "EST",
+     "grupo": "Estrutura",
+     "texto": "Os vãos osso horizontais para portas de madeira, estão dimensionados considerando final do vão = 9?"
+    },
+    {
+     "id": "l131",
+     "item": "3.2",
+     "disc": "EST",
+     "grupo": "Estrutura",
+     "texto": "Foi garantido pé direito de 2,50m sob vigas?"
+    },
+    {
+     "id": "l132",
+     "item": "3.3",
+     "disc": "EST",
+     "grupo": "Estrutura",
+     "texto": "Foram inseridos os pilares com respectiva nomenclatura?"
+    },
+    {
+     "id": "l133",
+     "item": "3.4",
+     "disc": "EST",
+     "grupo": "Estrutura",
+     "texto": "Foram representadas as projeções de vigas com linha tracejada?"
+    },
+    {
+     "id": "l134",
+     "item": "3.5",
+     "disc": "EST",
+     "grupo": "Estrutura",
+     "texto": "Para sistema construtivo em Alvenaria Estrutural, foram inseridos a modulação dos blocos estruturais com respectivos pontos de grautes?"
+    },
+    {
+     "id": "l135",
+     "item": "3.6",
+     "disc": "EST",
+     "grupo": "Estrutura",
+     "texto": "Está indicada e cotada a junta de dilatação da torre?"
+    },
+    {
+     "id": "l136",
+     "item": "3.7",
+     "disc": "EST",
+     "grupo": "Estrutura",
+     "texto": "Considerar passagem livre de 2.40m (acabado) sob vigas e blocos de transição."
+    },
+    {
+     "id": "l137",
+     "item": "3.8",
+     "disc": "EST",
+     "grupo": "Estrutura",
+     "texto": "Considerar passagem livre de 2,65m (acabado) nas rampas de acesso de veículos (verificar portão)."
+    },
+    {
+     "id": "l138",
+     "item": "4.1",
+     "disc": "ELE",
+     "grupo": "Elétrica",
+     "texto": "Os quadros elétricos foram representados na planta de arquitetura conforme projeto de elétrica?"
+    },
+    {
+     "id": "l139",
+     "item": "4.2",
+     "disc": "ELE",
+     "grupo": "Elétrica",
+     "texto": "As paredes dos quadro elétricos possuem espessura mínima de 14 cm, caso forem embutidos?"
+    },
+    {
+     "id": "l140",
+     "item": "5.9",
+     "disc": "ELE",
+     "grupo": "Elétrica",
+     "texto": "Os shafts de elétrica da área comum e das unidades estão de acordo com o dimensionamento do Projetista e estão indicados os usos na Arquitetura?"
+    },
+    {
+     "id": "l141",
+     "item": "5.1",
+     "disc": "HID",
+     "grupo": "Hidráulica",
+     "texto": "Foram representados e cotados os enchimentos para instalações?"
+    },
+    {
+     "id": "l142",
+     "item": "5.3",
+     "disc": "HID",
+     "grupo": "Hidráulica",
+     "texto": "Os sanitários dos aptos PNE atendem as dimensões e características previstas no item 7 da NBR 9050?"
+    },
+    {
+     "id": "l143",
+     "item": "5.4",
+     "disc": "HID",
+     "grupo": "Hidráulica",
+     "texto": "Todos os eixos dos pontos de hidráulica foram cotados?"
+    },
+    {
+     "id": "l144",
+     "item": "5.5",
+     "disc": "HID",
+     "grupo": "Hidráulica",
+     "texto": "Para empreendimentos com cuba dupla, a locação dos pontos de esgoto das cubas das cozinhas foi confirmada em relação ao modelo especificado devido a possibilidade do eixo da válvula ser deslocado em relação ao eixo da cuba?"
+    },
+    {
+     "id": "l145",
+     "item": "5.6",
+     "disc": "HID",
+     "grupo": "Hidráulica",
+     "texto": "Foram projetados pontos de esgoto independentes para caso de cuba dupla ?"
+    },
+    {
+     "id": "l146",
+     "item": "5.7",
+     "disc": "HID",
+     "grupo": "Hidráulica",
+     "texto": "Foram representados os aquecedores de passagem e o duto da chaminé?"
+    },
+    {
+     "id": "l147",
+     "item": "5.8",
+     "disc": "HID",
+     "grupo": "Hidráulica",
+     "texto": "A prumada de gás deverá sempre ser prevista aparente na fachada. Caso haja um caso específico dentro da unidade, está representada em enchimento externo à alvenaria do shaft, caracterizando parede dupla quando embutida? Quando aparente h=0,40m?"
+    },
+    {
+     "id": "l148",
+     "item": "5.9",
+     "disc": "HID",
+     "grupo": "Hidráulica",
+     "texto": "Os shafts de hidráulica da área comum e das unidades estão de acordo com o dimensionamento do Projetista e estão indicados os usos na Arquitetura?"
+    },
+    {
+     "id": "l149",
+     "item": "5.10",
+     "disc": "HID",
+     "grupo": "Hidráulica",
+     "texto": "Verificar dimensões e localização da caixa d’água, retardo e poço de águas pluviais estão de acordo com consulta e projeto de hidráulica"
+    },
+    {
+     "id": "l150",
+     "item": "5.11",
+     "disc": "HID",
+     "grupo": "Hidráulica",
+     "texto": "Considerar passagem livre de 2.40m (acabado) sob tubulações nas circulações de veículos e 2.30m sobre as vagas."
+    },
+    {
+     "id": "l151",
+     "item": "5.12",
+     "disc": "HID",
+     "grupo": "Hidráulica",
+     "texto": "Dimensionar a mureta de contenção dos barriletes de forma que possa conter um possível vazamento da caixa d’água em fibra."
+    },
+    {
+     "id": "l152",
+     "item": "6.1",
+     "disc": "VED",
+     "grupo": "Vedação",
+     "texto": "Para projetos em drywall, as paredes que dividem apartamentos e do hall social estão projetadas em alvenaria ?"
+    },
+    {
+     "id": "l153",
+     "item": "6.2",
+     "disc": "VED",
+     "grupo": "Vedação",
+     "texto": "As paredes internas em drywall estão revestindo as vigas e pilares ?"
+    },
+    {
+     "id": "l154",
+     "item": "6.3",
+     "disc": "VED",
+     "grupo": "Vedação",
+     "texto": "Nos empreendimentos MAP, as paredes em drywall estão representadas e aquelas com tratamento acústico estão identificadas (paredes que garantem o isolamento dos dormitórios dos aptos) ?"
+    },
+    {
+     "id": "l155",
+     "item": "6.4",
+     "disc": "VED",
+     "grupo": "Vedação",
+     "texto": "Nos empreendimentos ECO, as paredes em drywall estão representadas em projeto?"
+    },
+    {
+     "id": "l156",
+     "item": "6.5",
+     "disc": "VED",
+     "grupo": "Vedação",
+     "texto": "As muretas das cozinhas possuem altura máxima de 1,03m? (Eco h=1,10m osso + 4cm com o acabamento do tampo em pedra)."
+    },
+    {
+     "id": "l157",
+     "item": "7.1",
+     "disc": "AC",
+     "grupo": "Ar-condicionado",
+     "texto": "As áreas a serem climatizadas estão de acordo com o briefing? (ECO \"previsão\" quando há no briefing - MAP \"infra\" quando há no briefing)"
+    },
+    {
+     "id": "l158",
+     "item": "8.1",
+     "disc": "EXA",
+     "grupo": "Exaustão",
+     "texto": "O duto da exaustão em prumada está com as dimensões minimas necessárias conforme projeto específico?"
+    },
+    {
+     "id": "l159",
+     "item": "9.1",
+     "disc": "ELEV",
+     "grupo": "Elevadores",
+     "texto": "A prumada do elevador está de acordo com o dimensionamento mais restritivo dos fornecedores (Atlas, Otis, LGTech, Thyssenkrupp)?"
+    },
+    {
+     "id": "l160",
+     "item": "9.2",
+     "disc": "ELEV",
+     "grupo": "Elevadores",
+     "texto": "A frente da prumada do elevador está livre de elementos estruturais para possibilitar instalação do equipamento?"
+    },
+    {
+     "id": "l161",
+     "item": "9.3",
+     "disc": "ELEV",
+     "grupo": "Elevadores",
+     "texto": "Verificar se ao menos um dos elevadores PCD, a cabine possui dimensões internas mínimas de 1,10x1,40m e vão da porta de 0,80m?"
+    },
+    {
+     "id": "l162",
+     "item": "10.1",
+     "disc": "PRES",
+     "grupo": "Pressurização",
+     "texto": "Os caixilhos de ventilação da ante-câmara estão de acordo com as exigências do Corpo de Bombeiros nbr 9077?"
+    },
+    {
+     "id": "l163",
+     "item": "10.2",
+     "disc": "PRES",
+     "grupo": "Pressurização",
+     "texto": "As escadas com duto de ventilação natural (entrada/saída) atendem à IT Bombeiros usual da região? (Exemplo: item 5.7.9.3 da IT.11 do Estado de São Paulo) (Na representação em projeto, atentar para esta grelha/caixilho não estar numerada para especificação, as mesmas deverão indicar: \"ver detalhe no projeto específico\")"
+    },
+    {
+     "id": "l164",
+     "item": "10.3",
+     "disc": "PRES",
+     "grupo": "Pressurização",
+     "texto": "Para as escadas Pressurizadas, o duto de Pressurização está de acordo com o dimensionamento do Projetista e estão indicados os usos na Arquitetura (largura mínima 35cm)?"
+    },
+    {
+     "id": "l165",
+     "item": "10.4",
+     "disc": "PRES",
+     "grupo": "Pressurização",
+     "texto": "Nas escadas pressurizadas, está representada a grelha de insuflamento, com a cota osso do vão (LxHxP) e indicando: \"ver detalhe no projeto específico\"?"
+    },
+    {
+     "id": "l166",
+     "item": "10.5",
+     "disc": "PRES",
+     "grupo": "Pressurização",
+     "texto": "A espessura das paredes que compreendem a caixa de escada de emergência devem ter resistência ao fogo, verificar com IT local qual a espessura de acabamento nas paredes que configure essa resistência. (Exemplo IT Bombeiros São Paulo, resistência de 120min configuradas por parede mínima de blocos14cm + revestimento de 1,5cm nas duas faces das paredes."
+    },
+    {
+     "id": "l432",
+     "item": "3.1",
+     "disc": "VED",
+     "grupo": "Desempenho (NBR 15575)",
+     "texto": "O memorial descritivo especifica o índice de redução sonora ponderado (Rw) das paredes de compartimentação entre unidades habitacionais e entre unidade e áreas comuns, atendendo aos valores mínimos da NBR 15575-4?"
+    },
+    {
+     "id": "l433",
+     "item": "3.2",
+     "disc": "VED",
+     "grupo": "Desempenho (NBR 15575)",
+     "texto": "As paredes externas (fachada) atendem à transmitância térmica (U) e à capacidade térmica (CT) exigidas para a zona bioclimática do empreendimento, conforme NBR 15575-1 e NBR 15575-4?"
+    },
+    {
+     "id": "l434",
+     "item": "3.3",
+     "disc": "VED",
+     "grupo": "Desempenho (NBR 15575)",
+     "texto": "Há especificação do sistema de vedação externa quanto à estanqueidade à água de chuva (pingadeiras, rufos e vedação de esquadrias), conforme ensaio e critérios da NBR 15575-4?"
+    },
+    {
+     "id": "l435",
+     "item": "3.4",
+     "disc": "VED",
+     "grupo": "Desempenho (NBR 15575)",
+     "texto": "As paredes internas e externas foram detalhadas para resistir, sem ruína, aos impactos de corpo mole e corpo duro de uso comum e privativo exigidos pela NBR 15575-4?"
+    },
+    {
+     "id": "l436",
+     "item": "3.5",
+     "disc": "VED",
+     "grupo": "Desempenho (NBR 15575)",
+     "texto": "Os elementos de fachada e vedações possuem classificação de resistência ao fogo (TRF) compatível com a exigência de segurança contra incêndio da NBR 15575-1/4 e da IT do Corpo de Bombeiros local?"
+    },
+    {
+     "id": "l437",
+     "item": "4.1",
+     "disc": "ARQ",
+     "grupo": "Desempenho (NBR 15575)",
+     "texto": "Os ambientes de permanência prolongada atendem aos parâmetros mínimos de iluminação e ventilação naturais exigidos pela NBR 15575-1, considerando a insolação e as obstruções do entorno?"
+    },
+    {
+     "id": "l438",
+     "item": "4.2",
+     "disc": "ARQ",
+     "grupo": "Desempenho (NBR 15575)",
+     "texto": "Os revestimentos de piso especificados atendem à resistência ao escorregamento e à resistência a manchas exigidas pela NBR 15575-3 para cada tipo de ambiente (áreas molhadas, circulações, áreas comuns)?"
+    },
+    {
+     "id": "l439",
+     "item": "4.3",
+     "disc": "ARQ",
+     "grupo": "Desempenho (NBR 15575)",
+     "texto": "Os pisos apresentam planicidade e nivelamento compatíveis com os critérios de desempenho da NBR 15575-3, sem desníveis acima do tolerado?"
+    },
+    {
+     "id": "l440",
+     "item": "4.4",
+     "disc": "ARQ",
+     "grupo": "Desempenho (NBR 15575)",
+     "texto": "O memorial de acabamentos indica o desempenho acústico esperado para os pisos (isolamento a ruído de impacto) entre pavimentos, compatível com a NBR 15575-3?"
+    },
+    {
+     "id": "l441",
+     "item": "4.5",
+     "disc": "ARQ",
+     "grupo": "Desempenho (NBR 15575)",
+     "texto": "O projeto contempla as condições mínimas de adequação ambiental exigidas pela NBR 15575-1 (uso racional de água e energia), integradas às diretrizes do PDE (PRO-FL-003)?"
+    },
+    {
+     "id": "l442",
+     "item": "4.6",
+     "disc": "ARQ",
+     "grupo": "Desempenho (NBR 15575)",
+     "texto": "As condições mínimas de acessibilidade e adequação funcional (NBR 9050) estão integradas aos requisitos de funcionalidade e acessibilidade da NBR 15575-1?"
+    }
+   ]
+  },
+  "EST": {
+   "nome": "Estrutura",
+   "itens": [
+    {
+     "id": "l174",
+     "item": "2.1",
+     "disc": "EST",
+     "grupo": "Estrutura",
+     "texto": "As lajes de embasamento foram prevista em cubeta?"
+    },
+    {
+     "id": "l175",
+     "item": "2.2",
+     "disc": "EST",
+     "grupo": "Estrutura",
+     "texto": "As lajes de subsolo e sobresolo foram prevista em cubeta?"
+    },
+    {
+     "id": "l176",
+     "item": "2.3",
+     "disc": "EST",
+     "grupo": "Estrutura",
+     "texto": "Dar preferência para cubetas de 58cm (já existe forma na Treèle)\nObs.: Somente a gerência poderá liberar o uso cubeta com outra dimensão."
+    },
+    {
+     "id": "l177",
+     "item": "2.3b",
+     "disc": "EST",
+     "grupo": "Estrutura",
+     "texto": "Foi previsto capa com espessura maior nas lajes de cubeta dos térreos com unidade conforme diretriz \"CDP-EST-LO-0001\" item 3.1.6?"
+    },
+    {
+     "id": "l178",
+     "item": "2.4",
+     "disc": "EST",
+     "grupo": "Estrutura",
+     "texto": "O desnível da estrutura está atendendo a diretriz \"CDP-EST-LO-0001\" item 3.2.__?"
+    },
+    {
+     "id": "l179",
+     "item": "2.5",
+     "disc": "EST",
+     "grupo": "Estrutura",
+     "texto": "Foi previsto laje maciça com contrapiso nos pavimentos tipo atendendo a diretriz \"CDP-EST-LO-0001\" item 3.1.1?"
+    },
+    {
+     "id": "l180",
+     "item": "2.6",
+     "disc": "EST",
+     "grupo": "Estrutura",
+     "texto": "Foi previsto rebaixo na rampa para execução do adoçamento conforme detalhes \"CDP-EST-LO-03-04-01\", \"CDP-EST-LO-03-04-02\" e \"CDP-EST-LO-03-04-03\"?"
+    },
+    {
+     "id": "l181",
+     "item": "2.7",
+     "disc": "EST",
+     "grupo": "Estrutura",
+     "texto": "Para alvenaria estrutural, verificar se os pontos de grautes e armação estão representados no em planta."
+    },
+    {
+     "id": "l182",
+     "item": "2.8",
+     "disc": "EST",
+     "grupo": "Estrutura",
+     "texto": "Para alvenaria estrutural, verificar se os pontos de grautes e armação estão representados no projeto de elevações."
+    },
+    {
+     "id": "l183",
+     "item": "2.9",
+     "disc": "EST",
+     "grupo": "Estrutura",
+     "texto": "Utilizar fck > ou = a 25MPa\nObs.: Para fck maior que 35mpa questionar o projetista e avisar a gerência."
+    },
+    {
+     "id": "l184",
+     "item": "2.10",
+     "disc": "EST",
+     "grupo": "Estrutura",
+     "texto": "Constar na folha do projeto: fck, módulo de deformação/elasticidade\nEcs=0,85x5,6x√fck"
+    },
+    {
+     "id": "l185",
+     "item": "2.11",
+     "disc": "EST",
+     "grupo": "Estrutura",
+     "texto": "Foi apresentada tabela de coordenadas com os CGs dos pilares para locação e conferencia?"
+    },
+    {
+     "id": "l186",
+     "item": "2.12",
+     "disc": "EST",
+     "grupo": "Estrutura",
+     "texto": "Está indicado em projeto o volume de concreto, área de forma e taxa de aço?"
+    },
+    {
+     "id": "l187",
+     "item": "2.13",
+     "disc": "EST",
+     "grupo": "Estrutura",
+     "texto": "As vigas de borda do pavimento tipo estão de acordo com detalhe _____ ?"
+    },
+    {
+     "id": "l188",
+     "item": "2.14",
+     "disc": "EST",
+     "grupo": "Estrutura",
+     "texto": "Existe interferem entre as vigas de borda e os caixilhos?"
+    },
+    {
+     "id": "l189",
+     "item": "2.15",
+     "disc": "EST",
+     "grupo": "Estrutura",
+     "texto": "Foram verificadas as numerações de todos os pilares, vigas e lajes?"
+    },
+    {
+     "id": "l190",
+     "item": "2.16",
+     "disc": "EST",
+     "grupo": "Estrutura",
+     "texto": "Espessura mínima das lajes estão conforme diretriz _______________?"
+    },
+    {
+     "id": "l191",
+     "item": "2.17",
+     "disc": "EST",
+     "grupo": "Estrutura",
+     "texto": "Verificar se todas as lajes do pavimento tipo está no mesmo nível. Não teremos rebaixo em laje."
+    },
+    {
+     "id": "l192",
+     "item": "2.18",
+     "disc": "EST",
+     "grupo": "Estrutura",
+     "texto": "Foi previsto rebaixo na viga do caixilho da sala/varanda para colocação da soleira conforme detalhe \"CDP-EST-LO-03-01-02_-R00\"?"
+    },
+    {
+     "id": "l193",
+     "item": "2.19",
+     "disc": "EST",
+     "grupo": "Estrutura",
+     "texto": "As vigas de borda dos terraços tem inversão conforme detalhe \"CDP-EST-LO-03-01-02_-R00\"?"
+    },
+    {
+     "id": "l194",
+     "item": "2.20",
+     "disc": "EST",
+     "grupo": "Estrutura",
+     "texto": "Terraço sem bancada está de acordo com detalhe \"CDP-EST-LO-03-01-01\"?"
+    },
+    {
+     "id": "l195",
+     "item": "2.21",
+     "disc": "EST",
+     "grupo": "Estrutura",
+     "texto": "Terraço técnico está de acordo com detalhe \"CDP-EST-LO-03-01-05\"?"
+    },
+    {
+     "id": "l196",
+     "item": "2.22",
+     "disc": "EST",
+     "grupo": "Estrutura",
+     "texto": "Verificar as estimativas e fck EP x EX."
+    },
+    {
+     "id": "l197",
+     "item": "2.23",
+     "disc": "EST",
+     "grupo": "Estrutura",
+     "texto": "Evitar viga descarregando em outra viga."
+    },
+    {
+     "id": "l198",
+     "item": "2.24",
+     "disc": "EST",
+     "grupo": "Estrutura",
+     "texto": "Forma da escada está considerando o uso de bocel conforme detalhe \"CDP-EST-LO-03-04-06\"?"
+    },
+    {
+     "id": "l199",
+     "item": "2.25",
+     "disc": "EST",
+     "grupo": "Estrutura",
+     "texto": "A forma da escada está considerado uma altura diferente para o primeiro e ultimo degrau conforme detalhes \"CDP-EST-LO-03-04-04\" e \"CDP-EST-LO-03-04-05\"?"
+    },
+    {
+     "id": "l200",
+     "item": "2.26",
+     "disc": "EST",
+     "grupo": "Estrutura",
+     "texto": "A escada de incêndio está sem alvenaria central conforme diretriz \"CDP-EST-LO-0001\" item \"3.1.11\"?"
+    },
+    {
+     "id": "l201",
+     "item": "2.27",
+     "disc": "EST",
+     "grupo": "Estrutura",
+     "texto": "Os vãos para instalação das portas em alvenaria estrutural estão conforme detalhes \"CDP-EST-LO-03-05-01\" e \"CDP-EST-LO-03-05-02\"?"
+    },
+    {
+     "id": "l202",
+     "item": "2.28",
+     "disc": "EST",
+     "grupo": "Estrutura",
+     "texto": "Os vãos para instalação das esquadrias em alvenaria estrutural estão conforme detalhes \"CDP-EST-LO-03-05-03\" e \"CDP-EST-LO-03-05-04\"?"
+    },
+    {
+     "id": "l203",
+     "item": "2.29",
+     "disc": "EST",
+     "grupo": "Estrutura",
+     "texto": "Foi previsto desnível na estrutura entre térreo interno x térreo externo conforme detalhe \"CDP-EST-LO-03-01-06\"?"
+    },
+    {
+     "id": "l204",
+     "item": "2.30",
+     "disc": "EST",
+     "grupo": "Estrutura",
+     "texto": "Foi previsto desnível nas lajes para executar piscina e espelho d'água conforme diretriz \"CDP-EST-LO-0001\" item \"3.1.12\"?"
+    },
+    {
+     "id": "l205",
+     "item": "2.31",
+     "disc": "EST",
+     "grupo": "Estrutura",
+     "texto": "Prever viga de borda do térreo maior que as vigas internas para que seja possível o arremate com o forro."
+    },
+    {
+     "id": "l206",
+     "item": "2.32",
+     "disc": "EST",
+     "grupo": "Estrutura",
+     "texto": "No caso de alvenaria estrutural as lajes de cobertura expostas ao sol deverão receber proteção térmica."
+    },
+    {
+     "id": "l207",
+     "item": "2.33",
+     "disc": "EST",
+     "grupo": "Estrutura",
+     "texto": "Verificar se a espessura das vigas estão iguais as alvenarias (14 e 19cm)\nObs.: Somente a gerência poderá liberar uma largura de viga diferente da alvenaria."
+    },
+    {
+     "id": "l208",
+     "item": "2.34",
+     "disc": "EST",
+     "grupo": "Estrutura",
+     "texto": "Evitar Pilares em formato \"U\" e \"L\".\nObs.: Somente a gerência poderá liberar o uso de pilares em formato \"U\" e \"L\"."
+    },
+    {
+     "id": "l209",
+     "item": "2.35",
+     "disc": "EST",
+     "grupo": "Estrutura",
+     "texto": "Evitar uso de junta de dilatação passando por torre.\nObs. Somente a gerência poderá liberar o uso de junta de dilatação em torre."
+    },
+    {
+     "id": "l210",
+     "item": "2.36",
+     "disc": "EST",
+     "grupo": "Estrutura",
+     "texto": "Utilizar pilar duplo para junta de dilatação.\nObs. Somente gerência poderá liberar o uso de consolo."
+    },
+    {
+     "id": "l211",
+     "item": "2.37",
+     "disc": "EST",
+     "grupo": "Estrutura",
+     "texto": "Junta de dilatação está com afastamento minimo de 1,00m da torre?"
+    },
+    {
+     "id": "l212",
+     "item": "2.38",
+     "disc": "EST",
+     "grupo": "Estrutura",
+     "texto": "Proibido passar junta de dilatação por piscina, espelho d'água, jardineira e quadra."
+    },
+    {
+     "id": "l213",
+     "item": "2.39",
+     "disc": "EST",
+     "grupo": "Estrutura",
+     "texto": "Viga de transição na facachada está conforme detalhe \"CDP-EST-LO-03-03-01\"?"
+    },
+    {
+     "id": "l214",
+     "item": "2.40",
+     "disc": "EST",
+     "grupo": "Estrutura",
+     "texto": "Foi previsto recuo na laje de alvenaria estrutura para acabamento de fachada conforme detalhe \"CDP-EST-LO-03-09-01\"?"
+    },
+    {
+     "id": "l215",
+     "item": "2.41",
+     "disc": "EST",
+     "grupo": "Estrutura",
+     "texto": "Foi previsto refoço nas platibandas para incorporar os ganchos de fachada?"
+    },
+    {
+     "id": "l216",
+     "item": "2.42",
+     "disc": "EST",
+     "grupo": "Estrutura",
+     "texto": "Os ganchos estão locadas conforme detalhes \"CDP-EST-LO-03-02-01\" e \"CDP-EST-LO-03-02-02\"?"
+    },
+    {
+     "id": "l217",
+     "item": "2.43",
+     "disc": "EST",
+     "grupo": "Estrutura",
+     "texto": "Foi previsto junta de dilatação na laje do utimo pavimento de alvenaria estrutura conforme detalhe \"CDP-EST-LO-03-02-03\"?"
+    },
+    {
+     "id": "l218",
+     "item": "2.44",
+     "disc": "EST",
+     "grupo": "Estrutura",
+     "texto": "Foi previsto inversão de viga \"gola\" para instalação do alçapão conforme detalhes \"CDP-EST-LO-03-08-01\" e \"CDP-EST-LO-03-08-02\"?"
+    },
+    {
+     "id": "l219",
+     "item": "2.45",
+     "disc": "EST",
+     "grupo": "Estrutura",
+     "texto": "Foi previsto rebaixo entre a face superior da fundação e o piso acabado para passagem de tudulação? \"CDP-EST-LO-03-03-08\""
+    },
+    {
+     "id": "l220",
+     "item": "2.46",
+     "disc": "EST",
+     "grupo": "Estrutura",
+     "texto": "O ponto de origem da locação está igual ao RN do topográfico?"
+    },
+    {
+     "id": "l221",
+     "item": "2.47",
+     "disc": "EST",
+     "grupo": "Estrutura",
+     "texto": "A locação de obra está atendendo a diretriz \"CDP-EST-LO-0001\" item 3.1.24?"
+    },
+    {
+     "id": "l222",
+     "item": "2.48",
+     "disc": "EST",
+     "grupo": "Estrutura",
+     "texto": "Projetista passou as taxas de armação durante o ante projeto?"
+    },
+    {
+     "id": "l223",
+     "item": "2.49",
+     "disc": "EST",
+     "grupo": "Estrutura",
+     "texto": "A localização das vigas de transição está do acordo com a diretriz \"CDP-EST-LO-0001-R00\" item \"3.1.5\"?"
+    },
+    {
+     "id": "l224",
+     "item": "2.50",
+     "disc": "EST",
+     "grupo": "Estrutura",
+     "texto": "O piso armado sobre solo está atendendo a diretriz \"CDP-EST-LO-0001\" item 3.1.21 e detalhes \"CDP-EST-LO-03-03-03\" e \"CDP-EST-LO-03-03-04\"?"
+    },
+    {
+     "id": "l225",
+     "item": "2.51",
+     "disc": "EST",
+     "grupo": "Estrutura",
+     "texto": "A espessura das contenções está atendendo os detalhes \"CDP-EST-LO-03-03-05\" e \"CDP-EST-LO-03-03-06\"?"
+    },
+    {
+     "id": "l226",
+     "item": "3.1",
+     "disc": "ARQ",
+     "grupo": "Arquitetura",
+     "texto": "O pé direito sobre os blocos de transição estão de acordo com projeto de arquitetura?"
+    },
+    {
+     "id": "l227",
+     "item": "3.2",
+     "disc": "ARQ",
+     "grupo": "Arquitetura",
+     "texto": "Foi previsto vão livre nas rampas de veículo conforme detalhe \"CDP-EST-LO-03-04-02\"?"
+    },
+    {
+     "id": "l228",
+     "item": "3.3",
+     "disc": "ARQ",
+     "grupo": "Arquitetura",
+     "texto": "Foram verificadas as alturas de todas as vigas e as possíveis interferências com caixilhos, portas etc?"
+    },
+    {
+     "id": "l229",
+     "item": "3.4",
+     "disc": "ARQ",
+     "grupo": "Arquitetura",
+     "texto": "Foi verificado o pé-direito considerando a estrutura, principalmente a interferência de vigas nas circulações?"
+    },
+    {
+     "id": "l230",
+     "item": "3.5",
+     "disc": "ARQ",
+     "grupo": "Arquitetura",
+     "texto": "Foram checadas as alturas de vigas x dimensão de caixilhos x peitoril x modulação da alvenaria?"
+    },
+    {
+     "id": "l231",
+     "item": "3.6",
+     "disc": "ARQ",
+     "grupo": "Arquitetura",
+     "texto": "Foram compatibilizados os níveis com a Arquitetura?"
+    },
+    {
+     "id": "l232",
+     "item": "3.7",
+     "disc": "ARQ",
+     "grupo": "Arquitetura",
+     "texto": "A forma da escada foi compatibilizada com a a arquitetura?"
+    },
+    {
+     "id": "l233",
+     "item": "3.8",
+     "disc": "ARQ",
+     "grupo": "Arquitetura",
+     "texto": "Foi verificada as interferência das alturas de vigas com a PCF?"
+    },
+    {
+     "id": "l234",
+     "item": "4.1",
+     "disc": "ELE",
+     "grupo": "Elétrica",
+     "texto": "Foram recebidas informações do projeto de instalações sobre o posicionamento das descidas do sistema de proteção de descargas atmosféricas(SPDA)?"
+    },
+    {
+     "id": "l235",
+     "item": "4.2",
+     "disc": "ELE",
+     "grupo": "Elétrica",
+     "texto": "A previsão de passagens em vigas (bengalas e furos horizontais), está de acordo com solicitações de instalações?"
+    },
+    {
+     "id": "l236",
+     "item": "4.3",
+     "disc": "ELE",
+     "grupo": "Elétrica",
+     "texto": "Foi avaliado se os caminhamentos dos eletrodutos de instalações ELE/HID/GÁS/TEL/TV possuem interferências entre si e com a armadura da laje?"
+    },
+    {
+     "id": "l237",
+     "item": "4.4",
+     "disc": "ELE",
+     "grupo": "Elétrica",
+     "texto": "Foi previsto abertura na alvenaria estrutura para instalação dos QL conforme detalhes \"CDP-EST-LO-03-05-05\"?"
+    },
+    {
+     "id": "l238",
+     "item": "5.1",
+     "disc": "HID",
+     "grupo": "Hidráulica",
+     "texto": "Os furos em viga e laje solicitado porelétrica estão atendendo a diretriz \"CDP-EST-LO-0001\" item 3.1.20?"
+    },
+    {
+     "id": "l239",
+     "item": "5.2",
+     "disc": "HID",
+     "grupo": "Hidráulica",
+     "texto": "Foi previsto viga invertida na porta de acesso ao barrilete e caixa d'água conforme detalhe \"CDP-EST-LO-03-07-02\"?"
+    },
+    {
+     "id": "l240",
+     "item": "5.3",
+     "disc": "HID",
+     "grupo": "Hidráulica",
+     "texto": "Os reservatórios inferiores estão isolados conforme detalhe \"CDP-EST-LO-03-07-01\" e NBR 5626?"
+    },
+    {
+     "id": "l241",
+     "item": "5.4",
+     "disc": "HID",
+     "grupo": "Hidráulica",
+     "texto": "Prever rebaixo na laje do reservatório para executar impermeabilização conforme detalhe \"CDP-EST-LO-03-07-01\"?"
+    },
+    {
+     "id": "l242",
+     "item": "5.5",
+     "disc": "HID",
+     "grupo": "Hidráulica",
+     "texto": "Estrutura está indicando os furos em viga e laje solicitados por hidráulica?"
+    },
+    {
+     "id": "l243",
+     "item": "5.6",
+     "disc": "HID",
+     "grupo": "Hidráulica",
+     "texto": "Foi atendida a diretriz de não colocar vigas na frente de shafts?"
+    },
+    {
+     "id": "l244",
+     "item": "5.7",
+     "disc": "HID",
+     "grupo": "Hidráulica",
+     "texto": "As passagens na laje para tubulação e aberturas de shafts de ventilação estão de acordo com o projeto de arquitetura e instalações?"
+    },
+    {
+     "id": "l245",
+     "item": "5.8",
+     "disc": "HID",
+     "grupo": "Hidráulica",
+     "texto": "O furo para terminal dos aquecedores foi locado na viga com dimensão circular de 12,5 cm e compatibilizado com as normas da concessionária local ? Ver projeto de GÁS"
+    },
+    {
+     "id": "l246",
+     "item": "5.9",
+     "disc": "HID",
+     "grupo": "Hidráulica",
+     "texto": "Foi previsto na forma da piscina furo para skimmer na porda da piscina conforme detalhe \"CDP-EST-LO-03-06-02\"?"
+    },
+    {
+     "id": "l247",
+     "item": "5.10",
+     "disc": "HID",
+     "grupo": "Hidráulica",
+     "texto": "Foi previsto estrutura independente para piscina na cobertura conforme detalhe \"CDP-EST-LO-03-06-01\"?"
+    },
+    {
+     "id": "l248",
+     "item": "5.11",
+     "disc": "HID",
+     "grupo": "Hidráulica",
+     "texto": "Os furos em viga e laje solicitado por hidráulica estão atendendo a diretriz \"CDP-EST-LO-0001\" item 3.1.20?"
+    },
+    {
+     "id": "l249",
+     "item": "5.12",
+     "disc": "HID",
+     "grupo": "Hidráulica",
+     "texto": "Foi previsto aba na estrutura da piscina para apoio das placas de piso elevado?"
+    },
+    {
+     "id": "l250",
+     "item": "5.13",
+     "disc": "HID",
+     "grupo": "Hidráulica",
+     "texto": "Foi previsto rebaixo nas vigas de transição para passagem de tubulação conforme detalhe \"CDP-EST-LO-03-03-02\"?"
+    },
+    {
+     "id": "l251",
+     "item": "6.1",
+     "disc": "VED",
+     "grupo": "Vedação",
+     "texto": "Foram respeitadas as diretrizes de vedações para as alturas de vigas evitando assim a execução de vergas para os caixilhos?"
+    },
+    {
+     "id": "l252",
+     "item": "7.1",
+     "disc": "ELEV",
+     "grupo": "Elevadores",
+     "texto": "A altura da viga sobre a porta do elevador está de acordo com o solicitado pelo fornecedor?"
+    },
+    {
+     "id": "l253",
+     "item": "7.2",
+     "disc": "ELEV",
+     "grupo": "Elevadores",
+     "texto": "Foi compatibilizada a viga da porta do elevador com as necessidades da empresa para colocação da porta e soleira?"
+    },
+    {
+     "id": "l254",
+     "item": "7.3",
+     "disc": "ELEV",
+     "grupo": "Elevadores",
+     "texto": "Verificar se o poço de elevadores está conforme consulta aos fornecedores. Deverá atender a todos os fornecedores (ATLAS - OTIS - THYSSEN KRUPP E LGTECH)."
+    },
+    {
+     "id": "l255",
+     "item": "7.4",
+     "disc": "ELEV",
+     "grupo": "Elevadores",
+     "texto": "A dimensão do duto do elevador está de acordo com consulta feita aos fornecedores?Deverá atender a todos os fornecedores (ATLAS - OTIS - THYSSEN KRUPP E LGTECH)."
+    },
+    {
+     "id": "l256",
+     "item": "7.5",
+     "disc": "ELEV",
+     "grupo": "Elevadores",
+     "texto": "Altura da ultima parada está de acordo com consulta feita aos fornecedores? Deverá atender a todos os fornecedores (ATLAS - OTIS - THYSSEN KRUPP E LGTECH)."
+    },
+    {
+     "id": "l257",
+     "item": "7.6",
+     "disc": "ELEV",
+     "grupo": "Elevadores",
+     "texto": "Estrutura está considerando carga solicitada pelo fornecedor de elevador na laje da casa de máquinas?"
+    },
+    {
+     "id": "l258",
+     "item": "7.7",
+     "disc": "ELEV",
+     "grupo": "Elevadores",
+     "texto": "Foram indicados os furos necessários para instalação do elevador na laje da casa de máquinas?"
+    },
+    {
+     "id": "l259",
+     "item": "7.8",
+     "disc": "ELEV",
+     "grupo": "Elevadores",
+     "texto": "Foi previsto graute nas paredes do elevador conforme diretriz \"CDP-EST-LO-0001\" item 3.1.25?"
+    },
+    {
+     "id": "l260",
+     "item": "7.9",
+     "disc": "ELEV",
+     "grupo": "Elevadores",
+     "texto": "Foi realizada reunião com o técnico de elevadores para checagem da necessidade de viga intermediária (metálica) no poço dos elevadores?"
+    },
+    {
+     "id": "l261",
+     "item": "8.1",
+     "disc": "PAIS",
+     "grupo": "Paisagismo",
+     "texto": "Estrutura do muro de divisa está de acordo com projeto de paisagismo?"
+    },
+    {
+     "id": "l262",
+     "item": "8.2",
+     "disc": "PAIS",
+     "grupo": "Paisagismo",
+     "texto": "Os elementos de Paisagismo (poste, espelho d'água, escadas) estão locados na folha de locação da obra?"
+    },
+    {
+     "id": "l422",
+     "item": "1.1",
+     "disc": "EST",
+     "grupo": "Desempenho (NBR 15575)",
+     "texto": "O memorial de cálculo indica a Vida Útil de Projeto (VUP) adotada para o sistema estrutural, atendendo ao mínimo de 50 anos (nível superior) ou 40 anos (nível mínimo) conforme NBR 15575-1 e NBR 15575-2?"
+    },
+    {
+     "id": "l423",
+     "item": "1.2",
+     "disc": "EST",
+     "grupo": "Desempenho (NBR 15575)",
+     "texto": "Foram verificados os deslocamentos-limite (flechas) de vigas e lajes quanto aos critérios de aceitabilidade sensorial (fissuração, vibração) da NBR 15575-2, além dos limites da NBR 6118?"
+    },
+    {
+     "id": "l424",
+     "item": "1.3",
+     "disc": "EST",
+     "grupo": "Desempenho (NBR 15575)",
+     "texto": "Os pisos de uso comum e das unidades foram dimensionados para resistir, sem falhas, fissuras ou deformações residuais, aos ensaios de impacto de corpo mole e corpo duro exigidos pela NBR 15575-2/3?"
+    },
+    {
+     "id": "l425",
+     "item": "1.4",
+     "disc": "EST",
+     "grupo": "Desempenho (NBR 15575)",
+     "texto": "As ações de vento (pressões/sucções) adotadas no projeto estrutural estão compatibilizadas com a verificação de desempenho da fachada e das esquadrias exigida pela NBR 15575-4 e com a NBR 6123?"
+    },
+    {
+     "id": "l426",
+     "item": "1.5",
+     "disc": "EST",
+     "grupo": "Desempenho (NBR 15575)",
+     "texto": "Guarda-corpos, parapeitos e demais elementos de proteção estão dimensionados para resistir às cargas horizontais mínimas da NBR 6120/NBR 14718, conforme requisito de segurança estrutural no uso da NBR 15575-2?"
+    },
+    {
+     "id": "l427",
+     "item": "1.6",
+     "disc": "EST",
+     "grupo": "Desempenho (NBR 15575)",
+     "texto": "A impermeabilização e o caimento das lajes de cobertura garantem a estanqueidade e o escoamento das águas pluviais exigidos pela NBR 15575-5?"
+    },
+    {
+     "id": "l428",
+     "item": "1.7",
+     "disc": "EST",
+     "grupo": "Desempenho (NBR 15575)",
+     "texto": "A cobertura foi dimensionada para as sobrecargas de manutenção e, quando aplicável, para a resistência ao arrancamento pelo vento dos elementos de vedação, conforme NBR 15575-5?"
+    }
+   ]
+  },
+  "HID": {
+   "nome": "Hidráulica",
+   "itens": [
+    {
+     "id": "l266",
+     "item": "2.1",
+     "disc": "HID",
+     "grupo": "Hidráulica",
+     "texto": "Foram solicitadas as premissas das áreas técnicas e diretrizes?"
+    },
+    {
+     "id": "l267",
+     "item": "2.2",
+     "disc": "HID",
+     "grupo": "Hidráulica",
+     "texto": "Solicitar para Produto as diretrizes do projeto validadas para o empreendimento."
+    },
+    {
+     "id": "l268",
+     "item": "2.3",
+     "disc": "HID",
+     "grupo": "Hidráulica",
+     "texto": "Solicitar aos projetistas diretrizes e dimensionamento das concessionárias: água, esgoto e gás."
+    },
+    {
+     "id": "l269",
+     "item": "2.4",
+     "disc": "HID",
+     "grupo": "Hidráulica",
+     "texto": "Solicitar informações sobre os espaços necessários de entreforro e sancas para a passagem das tubulações"
+    },
+    {
+     "id": "l270",
+     "item": "2.5",
+     "disc": "HID",
+     "grupo": "Hidráulica",
+     "texto": "Verificar se os ralos estão afastados no minimo 15 cm das faces de parede, tento e mureta de terraço para paginação da cerâmica e impermeabilização."
+    },
+    {
+     "id": "l271",
+     "item": "2.6",
+     "disc": "HID",
+     "grupo": "Hidráulica",
+     "texto": "Verificar se os ralos do barrilete estão sobre ambientes com forro, no último pavimento"
+    },
+    {
+     "id": "l272",
+     "item": "2.7",
+     "disc": "HID",
+     "grupo": "Hidráulica",
+     "texto": "Verificar se a prumada de gás está subindo pela fachada."
+    },
+    {
+     "id": "l273",
+     "item": "2.8",
+     "disc": "HID",
+     "grupo": "Hidráulica",
+     "texto": "Inserir 2 grelhas de ventilação no forro ou sanca para passagem do duto do aquecedor de passagem. Solicitar dimensão exata para o projetista de instalações. O duto deve estar afastado 10cm da laje."
+    },
+    {
+     "id": "l274",
+     "item": "2.9",
+     "disc": "HID",
+     "grupo": "Hidráulica",
+     "texto": "Detalhe de fixação da tubulação aparente sob bancada (ECO)."
+    },
+    {
+     "id": "l275",
+     "item": "2.10",
+     "disc": "HID",
+     "grupo": "Hidráulica",
+     "texto": "Prever a saída de esgoto da área de serviço do 1º pavimento independente da prumada dos pavimentos acima. Verificar para esgotos da bacias e ralos das áreas de serviço."
+    },
+    {
+     "id": "l276",
+     "item": "2.11",
+     "disc": "HID",
+     "grupo": "Hidráulica",
+     "texto": "Verificar se foi prevista ou entregue medição individual de água e se haverá medição remota (tubulação seca)"
+    },
+    {
+     "id": "l277",
+     "item": "2.12",
+     "disc": "HID",
+     "grupo": "Hidráulica",
+     "texto": "Foi previsto ponto para filtro na bancada?"
+    },
+    {
+     "id": "l278",
+     "item": "2.13",
+     "disc": "HID",
+     "grupo": "Hidráulica",
+     "texto": "Foi previsto captação para máquina de lavar-louça?"
+    },
+    {
+     "id": "l279",
+     "item": "2.14",
+     "disc": "HID",
+     "grupo": "Hidráulica",
+     "texto": "Foi previsto ponto de água quente na cozinha?"
+    },
+    {
+     "id": "l280",
+     "item": "2.15",
+     "disc": "HID",
+     "grupo": "Hidráulica",
+     "texto": "Foi previsto ponto de água quente nos banheiros?"
+    },
+    {
+     "id": "l281",
+     "item": "2.16",
+     "disc": "HID",
+     "grupo": "Hidráulica",
+     "texto": "Foi previsto ponto de água quente no lavabo?"
+    },
+    {
+     "id": "l282",
+     "item": "2.17",
+     "disc": "HID",
+     "grupo": "Hidráulica",
+     "texto": "Foi previsto ponto de água para geladeira?"
+    },
+    {
+     "id": "l283",
+     "item": "2.18",
+     "disc": "HID",
+     "grupo": "Hidráulica",
+     "texto": "Foi previsto ducha higiênica nos banheiros ?"
+    },
+    {
+     "id": "l284",
+     "item": "2.19",
+     "disc": "HID",
+     "grupo": "Hidráulica",
+     "texto": "Foi previsto ducha higiênica no lavabo ?"
+    },
+    {
+     "id": "l285",
+     "item": "2.20",
+     "disc": "HID",
+     "grupo": "Hidráulica",
+     "texto": "A ligação dos pontos de dreno para ar condicionado está indicada no projeto de hidráulica."
+    },
+    {
+     "id": "l286",
+     "item": "2.21",
+     "disc": "HID",
+     "grupo": "Hidráulica",
+     "texto": "Será previsto banheira nos banheiros ?"
+    },
+    {
+     "id": "l287",
+     "item": "2.22",
+     "disc": "HID",
+     "grupo": "Hidráulica",
+     "texto": "Verificar o posicionamento das tubulações de água quente (à esquerda) e fria (à direita)"
+    },
+    {
+     "id": "l288",
+     "item": "2.23",
+     "disc": "HID",
+     "grupo": "Hidráulica",
+     "texto": "Compatibilizar projeto de hidráulica com automação, nos casos de venda de Smart Shower."
+    },
+    {
+     "id": "l289",
+     "item": "2.24",
+     "disc": "HID",
+     "grupo": "Hidráulica",
+     "texto": "Verificar se foi previsto ralo, ralo de segurança e alimentação para a banheira."
+    },
+    {
+     "id": "l290",
+     "item": "2.25",
+     "disc": "HID",
+     "grupo": "Hidráulica",
+     "texto": "Atentar para a locação do esgoto da pia e ponto de gás. Verificar se estão compatíveis com o projeto de Arquitetura. Esta locação irá definir a posição da cuba ou da pia."
+    },
+    {
+     "id": "l291",
+     "item": "2.26",
+     "disc": "HID",
+     "grupo": "Hidráulica",
+     "texto": "O ponto de gás não deve estar locado atrás do fogão. Deve estar afastado 40cm de pontos elétricos"
+    },
+    {
+     "id": "l292",
+     "item": "2.27",
+     "disc": "HID",
+     "grupo": "Hidráulica",
+     "texto": "O registro da cozinha deve estar localizado no shaft da cozinha e a alimentação da pia deve vir pelo apto inferior."
+    },
+    {
+     "id": "l293",
+     "item": "2.28",
+     "disc": "HID",
+     "grupo": "Hidráulica",
+     "texto": "Atentar para a descida do esgoto da pia e prumada dos ralos do terraço, pois os mesmos não podem descer dentro do duto da churrasqueira."
+    },
+    {
+     "id": "l294",
+     "item": "2.29",
+     "disc": "HID",
+     "grupo": "Hidráulica",
+     "texto": "Verificar / solicitar as dimensões necessárias para TODOS os enchimentos, inclusive sob bancadas. Atentar para o espaço necessário para a MLL."
+    },
+    {
+     "id": "l295",
+     "item": "2.30",
+     "disc": "HID",
+     "grupo": "Hidráulica",
+     "texto": "Verificar se existe a indicação das áreas necessárias para ventilação permanente (inferior e superior), em função do gás. Atentar para V.P. em sancas quando houver passagem de gás pela mesma."
+    },
+    {
+     "id": "l296",
+     "item": "2.31",
+     "disc": "HID",
+     "grupo": "Hidráulica",
+     "texto": "Caso o sistema de aquecimento de água seja através de boiler em local fechado, deverá ser previsto ralo para a limpeza."
+    },
+    {
+     "id": "l297",
+     "item": "2.32",
+     "disc": "HID",
+     "grupo": "Hidráulica",
+     "texto": "Deixar a prumada do ralo da área de serviço independente da prumada do tanque e máquina de lavar roupa. Prever no ponto do esgoto da MLR um adaptador de encaixe."
+    },
+    {
+     "id": "l298",
+     "item": "2.33",
+     "disc": "HID",
+     "grupo": "Hidráulica",
+     "texto": "Verificar se o medidor do gás está localizado na área de serviço e se haverá medição remota.(Confirmar nas diretrizes)"
+    },
+    {
+     "id": "l299",
+     "item": "2.34",
+     "disc": "HID",
+     "grupo": "Hidráulica",
+     "texto": "Caminhamento horizontal do esgoto: No entreforro da unidade abaixo."
+    },
+    {
+     "id": "l300",
+     "item": "2.35",
+     "disc": "HID",
+     "grupo": "Hidráulica",
+     "texto": "Verificar posição do esgoto e alimentação de água para a máquina de lavar roupa (sempre na lateral do shaft/enchimento)"
+    },
+    {
+     "id": "l301",
+     "item": "2.36",
+     "disc": "HID",
+     "grupo": "Hidráulica",
+     "texto": "Analisar e validar caixas de retardo para evitar interferências com áreas permeáveis, vagas, circulações de veículos, rampas e blocos de fundação."
+    },
+    {
+     "id": "l302",
+     "item": "2.37",
+     "disc": "HID",
+     "grupo": "Hidráulica",
+     "texto": "Checar posição dos hidrantes X vagas."
+    },
+    {
+     "id": "l303",
+     "item": "2.38",
+     "disc": "HID",
+     "grupo": "Hidráulica",
+     "texto": "Verificar se os shafts visitáveis nas áreas hidráulicas foram contemplados no projeto"
+    },
+    {
+     "id": "l304",
+     "item": "2.39",
+     "disc": "HID",
+     "grupo": "Hidráulica",
+     "texto": "Ponto de filtro: Para alvenaria estrutural deverá ser aparente em pex plugado na bancada. Para estrutura convencional deverá ser embutido na parede com o PEX encamisado."
+    },
+    {
+     "id": "l305",
+     "item": "2.40",
+     "disc": "HID",
+     "grupo": "Hidráulica",
+     "texto": "AQUECIMENTO SOLAR: Checar atendimento da legislação para aquecimento solar (para a cidade de São Paulo) - até 3 banhos deverá ser projetada previsão. 4 banhos ou mais, o sistema será entregue. (Verificar, no caso de previsão, se o projeto apresenta claramente as áreas que serão executadas pela obra)."
+    },
+    {
+     "id": "l306",
+     "item": "2.41",
+     "disc": "HID",
+     "grupo": "Hidráulica",
+     "texto": "AQUECIMENTO SOLAR: Verificar se está sendo prevista área para reservatórios de água quente no barrilete. Volume conforme orientação do projetista de hidráulica."
+    },
+    {
+     "id": "l307",
+     "item": "3.1",
+     "disc": "ARQ",
+     "grupo": "Arquitetura",
+     "texto": "A numeração dos finais dos apartamentos estão de acordo com projeto de arquitetura (final 1, 2, 3, etc.)?"
+    },
+    {
+     "id": "l308",
+     "item": "3.2",
+     "disc": "ARQ",
+     "grupo": "Arquitetura",
+     "texto": "Verificar o caminhamento de tubulações, sancas e forros nos casos de opção de planta."
+    },
+    {
+     "id": "l309",
+     "item": "3.3",
+     "disc": "ARQ",
+     "grupo": "Arquitetura",
+     "texto": "Foi verificado a posição do ralo entre 2 ou 4 peças cerâmicas?"
+    },
+    {
+     "id": "l310",
+     "item": "3.4",
+     "disc": "ARQ",
+     "grupo": "Arquitetura",
+     "texto": "Verificar se a altura do ponto de chuveiros e registros foram atendidos conforme caderno de padrão?"
+    },
+    {
+     "id": "l311",
+     "item": "3.5",
+     "disc": "ARQ",
+     "grupo": "Arquitetura",
+     "texto": "AQUECIMENTO SOLAR: Checar se a localização das placas solares não está interferindo com elementos de arquitetura e estrutura."
+    },
+    {
+     "id": "l312",
+     "item": "4.1",
+     "disc": "EST",
+     "grupo": "Estrutura",
+     "texto": "Foram posicionadas as passagens em vigas e lajes (Furações). Ver campo markup."
+    },
+    {
+     "id": "l313",
+     "item": "4.2",
+     "disc": "EST",
+     "grupo": "Estrutura",
+     "texto": "Foi considerado a altura mínima do fundo da viga ao furo com 12 cm ?"
+    },
+    {
+     "id": "l314",
+     "item": "4.3",
+     "disc": "EST",
+     "grupo": "Estrutura",
+     "texto": "Os furos próximos aos pilares foram aprovados pelo projetista de estrutura?"
+    },
+    {
+     "id": "l315",
+     "item": "4.4",
+     "disc": "EST",
+     "grupo": "Estrutura",
+     "texto": "Foi verificado todos os furos em laje?"
+    },
+    {
+     "id": "l316",
+     "item": "4.5",
+     "disc": "EST",
+     "grupo": "Estrutura",
+     "texto": "Foi verificado em lajes nervuradas, se ralos, prumadas e esgoto de bacias estão sobre nervuras e capitéis."
+    },
+    {
+     "id": "l317",
+     "item": "4.6",
+     "disc": "EST",
+     "grupo": "Estrutura",
+     "texto": "Verificar se foram previstos furos para tubulação frigorígena."
+    },
+    {
+     "id": "l318",
+     "item": "4.7",
+     "disc": "EST",
+     "grupo": "Estrutura",
+     "texto": "Verificar se foram previstos os furos para ventilação mecânica"
+    },
+    {
+     "id": "l319",
+     "item": "4.8",
+     "disc": "EST",
+     "grupo": "Estrutura",
+     "texto": "Verificar se foram previstos os furos para coifa."
+    },
+    {
+     "id": "l320",
+     "item": "4.9",
+     "disc": "EST",
+     "grupo": "Estrutura",
+     "texto": "Verificar se foi previsto o furo para aquecedor de passagem."
+    },
+    {
+     "id": "l321",
+     "item": "4.10",
+     "disc": "EST",
+     "grupo": "Estrutura",
+     "texto": "Verificar os furos dos shafts de hidráulica e elétrica."
+    },
+    {
+     "id": "l322",
+     "item": "4.11",
+     "disc": "EST",
+     "grupo": "Estrutura",
+     "texto": "Verificar se foram atendidos os furos nas vigas de halls e circulação, devido ao caminhamento das tubulações."
+    },
+    {
+     "id": "l323",
+     "item": "4.12",
+     "disc": "EST",
+     "grupo": "Estrutura",
+     "texto": "Verificar se as alturas dos furos levaram em consideração os caimentos necessários para ramais de esgoto e águas pluviais."
+    },
+    {
+     "id": "l324",
+     "item": "4.13",
+     "disc": "EST",
+     "grupo": "Estrutura",
+     "texto": "Verificar a interferência de subidas ou descidas de tubulações com vigas."
+    },
+    {
+     "id": "l325",
+     "item": "4.14",
+     "disc": "EST",
+     "grupo": "Estrutura",
+     "texto": "Foi verificado se existe interferência de pontos de esgoto com vigas existentes?"
+    },
+    {
+     "id": "l326",
+     "item": "5.1",
+     "disc": "INC",
+     "grupo": "Incêndio",
+     "texto": "Compatibilizar a locação de hidrantes com o projeto aprovado junto ao Corpo de Bombeiros. Avaliar se foi prevista área livre de acesso de 1m² para os mesmos."
+    },
+    {
+     "id": "l327",
+     "item": "5.2",
+     "disc": "INC",
+     "grupo": "Incêndio",
+     "texto": "Indicação do tempo de RF das PCFs"
+    },
+    {
+     "id": "l443",
+     "item": "5.1",
+     "disc": "HID",
+     "grupo": "Desempenho (NBR 15575)",
+     "texto": "O dimensionamento do reservatório (caixa d'água) atende ao volume mínimo de reserva de água estabelecido pela NBR 15575-6 e pela NBR 5626?"
+    },
+    {
+     "id": "l444",
+     "item": "5.2",
+     "disc": "HID",
+     "grupo": "Desempenho (NBR 15575)",
+     "texto": "As tubulações e conexões estão especificadas para atender aos critérios de estanqueidade (ensaio de pressão hidrostática) exigidos pela NBR 15575-6?"
+    },
+    {
+     "id": "l445",
+     "item": "5.3",
+     "disc": "HID",
+     "grupo": "Desempenho (NBR 15575)",
+     "texto": "O projeto prevê isolamento acústico das tubulações e equipamentos (bombas, recalque) para atendimento aos níveis de pressão sonora máximos admitidos pela NBR 15575-6?"
+    },
+    {
+     "id": "l446",
+     "item": "5.4",
+     "disc": "HID",
+     "grupo": "Desempenho (NBR 15575)",
+     "texto": "Shafts e prumadas hidráulicas possuem acesso para inspeção e manutenção, atendendo ao requisito de manutenibilidade da NBR 15575-1/6?"
+    },
+    {
+     "id": "l447",
+     "item": "5.5",
+     "disc": "HID",
+     "grupo": "Desempenho (NBR 15575)",
+     "texto": "O sistema de drenagem de águas pluviais foi dimensionado para o período de retorno adequado, evitando alagamentos, conforme NBR 15575-6 e NBR 10844?"
+    }
+   ]
+  },
+  "ELE": {
+   "nome": "Elétrica",
+   "itens": [
+    {
+     "id": "l331",
+     "item": "2.1",
+     "disc": "ELE",
+     "grupo": "Elétrica",
+     "texto": "Foram verificados se todos os símbolos do projeto encontram-se na legenda?"
+    },
+    {
+     "id": "l332",
+     "item": "2.2",
+     "disc": "ELE",
+     "grupo": "Elétrica",
+     "texto": "Foram solicitadas as premissas das áreas técnicas e diretrizes da concessionária?"
+    },
+    {
+     "id": "l333",
+     "item": "2.3",
+     "disc": "ELE",
+     "grupo": "Elétrica",
+     "texto": "Foi verificado se a entrada de energia encontra-se em uma das laterais do terreno e com distanciamento não superior a 15m do centro de medição?"
+    },
+    {
+     "id": "l334",
+     "item": "2.4",
+     "disc": "ELE",
+     "grupo": "Elétrica",
+     "texto": "Verificada necessidade de entrada de energia em média tensão?"
+    },
+    {
+     "id": "l335",
+     "item": "2.5",
+     "disc": "ELE",
+     "grupo": "Elétrica",
+     "texto": "Para entradas em média tensão, foi verificada previsão de transformador nas áreas comuns para atendimento a pelo menos 01 tomada 110volts em cada ambiente?"
+    },
+    {
+     "id": "l336",
+     "item": "2.6",
+     "disc": "ELE",
+     "grupo": "Elétrica",
+     "texto": "Foi verificado se o centro de medição está localizado no 1º subsolo ou no pavimento de acesso a rua, e de acordo com as premissas da empresa?"
+    },
+    {
+     "id": "l337",
+     "item": "2.7",
+     "disc": "ELE",
+     "grupo": "Elétrica",
+     "texto": "A localização do centro de medição não deve ficar sob instalações sanitárias ou desvios de prumadas hidráulicas."
+    },
+    {
+     "id": "l338",
+     "item": "2.8",
+     "disc": "ELE",
+     "grupo": "Elétrica",
+     "texto": "Verificar junto ao consultor e projetista se as cargas previstas no dimensionamento estão de acordo com as cargas solicitadas."
+    },
+    {
+     "id": "l339",
+     "item": "2.9",
+     "disc": "ELE",
+     "grupo": "Elétrica",
+     "texto": "Foram considerados espaços necessários de entreforro e sancas para a passagem das tubulações"
+    },
+    {
+     "id": "l340",
+     "item": "2.10",
+     "disc": "ELE",
+     "grupo": "Elétrica",
+     "texto": "O caminhamento do shaft de elétrica, no pavimento tipo, até os quadros dos apartamento está embutido na laje"
+    },
+    {
+     "id": "l341",
+     "item": "2.11",
+     "disc": "ELE",
+     "grupo": "Elétrica",
+     "texto": "Os shafts estão detalhados quanto a montagem eletromecânica e ajustados com as folgas naturais da construção civil ?"
+    },
+    {
+     "id": "l342",
+     "item": "2.12",
+     "disc": "ELE",
+     "grupo": "Elétrica",
+     "texto": "Foi previsto para os shafts algum sistema para bloqueio de chamas ou compartimentação entre pavimentos do tipo fire stop?"
+    },
+    {
+     "id": "l343",
+     "item": "2.13",
+     "disc": "ELE",
+     "grupo": "Elétrica",
+     "texto": "Verificada continuidade do shaft de elétrica em toda torre atentando para térreo e duplex."
+    },
+    {
+     "id": "l344",
+     "item": "2.14",
+     "disc": "ELE",
+     "grupo": "Elétrica",
+     "texto": "O quadro de elétrica está locado próximo à porta de entrada, em parede de 14cm e fora da projeção de vigas?\nEvitar locação de quadro elétrico em paredes de divisa de apartamento\nQuando não for possivel locar próximo à porta de entrada, locar na cozinha"
+    },
+    {
+     "id": "l345",
+     "item": "2.15",
+     "disc": "ELE",
+     "grupo": "Elétrica",
+     "texto": "Os quadros elétricos foram locados fora da projeção de vigas?"
+    },
+    {
+     "id": "l346",
+     "item": "2.16",
+     "disc": "ELE",
+     "grupo": "Elétrica",
+     "texto": "Verificada enfiação de sistemas pelo piso e elétrica pelo teto?"
+    },
+    {
+     "id": "l347",
+     "item": "2.17",
+     "disc": "ELE",
+     "grupo": "Elétrica",
+     "texto": "O sistema de aterramento esta indicado de acordo com as diretrizes empresa ?"
+    },
+    {
+     "id": "l348",
+     "item": "2.18",
+     "disc": "ELE",
+     "grupo": "Elétrica",
+     "texto": "No caso de barramento blindado, foi verificado com a concessionária, projetista e consultor interno as possibilidades de materiais (cobre e aluminio) e o que adotaremos?"
+    },
+    {
+     "id": "l349",
+     "item": "2.19",
+     "disc": "ELE",
+     "grupo": "Elétrica",
+     "texto": "Foram verificadas as quantidades de circuitos, sua separação e comando?"
+    },
+    {
+     "id": "l350",
+     "item": "2.20",
+     "disc": "ELE",
+     "grupo": "Elétrica",
+     "texto": "Nos casos de opção de planta os pontos elétricos das paredes que serão retiradas foram transferidos para outras paredes?"
+    },
+    {
+     "id": "l351",
+     "item": "2.21",
+     "disc": "ELE",
+     "grupo": "Elétrica",
+     "texto": "Todos os pontos de ar condicionado (condensadoras e evaporadoras) estão alimentados?"
+    },
+    {
+     "id": "l352",
+     "item": "2.22",
+     "disc": "ELE",
+     "grupo": "Elétrica",
+     "texto": "Ar Condicionado - verificar em caso de entrega de previsão:\nInstalação elétrica do quadro até o ponto da condensadora, ponto de dreno e passantes em vigas para caminhamento da tubulação frigorigena"
+    },
+    {
+     "id": "l353",
+     "item": "2.23",
+     "disc": "ELE",
+     "grupo": "Elétrica",
+     "texto": "Ar Condicionado - verificar em caso de entrega de infra:\nInstalação elétrica do quadro até o ponto da condensadora, ponto de dreno e tubulação frigorigena"
+    },
+    {
+     "id": "l354",
+     "item": "2.24",
+     "disc": "ELE",
+     "grupo": "Elétrica",
+     "texto": "Verificada locação dos interruptores? Evitar que os mesmos fiquem posicionados atrás de armários e portas. Verificados interruptores paralelos (se aplicável)?"
+    },
+    {
+     "id": "l355",
+     "item": "2.25",
+     "disc": "ELE",
+     "grupo": "Elétrica",
+     "texto": "Os pontos elétricos estão distribuidos de acordo com o layout de arquitetura e material de vendas?"
+    },
+    {
+     "id": "l356",
+     "item": "2.26",
+     "disc": "ELE",
+     "grupo": "Elétrica",
+     "texto": "Previsto ponto elétrica próximo as churrasqueira no pavimento tipo?"
+    },
+    {
+     "id": "l357",
+     "item": "2.27",
+     "disc": "ELE",
+     "grupo": "Elétrica",
+     "texto": "Verificada quantidade de pontos elétricos das áreas de uso comum de acordo com as diretrizes da empresa?"
+    },
+    {
+     "id": "l358",
+     "item": "2.28",
+     "disc": "ELE",
+     "grupo": "Elétrica",
+     "texto": "Verificado se os pontos das áreas de uso comum estão adequados à Norma 9050, considerando pontos baixos com h= 40cm e pontos médios com h= 1,00m"
+    },
+    {
+     "id": "l359",
+     "item": "2.29",
+     "disc": "ELE",
+     "grupo": "Elétrica",
+     "texto": "Foi prevista alimentação para coifa ou depurador?"
+    },
+    {
+     "id": "l360",
+     "item": "2.30",
+     "disc": "ELE",
+     "grupo": "Elétrica",
+     "texto": "Foi prevista alimentação para aquecedor de passagem?"
+    },
+    {
+     "id": "l361",
+     "item": "2.31",
+     "disc": "ELE",
+     "grupo": "Elétrica",
+     "texto": "Foi verificado se os pontos de automação estão alimentados por caixas elétricas conforme necessidade?"
+    },
+    {
+     "id": "l362",
+     "item": "2.32",
+     "disc": "ELE",
+     "grupo": "Elétrica",
+     "texto": "Em caso de empreendimentos de alto e altissimo padrão, quatidades e locação de pontos serão estudados particularmente"
+    },
+    {
+     "id": "l363",
+     "item": "2.33",
+     "disc": "ELE",
+     "grupo": "Elétrica",
+     "texto": "Foram verificadas se as alturas dos pontos elétricos estão de acordo com os padrões da Treèle?"
+    },
+    {
+     "id": "l364",
+     "item": "2.34",
+     "disc": "ELE",
+     "grupo": "Elétrica",
+     "texto": "A iluminação da escada está composta por arandela, bloco autonomo e sensor de presença, alimentado pelo gerador (como fonte de substituição em caso de emergência)"
+    },
+    {
+     "id": "l365",
+     "item": "2.35",
+     "disc": "ELE",
+     "grupo": "Elétrica",
+     "texto": "Verificado se a iluminação das escadas está com canalização aparente em perfilado metálico, instalado na lateral da escada"
+    },
+    {
+     "id": "l366",
+     "item": "2.36",
+     "disc": "ELE",
+     "grupo": "Elétrica",
+     "texto": "O acionamento da iluminação de quadras esportivas e áreas de uso específico está locado próximo ao ambiente ou na portaria?"
+    },
+    {
+     "id": "l367",
+     "item": "2.37",
+     "disc": "ELE",
+     "grupo": "Elétrica",
+     "texto": "Verificar se as tubulações de iluminação de garagem estão aparentes"
+    },
+    {
+     "id": "l368",
+     "item": "2.38",
+     "disc": "ELE",
+     "grupo": "Elétrica",
+     "texto": "Previsto ponto de interfone no WC PCD (pessoa com deficiência), conectados a portaria com altura h= 40cm do piso?"
+    },
+    {
+     "id": "l369",
+     "item": "2.39",
+     "disc": "ELE",
+     "grupo": "Elétrica",
+     "texto": "Verificar posição da botoeira da(s) campainha(s) e se há espaço suficiente."
+    },
+    {
+     "id": "l370",
+     "item": "2.40",
+     "disc": "ELE",
+     "grupo": "Elétrica",
+     "texto": "Verificar a posição da cigarra da campainha. No caso de existir entrada social e de serviço, indicar distinção entre os tipos de toque."
+    },
+    {
+     "id": "l371",
+     "item": "2.41",
+     "disc": "ELE",
+     "grupo": "Elétrica",
+     "texto": "Verificado se Grupo Gerador está atendendo aos ambientes conforme padrão do empreendimento?"
+    },
+    {
+     "id": "l372",
+     "item": "2.42",
+     "disc": "ELE",
+     "grupo": "Elétrica",
+     "texto": "Locar gerador preferencialmente no mesmo andar do centro de medições"
+    },
+    {
+     "id": "l373",
+     "item": "2.43",
+     "disc": "ELE",
+     "grupo": "Elétrica",
+     "texto": "Verificado se uma face do gerador está voltado para o exterior?"
+    },
+    {
+     "id": "l374",
+     "item": "2.44",
+     "disc": "ELE",
+     "grupo": "Elétrica",
+     "texto": "Verificado se a tomada de ar para o gerador está oposta a saída de ar quente?"
+    },
+    {
+     "id": "l375",
+     "item": "2.45",
+     "disc": "ELE",
+     "grupo": "Elétrica",
+     "texto": "Prevista porta corta fogo com folha dupla para a área do gerador?"
+    },
+    {
+     "id": "l376",
+     "item": "2.46",
+     "disc": "ELE",
+     "grupo": "Elétrica",
+     "texto": "Previsto sistema de monitoramento na guarita?"
+    },
+    {
+     "id": "l377",
+     "item": "2.47",
+     "disc": "ELE",
+     "grupo": "Elétrica",
+     "texto": "Empreendimentos: médio, médio alto e alto padrão, prevista infraestrutura para monitoramento (câmeras) no perímetro do terreno e áreas de acesso ao empreendimento?"
+    },
+    {
+     "id": "l378",
+     "item": "2.48",
+     "disc": "ELE",
+     "grupo": "Elétrica",
+     "texto": "Empreendimentos econômicos, prevista tubulação seca para monitoramento?"
+    },
+    {
+     "id": "l379",
+     "item": "2.49",
+     "disc": "ELE",
+     "grupo": "Elétrica",
+     "texto": "Verificar se foi previsto ponto elétrico para os bebedouros."
+    },
+    {
+     "id": "l380",
+     "item": "2.50",
+     "disc": "ELE",
+     "grupo": "Elétrica",
+     "texto": "As tomadas estão afastadas a pelo menos 30cm dos pontos de gás e hidráulicos?"
+    },
+    {
+     "id": "l381",
+     "item": "2.51",
+     "disc": "ELE",
+     "grupo": "Elétrica",
+     "texto": "Previsto interfones em todos os ambientes de uso comum interligados à guarita?"
+    },
+    {
+     "id": "l382",
+     "item": "2.52",
+     "disc": "ELE",
+     "grupo": "Elétrica",
+     "texto": "Verificado se há ponto de interfone locado próximo a bancada da cozinha?"
+    },
+    {
+     "id": "l383",
+     "item": "2.53",
+     "disc": "ELE",
+     "grupo": "Elétrica",
+     "texto": "O quadro de sistemas está locado e alinhado proximo ao quadro elétrico pelo eixo?"
+    },
+    {
+     "id": "l384",
+     "item": "2.54",
+     "disc": "ELE",
+     "grupo": "Elétrica",
+     "texto": "A tubulação de TV e telefone está separada das demais?"
+    },
+    {
+     "id": "l385",
+     "item": "2.55",
+     "disc": "ELE",
+     "grupo": "Elétrica",
+     "texto": "Caixas dos terminais de rede devem ficar localizadas preferencialmente no hall de serviço do térreo"
+    },
+    {
+     "id": "l386",
+     "item": "2.56",
+     "disc": "ELE",
+     "grupo": "Elétrica",
+     "texto": "Previsto ponto de aterramento do quadro?"
+    },
+    {
+     "id": "l387",
+     "item": "2.57",
+     "disc": "ELE",
+     "grupo": "Elétrica",
+     "texto": "Sistema de aquecimento solar - EM DESENVOLVIMENTO"
+    },
+    {
+     "id": "l388",
+     "item": "2.58",
+     "disc": "ELE",
+     "grupo": "Elétrica",
+     "texto": "SPDA - considerado anel de aterramento unindo os elementos da fundação e estrutura com caixas de inspeção nos pilares do subsolo?"
+    },
+    {
+     "id": "l389",
+     "item": "2.59",
+     "disc": "ELE",
+     "grupo": "Elétrica",
+     "texto": "SPDA - prevista interligação equipotencial entre a barra de aço pilar, com as armações da laje?"
+    },
+    {
+     "id": "l390",
+     "item": "2.60",
+     "disc": "ELE",
+     "grupo": "Elétrica",
+     "texto": "Utilizada barra chata em todo o perímetro da torre?"
+    },
+    {
+     "id": "l391",
+     "item": "3.1",
+     "disc": "ARQ",
+     "grupo": "Arquitetura",
+     "texto": "A numeração dos finais dos apartamentos estão de acordo com projeto de arquitetura (final 1, 2, 3, etc.)?"
+    },
+    {
+     "id": "l392",
+     "item": "3.2",
+     "disc": "ARQ",
+     "grupo": "Arquitetura",
+     "texto": "Os espaços para as prumadas no tipo foram adequadamente definidos no projeto de arquitetura?"
+    },
+    {
+     "id": "l393",
+     "item": "3.3",
+     "disc": "ARQ",
+     "grupo": "Arquitetura",
+     "texto": "Verificar se a exaustão da churrasqueira possui quadro elétrico espécifico com acionamento na portaria"
+    },
+    {
+     "id": "l394",
+     "item": "4.1",
+     "disc": "EST",
+     "grupo": "Estrutura",
+     "texto": "As passagens pelas lajes estão adequadamente dimensionadas e transcritas no projeto de estrutura com dimensões otimizadas para facilitar a montagem?"
+    }
+   ]
+  },
+  "FUN": {
+   "nome": "Fundação",
+   "itens": [
+    {
+     "id": "l398",
+     "item": "2.14",
+     "disc": "FUND",
+     "grupo": "Fundação",
+     "texto": "Solicitar ao Projetista de fundação a locação dos pontos de sondagens complementares."
+    },
+    {
+     "id": "l399",
+     "item": "2.16",
+     "disc": "FUND",
+     "grupo": "Fundação",
+     "texto": "Definir a necessidade do projeto de drenagem subterrânea/ taludes."
+    },
+    {
+     "id": "l400",
+     "item": "2.17",
+     "disc": "FUND",
+     "grupo": "Fundação",
+     "texto": "Definir na folha do projeto: fck, slump mínimo e as cargas consideradas."
+    },
+    {
+     "id": "l401",
+     "item": "2.20",
+     "disc": "FUND",
+     "grupo": "Fundação",
+     "texto": "Deverá constar no projeto nota do projetista indicando necessidade de ensaios para monitoramento de recalque."
+    },
+    {
+     "id": "l402",
+     "item": "2.21",
+     "disc": "FUND",
+     "grupo": "Fundação",
+     "texto": "Para contenções onde sejam necessários perfis metálicos, considerar placas pré-moldadas em concreto entre os perfis, conforme diretriz da Treèle."
+    },
+    {
+     "id": "l403",
+     "item": "2.22",
+     "disc": "FUND",
+     "grupo": "Fundação",
+     "texto": "No caso de fundações que necessitem de maquinário pesado (Ex: Hélice continua, etc.) verificar junto ao projetista os acessos ao terreno.\nObs.: Aprovar junto a Gerência."
+    },
+    {
+     "id": "l404",
+     "item": "2.23",
+     "disc": "FUND",
+     "grupo": "Fundação",
+     "texto": "No caso de terrenos acidentados com fundações que necessitem de maquinário pesado , verificar junto ao consultor a necessidade de platôs que permitam o caminhamento do equipamento para execução da fundação.\nObs.: Aprovar junto a Gerência."
+    },
+    {
+     "id": "l405",
+     "item": "2.24",
+     "disc": "FUND",
+     "grupo": "Fundação",
+     "texto": "Sempre que possível evitar perfis metálicos utilizando a solução de taludes provisórios (que posteriormente serão reaterrados), e cortina de concreto ou alvenaria estrutural.\nObs.: Aprovar junto a Gerência."
+    },
+    {
+     "id": "l406",
+     "item": "2.25",
+     "disc": "FUND",
+     "grupo": "Fundação",
+     "texto": "Quando houver talude provisório para reduzir linha de tirantes na contenção, considerar que o talude não ultrapasse mais de 1 pavimento (o talude deve ficar abaixo da laje do pavimento)."
+    },
+    {
+     "id": "l407",
+     "item": "2.26",
+     "disc": "FUND",
+     "grupo": "Fundação",
+     "texto": "Para fundação dos muros de divisa deverá ser considerado sempre que a execução será posterior à fundação da torre com strauss ou broca."
+    },
+    {
+     "id": "l408",
+     "item": "2.27",
+     "disc": "FUND",
+     "grupo": "Fundação",
+     "texto": "Checar se o RN está correto e compatibilizado com a arquitetura, paisagismo e locação de obra. O RN deverá ser locado no alinhamento da divisa do terreno com a calçada e não na guia.\nObs.: Aprovar junto a Gerência."
+    },
+    {
+     "id": "l409",
+     "item": "2.28",
+     "disc": "FUND",
+     "grupo": "Fundação",
+     "texto": "Agendar visita ao terreno com o topógrafo e projetista de fundação para orientar o levantamento pós-demolição e checar possíveis interferências."
+    },
+    {
+     "id": "l410",
+     "item": "2.29",
+     "disc": "FUND",
+     "grupo": "Fundação",
+     "texto": "Se houver no terreno edificação de grande porte (galpão) avisar custos e prever verba para revisão de projeto caso não seja possivel levantar a fundação existente no pós-demolição."
+    },
+    {
+     "id": "l411",
+     "item": "2.30",
+     "disc": "FUND",
+     "grupo": "Fundação",
+     "texto": "Checar com o consultor de solos a necessidade de cravação de perfis para a câmara transformadora junto ao alinhamento da rua e na divisa com o vizinho. Verificar se há projeto de fundação para a câmara transformadora."
+    },
+    {
+     "id": "l412",
+     "item": "2.31",
+     "disc": "FUND",
+     "grupo": "Fundação",
+     "texto": "Verificar se para emissão do projeto executivo foi utilizado o levantamento planialtimétrico pós demolição, a base de arquitetura do executivo e as cargas definitivas da estrutura."
+    },
+    {
+     "id": "l413",
+     "item": "2.33",
+     "disc": "FUND",
+     "grupo": "Fundação",
+     "texto": "O projeto executivo deverá ser verificado, e quando necessário justificado, quanto ao possível desvio em relação ao projeto na fase de EP (desvio admitido até 3%). Fazer planilha comparativa, constando cargas consideradas, número e diâmetro de estacas em EP e Executivo.\nObs.: Aprovar com a Gerência."
+    },
+    {
+     "id": "l414",
+     "item": "2.34",
+     "disc": "FUND",
+     "grupo": "Fundação",
+     "texto": "Não é permitido o uso de muretas, ficando a solução sempre em tentos (h máxima 15cm) ou piso elevado. Obs.: Na necessidade de uso de mureta aprovar com a gerência."
+    },
+    {
+     "id": "l415",
+     "item": "2.35",
+     "disc": "FUND",
+     "grupo": "Fundação",
+     "texto": "Confirmar a viabilidade da solução sugerida pelo projetista no local da obra"
+    },
+    {
+     "id": "l416",
+     "item": "3.1",
+     "disc": "EST",
+     "grupo": "Estrutura",
+     "texto": "Verificar se todos os pontos de carga contem fundação"
+    },
+    {
+     "id": "l429",
+     "item": "2.1",
+     "disc": "FUND",
+     "grupo": "Desempenho (NBR 15575)",
+     "texto": "O memorial de fundações indica a Vida Útil de Projeto (VUP) adotada, compatível com a VUP mínima exigida para o sistema estrutural pela NBR 15575-1/2?"
+    },
+    {
+     "id": "l430",
+     "item": "2.2",
+     "disc": "FUND",
+     "grupo": "Desempenho (NBR 15575)",
+     "texto": "O projeto de fundação prevê, quando aplicável, sistema de monitoramento de recalques compatível com os recalques admissíveis estabelecidos pela NBR 15575-2?"
+    },
+    {
+     "id": "l431",
+     "item": "2.3",
+     "disc": "FUND",
+     "grupo": "Desempenho (NBR 15575)",
+     "texto": "As fundações e contenções junto às divisas garantem a estanqueidade e a ausência de infiltração no subsolo, atendendo ao requisito de saúde, higiene e qualidade do ar da NBR 15575-1?"
+    }
+   ]
+  },
+  "DES": {
+   "nome": "Simulações de desempenho",
+   "itens": [
+    {
+     "id": "l417",
+     "item": "2.1",
+     "disc": "DES",
+     "grupo": "Desempenho",
+     "texto": "O arquivo climático (.epw) e a zona bioclimática adotados correspondem ao município de implantação do empreendimento. Quando utilizada estação meteorológica de outro município, há justificativa técnica no laudo."
+    },
+    {
+     "id": "l418",
+     "item": "2.2",
+     "disc": "DES",
+     "grupo": "Desempenho",
+     "texto": "Os sistemas construtivos, vidros e refletâncias/absortâncias simulados conferem com o projeto executivo, o memorial descritivo e a paleta de fachada aprovada, sem descrição ambígua ou condicional na ficha de materiais."
+    },
+    {
+     "id": "l419",
+     "item": "2.3",
+     "disc": "DES",
+     "grupo": "Desempenho",
+     "texto": "Os arquivos-fonte listados no laudo (DWG, cortes, referências de cor) correspondem às revisões vigentes liberadas para obra, com identificação de revisão e data."
+    },
+    {
+     "id": "l420",
+     "item": "2.4",
+     "disc": "DES",
+     "grupo": "Desempenho",
+     "texto": "O nível de desempenho atingido é compatível com o exigido no PDE (PRO-FL-003) e com a pontuação pretendida no Selo Casa Azul + CAIXA. Divergência gera ação registrada, não apenas arquivamento do laudo."
+    },
+    {
+     "id": "l421",
+     "item": "2.5",
+     "disc": "DES",
+     "grupo": "Desempenho",
+     "texto": "A equivalência de pavimentos e torres cobre todas as unidades habitacionais e ambientes de permanência prolongada do empreendimento; havendo amostragem, o critério está justificado no laudo."
+    }
+   ]
+  }
+ },
+ "disciplinas": {
+  "ARQ": [
+   "ARQ"
+  ],
+  "EST": [
+   "EST"
+  ],
+  "HID": [
+   "HID"
+  ],
+  "ELE": [
+   "ELE"
+  ],
+  "FUN": [
+   "SOND",
+   "FUN"
+  ],
+  "TOP": [
+   "TOP"
+  ],
+  "CTL": [
+   "DES"
+  ]
+ }
+}

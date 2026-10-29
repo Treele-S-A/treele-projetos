@@ -23,6 +23,8 @@ import Notificacoes from "./paginas/Notificacoes";
 import Obras from "./paginas/Obras";
 import Registro from "./paginas/Registro";
 import SolicitacoesGerais from "./paginas/SolicitacoesGerais";
+import Atas from "./paginas/Atas";
+import Ata from "./paginas/Ata";
 import Usuarios from "./paginas/Usuarios";
 
 // O visualizador 3D (three.js + leitor de IFC) só carrega quando alguém abre um
@@ -230,6 +232,12 @@ function Moldura() {
               />
             </NavLink>
           )}
+          {/* Atas de análise crítica (TREELE, 29/10/2026): registro da equipe. */}
+          {!usuario?.comercial && (
+            <NavLink to="/atas" className={({ isActive }) => (isActive ? "ativo" : "")}>
+              Atas de análise crítica
+            </NavLink>
+          )}
           {usuario?.admin && (
             <>
               <NavLink
@@ -325,6 +333,8 @@ export default function App() {
         <Route path="/conta" element={<Conta />} />
         <Route path="/notificacoes" element={<Notificacoes />} />
         <Route path="/solicitacoes" element={<SolicitacoesGerais />} />
+        <Route path="/atas" element={<Atas />} />
+        <Route path="/atas/:ataId" element={<Ata />} />
         <Route path="*" element={<Navigate to={inicial} replace />} />
       </Route>
     </Routes>

@@ -7,11 +7,13 @@ import {
   formatarData,
   lerToken,
   type Documento,
+  type GrupoAta,
   type Pagina,
   type StatusRevisao,
   type TipoArquivo,
 } from "../api";
 import Arvore from "../Arvore";
+import FormularioAta from "../FormularioAta";
 import QuadroConflitos from "../QuadroConflitos";
 import { MarcaSolicitada } from "../Solicitacoes";
 import { Aviso, CapaObra, Carregando, Estado, Vazio } from "../componentes";
@@ -125,6 +127,9 @@ export default function Acervo() {
   const [avisarLote, setAvisarLote] = useState(true);
   const [liberando, setLiberando] = useState(false);
   const [resultadoLote, setResultadoLote] = useState<ResultadoLote | null>(null);
+  // Atas de análise crítica que faltam antes do lote (TREELE, 29/10/2026): um
+  // checklist por obra e disciplina, em sequência; depois, a liberação.
+  const [filaAtas, setFilaAtas] = useState<{ grupos: GrupoAta[]; atual: number } | null>(null);
   // Vindo de um link de pasta (?pasta=ARQ/PE): abre nas pastas, com ela aberta.
   const [parametros] = useSearchParams();
   const pastaPedida = parametros.get("pasta") ?? undefined;
@@ -325,6 +330,36 @@ export default function Acervo() {
     setLiberando(true);
     setErro(null);
     try {
+      const grupos = await api.post<GrupoAta[]>("/atas/pendentes", {
+        revisao_ids: marcadasEmRevisao.map(([id]) => id),
+      });
+      if (grupos.length) {
+        setFilaAtas({ grupos, atual: 0 });
+        return;
+      }
+    } catch (ex) {
+      setErro(ex instanceof ErroApi ? ex.message : "Não foi possível abrir a análise crítica.");
+      setLiberando(false);
+      return;
+    }
+    await enviarLiberacao();
+  }
+
+  /** Ata salva: a próxima disciplina, ou, na última, a liberação. As de ata
+   *  não conforme a API recusa, com o motivo. */
+  async function ataDoLoteSalva() {
+    if (!filaAtas) return;
+    if (filaAtas.atual + 1 < filaAtas.grupos.length) {
+      setFilaAtas({ ...filaAtas, atual: filaAtas.atual + 1 });
+      return;
+    }
+    setFilaAtas(null);
+    await enviarLiberacao();
+  }
+
+  async function enviarLiberacao() {
+    setLiberando(true);
+    try {
       const r = await api.post<ResultadoLote>("/revisoes/liberar-lote", {
         revisao_ids: marcadasEmRevisao.map(([id]) => id),
         observacao: observacaoLote.trim() || null,
@@ -385,6 +420,23 @@ export default function Acervo() {
             {obra.cliente && <span className="capa-sub">{obra.cliente}</span>}
           </span>
         </CapaObra>
+      )}
+      {filaAtas && (
+        <FormularioAta
+          key={filaAtas.atual}
+          grupo={filaAtas.grupos[filaAtas.atual]}
+          posicao={filaAtas.grupos.length > 1 ? `${filaAtas.atual + 1} de ${filaAtas.grupos.length}` : undefined}
+          aoSalvar={ataDoLoteSalva}
+          aoFechar={() => {
+            setFilaAtas(null);
+            setLiberando(false);
+            setErro(
+              filaAtas.atual > 0
+                ? "Liberação interrompida. As atas já salvas ficam registradas; libere de novo para continuar."
+                : "Liberação interrompida: sem a ata de análise crítica, as revisões não são liberadas.",
+            );
+          }}
+        />
       )}
       <div className="cabecalho-area">
         <div>
@@ -777,6 +829,8 @@ export default function Acervo() {
                   Cada uma passa pelas mesmas conferências da liberação avulsa (o DWG precisa do PDF,
                   por exemplo); as que não puderem sair voltam com o motivo, e as outras são
                   liberadas. Pedidos de revisão autorizados desses documentos fecham como atendidos.
+                  Antes, abre o checklist de análise crítica (PRO-FL-005): um por disciplina, valendo
+                  para todas as revisões dela neste lote.
                 </p>
                 <label className="campo" style={{ display: "block" }}>
                   <span className="rotulo">Observação (opcional, vale para todas)</span>

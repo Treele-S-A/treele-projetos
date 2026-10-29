@@ -8,12 +8,15 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import VistaAnexada from "./VistaAnexada";
+import FormularioAta from "./FormularioAta";
 import {
   api,
   ErroApi,
   formatarData,
   formatarTamanho,
   type Arquivo,
+  type Ata,
+  type GrupoAta,
   type Revisao,
   type Solicitacao,
   type Verificacao,
@@ -154,18 +157,65 @@ function LinhaRevisao({
   const [observacao, setObservacao] = useState("");
   // O coordenador escolhe se a obra é avisada (TREELE, 15/10/2026).
   const [avisar, setAvisar] = useState(true);
+  // Ata de análise crítica (TREELE, 29/10/2026): sem ela, liberar abre o
+  // checklist primeiro.
+  const [grupoAta, setGrupoAta] = useState<GrupoAta | null>(null);
+  const [avisoAta, setAvisoAta] = useState<string | null>(null);
 
   const emRevisao = revisao.status === "em_revisao";
   const cancelavel =
     revisao.status !== "cancelado" && (admin || (emRevisao && podeCancelar));
 
-  useEffect(() => {
+  function verificar() {
     if (!emRevisao) return;
     api
       .get<Verificacao>(`/revisoes/${revisao.id}/verificar`)
       .then(setVerificacao)
       .catch(() => setVerificacao(null));
-  }, [revisao.id, emRevisao]);
+  }
+
+  useEffect(verificar, [revisao.id, emRevisao]);
+
+  async function liberar() {
+    if (!verificacao?.falta_ata) {
+      abrirDecisao("liberar");
+      return;
+    }
+    setOcupado(true);
+    setErro(null);
+    try {
+      const [grupo] = await api.post<GrupoAta[]>("/atas/pendentes", { revisao_ids: [revisao.id] });
+      if (grupo) setGrupoAta(grupo);
+      else verificar();
+    } catch (ex) {
+      setErro(ex instanceof ErroApi ? ex : new ErroApi(0, "Não foi possível abrir a análise crítica."));
+    } finally {
+      setOcupado(false);
+    }
+  }
+
+  /** Ata salva: conforme, segue para a liberação; com "N", não libera — a
+   *  reprovação já vem aberta com os itens não conformes. */
+  async function ataSalva(ata: Ata) {
+    setGrupoAta(null);
+    verificar();
+    await aoMudar();
+    if (ata.resultado === "conforme") {
+      setAvisoAta(`${ata.codigo} registrada. Confira e libere.`);
+      abrirDecisao("liberar");
+    } else {
+      setAvisoAta(
+        `${ata.codigo} registrou ${ata.nao_conformes} ite${ata.nao_conformes === 1 ? "m não conforme" : "ns não conformes"}: a R${revisao.numero} não pode ser liberada. Reprove (a observação já traz os itens) ou refaça a análise.`,
+      );
+      abrirDecisao("reprovar");
+      setObservacao(
+        ata.itens
+          .filter((i) => i.resposta === "N")
+          .map((i) => `${i.item} ${i.texto.split("\n")[0]} — ${i.comentario ?? ""}`)
+          .join("\n"),
+      );
+    }
+  }
 
   function abrirDecisao(qual: Decisao) {
     setErro(null);
@@ -279,6 +329,16 @@ Isto não pode ser desfeito.`)) {
             </div>
           )}
 
+          {revisao.ata && (
+            <div style={{ marginTop: 10 }} className="linha-ata">
+              <span className="rotulo">Ata de análise crítica</span>{" "}
+              <Link to={`/atas/${revisao.ata.id}`}>{revisao.ata.codigo}</Link>{" "}
+              <span className={`resultado-ata ${revisao.ata.resultado}`}>
+                {revisao.ata.resultado === "conforme" ? "Conforme" : "Não conforme"}
+              </span>
+            </div>
+          )}
+
           {revisao.descricao_ia && (
             <div style={{ marginTop: 10 }}>
               <span className="rotulo">O que mudou (gerado automaticamente)</span>
@@ -378,8 +438,15 @@ Isto não pode ser desfeito.`)) {
         </div>
       )}
 
+      {grupoAta && (
+        <FormularioAta grupo={grupoAta} aoSalvar={ataSalva} aoFechar={() => setGrupoAta(null)} />
+      )}
+
       {emRevisao && (
         <div style={{ marginTop: 14 }}>
+          {avisoAta && (
+            <Aviso tom={decisao === "reprovar" ? "atencao" : "ok"} titulo={avisoAta} />
+          )}
           {verificacao && verificacao.impedimentos.length > 0 && (
             <Aviso
               tom="atencao"
@@ -417,10 +484,11 @@ Isto não pode ser desfeito.`)) {
                 <div className="linha" style={{ marginTop: 10 }}>
                   <button
                     className="botao"
-                    disabled={ocupado || !verificacao?.pode_publicar}
-                    onClick={() => abrirDecisao("liberar")}
+                    disabled={ocupado || !verificacao?.tem_permissao || verificacao.impedimentos.length > 0}
+                    onClick={liberar}
+                    title={verificacao?.falta_ata ? "Abre antes o checklist de análise crítica (PRO-FL-005)" : undefined}
                   >
-                    Liberar para obra
+                    {verificacao?.falta_ata ? "Liberar para obra…" : "Liberar para obra"}
                   </button>
                   <button
                     className="botao secundario"

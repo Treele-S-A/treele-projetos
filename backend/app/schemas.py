@@ -234,6 +234,15 @@ class ArquivoOut(Modelo):
     enviado_por: UsuarioOut | None = None
 
 
+class AtaResumo(Modelo):
+    """A ata de análise crítica que vale para a revisão (a última)."""
+
+    id: int
+    codigo: str
+    resultado: str
+    criada_em: datetime
+
+
 class RevisaoOut(Modelo):
     id: int
     numero: str
@@ -251,6 +260,7 @@ class RevisaoOut(Modelo):
     reprovada_por: UsuarioOut | None = None
     vista_reprovacao_id: int | None = None
     arquivos: list[ArquivoOut] = []
+    ata: AtaResumo | None = None
 
 
 class RevisaoResumo(Modelo):

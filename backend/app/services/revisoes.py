@@ -57,9 +57,11 @@ def conferir_companheiros(revisao: Revisao, regra: dict | None) -> list[str]:
 
 
 def conferir_publicacao(
-    db: Session, revisao: Revisao, regra: dict | None
+    db: Session, revisao: Revisao, regra: dict | None, com_ata: bool = True
 ) -> list[str]:
-    """Todos os impedimentos para liberar esta revisão."""
+    """Todos os impedimentos para liberar esta revisão. `com_ata=False` deixa
+    a ata de análise crítica de fora: a tela a trata à parte, abrindo o
+    checklist em vez de só desabilitar o botão."""
     erros: list[str] = []
 
     if revisao.status == StatusRevisao.liberado_para_obra:
@@ -103,6 +105,13 @@ def conferir_publicacao(
             f"Já existe uma revisão mais recente liberada (R{mais_nova.numero}). "
             f"Liberar a R{revisao.numero} agora deixaria a obra com projeto antigo."
         )
+
+    if com_ata:
+        from . import atas
+
+        falta = atas.impedimento(revisao)
+        if falta:
+            erros.append(falta)
 
     return erros
 

@@ -293,6 +293,14 @@ class Revisao(Base):
     reprovada_por: Mapped["Usuario | None"] = relationship(
         foreign_keys=[reprovada_por_id]
     )
+    # Atas de análise crítica que cobrem esta revisão; vale a última.
+    atas: Mapped[list["AtaAnalise"]] = relationship(
+        secondary="atas_analise_revisoes", viewonly=True, order_by="AtaAnalise.id"
+    )
+
+    @property
+    def ata(self) -> "AtaAnalise | None":
+        return self.atas[-1] if self.atas else None
 
 
 class Arquivo(Base):
@@ -661,3 +669,58 @@ class Conflito(Base):
     documento_a: Mapped["Documento | None"] = relationship(foreign_keys=[documento_a_id])
     documento_b: Mapped["Documento | None"] = relationship(foreign_keys=[documento_b_id])
     atualizado_por: Mapped["Usuario | None"] = relationship()
+
+
+class AtaAnaliseRevisao(Base):
+    """Revisões que uma ata cobre: as pranchas da mesma disciplina liberadas
+    juntas cabem numa ata só."""
+
+    __tablename__ = "atas_analise_revisoes"
+
+    ata_id: Mapped[int] = mapped_column(
+        ForeignKey("atas_analise.id", ondelete="CASCADE"), primary_key=True
+    )
+    revisao_id: Mapped[int] = mapped_column(
+        ForeignKey("revisoes.id", ondelete="CASCADE"), primary_key=True, index=True
+    )
+
+
+class AtaAnalise(Base):
+    """Ata de análise crítica (TREELE, 29/10/2026): o checklist PRO-FL-005
+    respondido antes de liberar para obra, como pede o SIAC. Uma por liberação
+    de uma disciplina; cada revisão tem a sua. Não se edita: as perguntas e as
+    respostas ficam como foram respondidas, mesmo que a planilha mude depois.
+
+    Com algum "N" (não conforme), a ata fica registrada e as revisões dela não
+    podem ser liberadas: o caminho é reprovar, ou refazer a análise."""
+
+    __tablename__ = "atas_analise"
+    __table_args__ = (UniqueConstraint("obra_id", "numero", name="uq_ata_numero"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    obra_id: Mapped[int] = mapped_column(ForeignKey("obras.id", ondelete="CASCADE"), index=True)
+    disciplina_id: Mapped[int] = mapped_column(ForeignKey("disciplinas.id"))
+    # Sequencial na obra: ATA-UNO-007.
+    numero: Mapped[int] = mapped_column(Integer)
+    # "conforme" | "nao_conforme"
+    resultado: Mapped[str] = mapped_column(String(14))
+    # Formulário, revisão e bloco da planilha usados: "PRO-FL-005 rev. 02 · Hidráulica".
+    formulario: Mapped[str] = mapped_column(String(120))
+    # [{"id", "item", "disc", "grupo", "texto", "resposta": "S"|"N"|"NA", "comentario"}]
+    itens: Mapped[list] = mapped_column(JSON, default=list)
+    observacoes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Documento e número de cada revisão, como estavam ao assinar.
+    revisoes_texto: Mapped[list] = mapped_column(JSON, default=list)
+    criada_por_id: Mapped[int | None] = mapped_column(
+        ForeignKey("usuarios.id", ondelete="SET NULL"), nullable=True
+    )
+    criada_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=agora)
+
+    obra: Mapped["Obra"] = relationship()
+    disciplina: Mapped["Disciplina"] = relationship()
+    criada_por: Mapped["Usuario | None"] = relationship()
+    revisoes: Mapped[list["Revisao"]] = relationship(secondary="atas_analise_revisoes")
+
+    @property
+    def codigo(self) -> str:
+        return f"ATA-{self.obra.codigo}-{self.numero:03d}"

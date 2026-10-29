@@ -2574,3 +2574,276 @@ table.tabela {
     text-align: left;
   }
 }
+
+/* Ata de análise crítica — PRO-FL-005 (29/10/2026) */
+.fundo-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(0, 48, 63, 0.45);
+}
+.modal-ata {
+  display: flex;
+  flex-direction: column;
+  width: min(920px, 100%);
+  max-height: calc(100vh - 32px);
+  border-radius: var(--raio-folha);
+  background: var(--folha);
+  box-shadow: 0 18px 60px rgba(0, 48, 63, 0.35);
+  outline: none;
+}
+.modal-ata-topo {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 16px 20px 12px;
+  border-bottom: 1px solid var(--traco-fino);
+}
+.modal-ata-corpo {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px 20px 16px;
+}
+.modal-ata-rodape {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 20px 16px;
+  border-top: 1px solid var(--traco-fino);
+}
+.grupo-ata {
+  margin-top: 14px;
+}
+.grupo-ata-topo {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: baseline;
+  padding: 8px 0 6px;
+  border-bottom: 1px solid var(--traco-medio);
+  background: var(--folha);
+}
+.grupo-ata-topo h3 {
+  margin: 0;
+  font-family: var(--fonte-titulo);
+  font-size: 14px;
+  color: var(--petroleo);
+}
+.grupo-ata-topo .silencioso {
+  font-size: 12px;
+}
+.itens-ata {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.item-ata {
+  display: grid;
+  grid-template-columns: 44px 1fr auto;
+  gap: 4px 10px;
+  align-items: start;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--traco-fino);
+}
+.item-ata.falta {
+  box-shadow: inset 3px 0 0 var(--obsoleto-marca);
+  background: var(--obsoleto-fundo);
+}
+.item-ata-numero {
+  padding: 3px 0 0 6px;
+  font-size: 12px;
+  color: var(--tinta-3);
+}
+.item-ata-texto {
+  font-size: 13px;
+  line-height: 1.45;
+  white-space: pre-line;
+}
+.item-ata-disc {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 0 5px;
+  border: 1px solid var(--traco-medio);
+  border-radius: 999px;
+  font-size: 10.5px;
+  color: var(--tinta-3);
+  vertical-align: 1px;
+}
+.opcoes-ata {
+  display: flex;
+  gap: 4px;
+}
+.opcao-ata {
+  min-width: 40px;
+  padding: 4px 8px;
+  border: 1px solid var(--traco-medio);
+  border-radius: var(--raio);
+  background: var(--folha);
+  color: var(--tinta-2);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.opcao-ata:hover:not(:disabled) {
+  border-color: var(--traco-forte);
+}
+.opcao-ata.S.marcada {
+  border-color: var(--liberado);
+  background: var(--liberado);
+  color: #fff;
+}
+.opcao-ata.N.marcada {
+  border-color: var(--obsoleto);
+  background: var(--obsoleto);
+  color: #fff;
+}
+.opcao-ata.NA.marcada {
+  border-color: var(--cancelado);
+  background: var(--cancelado);
+  color: #fff;
+}
+.comentario-ata {
+  grid-column: 2 / 4;
+  padding: 5px 8px;
+  border: 1px solid var(--traco-medio);
+  border-radius: var(--raio);
+  font: inherit;
+  font-size: 12.5px;
+}
+.item-ata.nao .comentario-ata {
+  border-color: var(--obsoleto-marca);
+}
+@media (max-width: 640px) {
+  .item-ata {
+    grid-template-columns: 34px 1fr;
+  }
+  .opcoes-ata,
+  .comentario-ata {
+    grid-column: 2;
+  }
+}
+.resultado-ata {
+  display: inline-block;
+  padding: 0 7px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 18px;
+}
+.resultado-ata.conforme {
+  background: var(--liberado-fundo);
+  color: var(--liberado);
+}
+.resultado-ata.nao_conforme {
+  background: var(--obsoleto-fundo);
+  color: var(--obsoleto);
+}
+.linha-ata {
+  font-size: 13px;
+}
+.documento-ata {
+  max-width: 1000px;
+  padding: 28px 32px;
+}
+.ata-cabecalho {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  padding-bottom: 14px;
+  border-bottom: 2px solid var(--petroleo);
+}
+.ata-cabecalho h1 {
+  margin: 2px 0;
+  font-family: var(--fonte-titulo);
+  font-size: 22px;
+}
+.ata-simbolo {
+  width: 44px;
+  height: 44px;
+}
+.ata-codigo {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-end;
+  font-size: 15px;
+  font-weight: 700;
+}
+.ata-campos {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 10px 18px;
+  margin: 16px 0;
+}
+.ata-campos dt {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--tinta-3);
+}
+.ata-campos dd {
+  margin: 2px 0 0;
+}
+.documento-ata h2 {
+  margin: 20px 0 8px;
+  font-family: var(--fonte-titulo);
+  font-size: 15px;
+  color: var(--petroleo);
+}
+.tabela-ata td {
+  vertical-align: top;
+  font-size: 12.5px;
+}
+.grupo-tabela-ata td {
+  background: var(--nevoa);
+  font-weight: 700;
+  color: var(--petroleo);
+}
+.tabela-ata tr.linha-nao td {
+  background: var(--obsoleto-fundo);
+}
+.resposta-ata {
+  font-weight: 700;
+  text-align: center;
+}
+.resposta-ata.S {
+  color: var(--liberado);
+}
+.resposta-ata.N {
+  color: var(--obsoleto);
+}
+.ata-rodape {
+  margin-top: 22px;
+  font-size: 11.5px;
+}
+@media print {
+  .prancheta,
+  .nao-imprimir,
+  .assistente-botao,
+  .assistente-painel,
+  .aviso-versao {
+    display: none !important;
+  }
+  .area {
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  .documento-ata {
+    max-width: none;
+    padding: 0;
+    border: 0;
+    box-shadow: none;
+  }
+  .tabela-ata tr {
+    break-inside: avoid;
+  }
+}

@@ -20,6 +20,7 @@ from ..schemas import (
     RevisaoOut,
 )
 from ..services import auditoria
+from ..services import atas as servico_atas
 from ..services import revisoes as servico
 from ..services import notificacoes
 from ..services import solicitacoes as servico_solicitacoes
@@ -64,12 +65,16 @@ def verificar(
     """
     revisao, ctx = _carregar(db, usuario, revisao_id)
     impedimentos = servico.conferir_publicacao(
-        db, revisao, ctx.obra.regra_companheiro
+        db, revisao, ctx.obra.regra_companheiro, com_ata=False
     )
+    # A ata à parte: faltando só ela, o botão de liberar abre o checklist.
+    falta_ata = servico_atas.precisa_de_ata(revisao)
     return {
-        "pode_publicar": ctx.pode("publicar") and not impedimentos,
+        "pode_publicar": ctx.pode("publicar") and not impedimentos and not falta_ata,
         "tem_permissao": ctx.pode("publicar"),
         "impedimentos": impedimentos,
+        "falta_ata": falta_ata,
+        "ata_impedimento": servico_atas.impedimento(revisao),
         "tipos_presentes": sorted(servico.tipos_disponiveis(revisao)),
         "regra_companheiro": ctx.obra.regra_companheiro,
     }

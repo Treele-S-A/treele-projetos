@@ -120,6 +120,10 @@ class Settings(BaseSettings):
     # desliga). Pedido de 21/10/2026: só o estágio de projetos.
     chat_avisar_avaliacoes: str = "estagio.projetos@treele.com.br"
 
+    # Ata de análise crítica (PRO-FL-005) antes de liberar para obra — requisito
+    # do SIAC (TREELE, 29/10/2026). Desligar só nos testes que não tratam dela.
+    ata_analise_obrigatoria: bool = True
+
     # Endereço das telas, para os links dos e-mails. Vazio = descobre sozinho
     # (ver endereco_site).
     site_url: str = ""

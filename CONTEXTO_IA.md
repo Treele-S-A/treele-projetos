@@ -2,14 +2,20 @@
 
 Documentos: **`README.md`** (rodar local, fases), `docs/roteiro.md` (fases seguintes), `docs/hospedagem.md`,
 `docs/vercel.md`, `docs/render.md`, `docs/permissoes.md`, `docs/nomenclatura.md`, `docs/modelo3d.md`,
-`docs/chat.md`, `docs/notificacoes.md`, `docs/backup.md`. Mapa de todos os sistemas:
+`docs/chat.md`, `docs/notificacoes.md`, `docs/backup.md`, `docs/ata-analise-critica.md`. Mapa de todos os sistemas:
 `C:\GitHub\Desenvolvimento\MAPA_SISTEMAS.md`.
 
 ## Onde paramos
 
-- **28/10/2026:** no ar. Últimas entregas (até 27/10/2026): conflitos entre disciplinas com filtro e busca, pavimentos
-  "ocultar todos", BCF, chat do acervo com os modelos IFC e login Microsoft.
-- **Próximo passo:** seguir `docs/roteiro.md`.
+- **29/10/2026:** no ar a **ata de análise crítica (PRO-FL-005)**, exigida para o SIAC. Nenhuma revisão é liberada
+  para obra sem o checklist da disciplina preenchido num pop-up. Com algum "N", a ata fica registrada e a revisão não é
+  liberada. As atas aparecem na revisão e em "Atas de análise crítica", no menu lateral. Detalhes em
+  `docs/ata-analise-critica.md`.
+- **Próximo passo:** a TREELE usar a ata nas próximas liberações e dizer se o agrupamento de itens por disciplina está
+  certo. Disciplinas sem bloco na planilha (GAS, INC, CLI…) só têm os itens de representação gráfica. Depois, seguir
+  `docs/roteiro.md`.
+- **Pendente com a TREELE:** confirmar se a sondagem fica com Fundação (FUN) e se os requisitos de desempenho de
+  vedação (VED) ficam com Arquitetura (ARQ).
 
 ## O que é
 Gestão de revisões de projetos de engenharia e arquitetura: nomenclatura padronizada, catálogo por
@@ -37,3 +43,4 @@ login Microsoft Entra ID.
 Uma linha por trabalho, a mais recente no fim: `AAAA-MM-DD · pessoa · IA usada · o que mudou · commit`.
 
 - 2026-10-28 · TI (titreele) · Claude Code · criado este `CONTEXTO_IA.md`, `CLAUDE.md` e `AGENTS.md` com as regras obrigatórias de registro · (este commit)
+- 2026-10-29 · Estágio de projetos (Vinícius) · Claude Code · ata de análise crítica PRO-FL-005 obrigatória antes de liberar para obra: checklist por disciplina, lista de atas no menu e link na revisão · (este commit)
