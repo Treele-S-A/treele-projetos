@@ -34,10 +34,15 @@ log = logging.getLogger("treele.chat")
 
 URL = "https://api.anthropic.com/v1/messages"
 VERSAO_API = "2023-06-01"
-MAX_TOKENS_RESPOSTA = 2048
+# O Haiku 5.5 pensa antes de responder (raciocínio adaptativo, ligado por
+# padrão), e o raciocínio conta no limite. Com 2048, a pergunta de metros de
+# tubo por diâmetro gastava tudo pensando e voltava sem texto — "Não encontrei
+# uma resposta para isso" (avaliações 👎 de 21/10/2026, reproduzido em
+# 30/10/2026). 16000 é a margem recomendada sem streaming; é teto, não gasto.
+MAX_TOKENS_RESPOSTA = 16000
 # A leitura de um descritivo ou de uma tabela de prancha é longa: com 2048 ela
 # saía cortada no meio (teste com o acervo real, 16/10/2026).
-MAX_TOKENS_LEITURA = 4096
+MAX_TOKENS_LEITURA = 16000
 # Sobrecarga (529/500) ou limite por minuto (429) com espera curta: repete uma
 # vez depois da pausa. Espera longa não cabe no tempo da função.
 PAUSA_ANTES_DE_REPETIR = 2.0
@@ -195,7 +200,14 @@ def conversar(sistema: str, historico: list[Turno], ferramentas: Ferramentas) ->
                 raise ChatIndisponivel(
                     "O assistente não conseguiu responder a essa pergunta.", "recusa do modelo"
                 )
-            return _texto(resposta).strip() or "Não encontrei uma resposta para isso."
+            texto = _texto(resposta).strip()
+            if not texto and resposta.get("stop_reason") == "max_tokens":
+                log.warning("chat: resposta sem texto, limite de tokens atingido")
+                return (
+                    "A resposta ficou grande demais para sair de uma vez. Tente pedir uma parte "
+                    "(por exemplo, uma disciplina ou um pavimento por vez)."
+                )
+            return texto or "Não encontrei uma resposta para isso."
 
         # O que a IA diz antes de consultar ("Vou buscar...") é etapa na tela.
         ferramentas.anunciar(_texto(resposta))

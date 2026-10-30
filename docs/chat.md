@@ -208,3 +208,24 @@ perguntas em quatro papéis, todas certas conferidas com o banco e com o texto
 do PDF; nenhuma vazou o que o papel não vê. Média de US$ 0,0008 por pergunta
 (a mais cara, leitura de um descritivo de personalização, US$ 0,004) e de 3 a
 25 segundos.
+
+## Avaliações revistas em 30/10/2026
+
+São seis avaliações, uma 👍 e cinco 👎, todas no Serra.
+
+- **Metros de tubo por diâmetro** voltavam "Não encontrei uma resposta para isso".
+  - Causa: o Haiku 5.5 pensa antes de responder (raciocínio adaptativo,
+    ligado por padrão), e o raciocínio conta no `max_tokens`. Com 2048, a
+    tabela grande gastava o limite inteiro pensando e a resposta saía sem
+    texto (`stop_reason: max_tokens`).
+  - Correção: o limite subiu para 16000, que é teto e não gasto, também na
+    leitura de PDF.
+  - Se ainda assim estourar, a pessoa vê que a resposta ficou grande demais e
+    pode pedir por partes, em vez da mensagem genérica.
+  - A pergunta repetida com os dados de produção agora traz a tabela por
+    material e diâmetro.
+- **Endereço da obra** buscado nas pranchas, e não achado.
+  - Correção: o chat lê o endereço do cadastro da obra (o campo novo, nas
+    configurações), por `listar_obras` e `resumo_da_obra`.
+- As duas avaliações sobre "metragem de PVC" (21/10) já tinham sido tratadas
+  antes, com a dica de que o comprimento existe no modelo.

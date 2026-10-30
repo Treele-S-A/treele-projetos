@@ -140,7 +140,11 @@ DECLARACOES = [
     },
     {
         "name": "listar_obras",
-        "description": "Lista as obras que a pessoa pode ver, com código e nome.",
+        "description": (
+            "Lista as obras que a pessoa pode ver, com código, nome e endereço do "
+            "empreendimento (o cadastro da obra). Para \"qual o endereço da obra\", "
+            "use esta antes de procurar nas pranchas."
+        ),
     },
     {
         "name": "buscar_documentos",
@@ -487,7 +491,10 @@ class Ferramentas:
         }
 
     def listar_obras(self) -> dict[str, Any]:
-        return {"obras": [{"codigo": o.codigo, "nome": o.nome} for o in self._obras_visiveis()]}
+        return {"obras": [
+            {"codigo": o.codigo, "nome": o.nome, "endereco": o.endereco or "não cadastrado"}
+            for o in self._obras_visiveis()
+        ]}
 
     def buscar_documentos(self, obra=None, disciplina=None, fase=None, status=None, texto=None):
         from ..api.documentos import _aplicar_filtros, _consulta_base  # evita import circular
@@ -666,6 +673,7 @@ class Ferramentas:
             linha[rotulo] = linha.get(rotulo, 0) + 1
         saida: dict[str, Any] = {
             "obra": f"{ctx.obra.codigo} · {ctx.obra.nome}",
+            "endereco": ctx.obra.endereco or "não cadastrado",
             "documentos_por_disciplina_e_status": por_disciplina,
         }
         if not self.usuario.comercial:
