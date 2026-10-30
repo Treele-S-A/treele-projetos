@@ -1,6 +1,7 @@
 import secrets
 import time
 import logging
+import re
 from urllib.parse import urlencode
 
 import httpx
@@ -14,7 +15,7 @@ from ..db import get_db
 from ..config import settings
 from ..deps import usuario_atual
 from ..models import Usuario
-from ..schemas import LoginEntrada, SenhaAlterar, TokenSaida, UsuarioOut
+from ..schemas import LoginEntrada, PerfilAlterar, SenhaAlterar, TokenSaida, UsuarioOut
 from ..security import conferir_senha, criar_token, gerar_hash_senha, ler_token, validade
 from ..services import auditoria
 
@@ -109,7 +110,18 @@ def microsoft_callback(request: Request, code: str = "", state: str = "", error:
             raise ValueError("Identidade inválida")
     except (jwt.PyJWTError, ValueError, KeyError, httpx.HTTPError) as exc:
         # Não registrar código OAuth, token, segredo nem dados do usuário.
-        logger.warning("Falha no retorno Microsoft (%s, host=%s, cookie presente: %s): %s", etapa, request.url.hostname, bool(cookie), type(exc).__name__)
+        diagnostico = type(exc).__name__
+        if etapa == "troca do codigo" and isinstance(exc, httpx.HTTPStatusError):
+            try:
+                dados_erro = exc.response.json()
+            except ValueError:
+                dados_erro = {}
+            erro = dados_erro.get("error", "") if isinstance(dados_erro, dict) else ""
+            codigos = dados_erro.get("error_codes", []) if isinstance(dados_erro, dict) else []
+            erro = erro if isinstance(erro, str) and re.fullmatch(r"[a-z_]{1,40}", erro) else "desconhecido"
+            codigos = [codigo for codigo in codigos if isinstance(codigo, int) and 1000 <= codigo <= 99999999] if isinstance(codigos, list) else []
+            diagnostico = f"HTTP {exc.response.status_code}; {erro}; AADSTS {codigos[:3]}"
+        logger.warning("Falha no retorno Microsoft (%s, host=%s, cookie presente: %s): %s", etapa, request.url.hostname, bool(cookie), diagnostico)
         resposta = RedirectResponse(f"{frontend}/#entra_erro=Falha%20na%20autenticacao%20Microsoft", status_code=303)
     else:
         email = (claims.get("email") or claims.get("preferred_username") or "").strip().lower()
@@ -176,6 +188,35 @@ def _token(usuario: Usuario, manter_conectado: bool) -> TokenSaida:
 
 @router.get("/eu", response_model=UsuarioOut)
 def eu(usuario: Usuario = Depends(usuario_atual)):
+    return usuario
+
+
+@router.patch("/perfil", response_model=UsuarioOut)
+def alterar_perfil(
+    dados: PerfilAlterar,
+    request: Request,
+    usuario: Usuario = Depends(usuario_atual),
+    db: Session = Depends(get_db),
+):
+    nome = dados.nome.strip()
+    email = str(dados.email).strip().lower()
+    if len(nome) < 2:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Informe um nome com pelo menos 2 caracteres.")
+    if email != usuario.email:
+        if not email.endswith("@treele.com.br"):
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, "Use um e-mail corporativo da Treèle.")
+        if not dados.senha_atual or not conferir_senha(dados.senha_atual, usuario.senha_hash):
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, "Para alterar o e-mail, informe sua senha atual. Contas Microsoft devem ser atualizadas pela TI no Entra ID.")
+        if db.scalar(select(Usuario.id).where(Usuario.email == email, Usuario.id != usuario.id)):
+            raise HTTPException(status.HTTP_409_CONFLICT, "Este e-mail já está em uso.")
+    mudou = nome != usuario.nome or email != usuario.email
+    if mudou:
+        usuario.nome = nome
+        usuario.email = email
+        auditoria.registrar(db, acao="perfil_alterado", entidade="usuario", entidade_id=usuario.id,
+                            usuario=usuario, request=request)
+        db.commit()
+        db.refresh(usuario)
     return usuario
 
 

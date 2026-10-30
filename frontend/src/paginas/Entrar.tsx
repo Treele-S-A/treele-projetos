@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { api, ErroApi } from "../api";
-import { Aviso, SIMBOLO } from "../componentes";
+import { Aviso } from "../componentes";
 import { useSessao } from "../sessao";
 
 export default function Entrar() {
@@ -47,27 +47,35 @@ export default function Entrar() {
 
   return (
     <div className="tela-entrar">
-      <div>
+      <div className="entrar-conteudo">
         <div className="cartao-entrar">
           <div className="topo">
-            <img src={SIMBOLO} alt="" />
-            <h1 className="marca-nome">Projetos</h1>
-            <div className="marca-sub">Treèle Construtora</div>
+            <img src="/projetos-icon.png" alt="" />
+            <span className="entrar-eyebrow">PORTAL DE PROJETOS</span>
+            <h1 className="marca-nome">Treèle Projetos</h1>
+            <p className="marca-sub">Projetos, revisões e colaboração em um só lugar.</p>
           </div>
-
+          <p className="entrar-descricao">Acesse com sua conta da Treèle para acompanhar cada etapa da obra.</p>
+          {erro && (
+            <Aviso tom="erro">
+              {erro.includes("Solicite seu acesso") ? (
+                <>Acesso não permitido. <Link to="/solicitar-acesso">Solicite seu acesso</Link>.</>
+              ) : erro}
+            </Aviso>
+          )}
+          <div className="entrar-microsoft">
+            <button
+              className="botao-entra"
+              type="button"
+              disabled={enviando}
+              onClick={aoMicrosoft}
+            >
+              <span className="marca-microsoft" aria-hidden="true"><i /><i /><i /><i /></span>
+              Entrar com Microsoft Entra ID
+            </button>
+            <span>ou entre com e-mail e senha</span>
+          </div>
           <form onSubmit={aoEnviar}>
-            {erro && (
-              <Aviso tom="erro">
-                {erro.includes("Solicite seu acesso") ? (
-                  <>
-                    Acesso não permitido. <Link to="/solicitar-acesso">Solicite seu acesso</Link>.
-                  </>
-                ) : (
-                  erro
-                )}
-              </Aviso>
-            )}
-
             <label className="campo">
               <span className="rotulo">E-mail</span>
               <input
@@ -107,18 +115,6 @@ export default function Entrar() {
               {enviando ? "Entrando…" : "Entrar"}
             </button>
           </form>
-          <div className="entrar-microsoft">
-            <span>ou</span>
-            <button
-              className="botao-entra"
-              type="button"
-              disabled={enviando}
-              onClick={aoMicrosoft}
-            >
-              <span className="marca-microsoft" aria-hidden="true"><i /><i /><i /><i /></span>
-              Entrar com Microsoft Entra ID
-            </button>
-          </div>
         </div>
         {/* Projetista e comercial de fora (TREELE, 30/10/2026): pedem o
             acesso antes de tentar entrar. */}

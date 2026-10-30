@@ -1,16 +1,48 @@
-import { useState, type FormEvent } from "react";
-import { api, ErroApi, gravarToken } from "../api";
+import { useEffect, useState, type FormEvent } from "react";
+import { api, ErroApi, gravarToken, type Usuario } from "../api";
 import { Aviso } from "../componentes";
 import { useSessao } from "../sessao";
+import { useTema } from "../tema";
 
 export default function Conta() {
-  const { usuario } = useSessao();
+  const { usuario, recarregarUsuario } = useSessao();
+  const [tema, mudarTema] = useTema();
+  const [nome, setNome] = useState(usuario?.nome ?? "");
+  const [email, setEmail] = useState(usuario?.email ?? "");
+  const [senhaEmail, setSenhaEmail] = useState("");
+  const [erroPerfil, setErroPerfil] = useState<string | null>(null);
+  const [perfilSalvo, setPerfilSalvo] = useState(false);
+  const [salvandoPerfil, setSalvandoPerfil] = useState(false);
   const [atual, setAtual] = useState("");
   const [nova, setNova] = useState("");
   const [repetida, setRepetida] = useState("");
   const [erro, setErro] = useState<ErroApi | string | null>(null);
   const [ok, setOk] = useState(false);
   const [salvando, setSalvando] = useState(false);
+
+  useEffect(() => {
+    setNome(usuario?.nome ?? "");
+    setEmail(usuario?.email ?? "");
+  }, [usuario?.nome, usuario?.email]);
+
+  async function salvarPerfil(e: FormEvent) {
+    e.preventDefault();
+    setErroPerfil(null);
+    setPerfilSalvo(false);
+    setSalvandoPerfil(true);
+    try {
+      await api.patch<Usuario>("/auth/perfil", {
+        nome: nome.trim(), email: email.trim(), senha_atual: senhaEmail || null,
+      });
+      await recarregarUsuario();
+      setSenhaEmail("");
+      setPerfilSalvo(true);
+    } catch (ex) {
+      setErroPerfil(ex instanceof ErroApi ? ex.message : "Não foi possível salvar o perfil.");
+    } finally {
+      setSalvandoPerfil(false);
+    }
+  }
 
   async function trocar(e: FormEvent) {
     e.preventDefault();
@@ -51,6 +83,42 @@ export default function Conta() {
         <div>
           <span className="rotulo">{usuario?.email}</span>
           <h1>Minha conta</h1>
+        </div>
+      </div>
+
+      <div className="folha">
+        <div className="folha-titulo"><strong>Dados da conta</strong></div>
+        <form className="folha-corpo conta-formulario" onSubmit={salvarPerfil}>
+          {erroPerfil && <Aviso tom="erro">{erroPerfil}</Aviso>}
+          {perfilSalvo && <Aviso tom="ok">Dados atualizados.</Aviso>}
+          <div className="filtros">
+            <label className="campo"><span className="rotulo">Nome</span>
+              <input value={nome} onChange={(e) => setNome(e.target.value)} minLength={2} maxLength={160} autoComplete="name" required />
+            </label>
+            <label className="campo"><span className="rotulo">E-mail de acesso</span>
+              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" required />
+            </label>
+          </div>
+          {email.trim().toLowerCase() !== usuario?.email && <>
+            <label className="campo conta-senha-email"><span className="rotulo">Senha atual para confirmar a troca de e-mail</span>
+              <input type="password" value={senhaEmail} onChange={(e) => setSenhaEmail(e.target.value)} autoComplete="current-password" required />
+            </label>
+            <p className="silencioso conta-ajuda">Se você entra com Microsoft, peça à TI para atualizar o e-mail no Entra ID. Alterá-lo apenas aqui interromperia o acesso à conta atual.</p>
+          </>}
+          <button className="botao" disabled={salvandoPerfil || (nome.trim() === usuario?.nome && email.trim().toLowerCase() === usuario?.email)}>
+            {salvandoPerfil ? "Salvando…" : "Salvar dados"}
+          </button>
+        </form>
+      </div>
+
+      <div className="folha">
+        <div className="folha-titulo"><strong>Aparência</strong></div>
+        <div className="folha-corpo">
+          <p className="silencioso conta-ajuda">Escolha o tema deste navegador.</p>
+          <div className="conta-temas" role="group" aria-label="Tema do sistema">
+            <button type="button" className={tema === "claro" ? "ativo" : ""} aria-pressed={tema === "claro"} onClick={() => mudarTema("claro")}>☀ Tema claro</button>
+            <button type="button" className={tema === "escuro" ? "ativo" : ""} aria-pressed={tema === "escuro"} onClick={() => mudarTema("escuro")}>☾ Tema escuro</button>
+          </div>
         </div>
       </div>
 

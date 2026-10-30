@@ -72,6 +72,15 @@ async function pedir<T>(caminho: string, opcoes: RequestInit = {}): Promise<T> {
   }
 
   if (resposta.status === 401) {
+    if (caminho === "/auth/login") {
+      let corpo: unknown = null;
+      try {
+        corpo = await resposta.json();
+      } catch {
+        /* resposta sem corpo JSON */
+      }
+      throw normalizar(resposta.status, corpo);
+    }
     gravarToken(null);
     window.dispatchEvent(new Event("treele:sessao-expirada"));
     throw new ErroApi(401, "Sessão expirada. Entre novamente.");

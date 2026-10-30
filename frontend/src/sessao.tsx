@@ -22,6 +22,7 @@ interface Sessao {
   entrar(email: string, senha: string, manterConectado?: boolean): Promise<void>;
   sair(): void;
   recarregarObras(): Promise<void>;
+  recarregarUsuario(): Promise<void>;
 }
 
 const Contexto = createContext<Sessao | null>(null);
@@ -97,6 +98,10 @@ export function ProvedorSessao({ children }: { children: ReactNode }) {
     setObras(await api.get<Obra[]>("/obras"));
   }, []);
 
+  const recarregarUsuario = useCallback(async () => {
+    setUsuario(await api.get<Usuario>("/auth/eu"));
+  }, []);
+
   const valor = useMemo(
     () => ({
       usuario,
@@ -107,8 +112,9 @@ export function ProvedorSessao({ children }: { children: ReactNode }) {
       entrar,
       sair,
       recarregarObras,
+      recarregarUsuario,
     }),
-    [usuario, obras, disciplinas, fases, carregando, entrar, sair, recarregarObras],
+    [usuario, obras, disciplinas, fases, carregando, entrar, sair, recarregarObras, recarregarUsuario],
   );
 
   return <Contexto.Provider value={valor}>{children}</Contexto.Provider>;

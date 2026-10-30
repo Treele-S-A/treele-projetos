@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import {
   Navigate,
   NavLink,
@@ -11,7 +11,7 @@ import {
 } from "react-router-dom";
 import { api } from "./api";
 import Assistente from "./Assistente";
-import { Carregando, SIMBOLO } from "./componentes";
+import { Carregando } from "./componentes";
 import { CHAVE_OBRA, useSessao } from "./sessao";
 import Acervo from "./paginas/Acervo";
 import Configuracoes from "./paginas/Configuracoes";
@@ -29,6 +29,7 @@ import Fornecedores from "./paginas/Fornecedores";
 import SolicitarAcesso from "./paginas/SolicitarAcesso";
 import SolicitacoesAcesso from "./paginas/SolicitacoesAcesso";
 import Usuarios from "./paginas/Usuarios";
+import { useTema } from "./tema";
 
 // O visualizador 3D (three.js + leitor de IFC) só carrega quando alguém abre um
 // modelo: o resto do sistema não paga o peso dele.
@@ -129,6 +130,12 @@ function AvisoVersaoNova() {
 
 function Moldura() {
   const { usuario, obras, sair } = useSessao();
+  const [menuRecolhido, setMenuRecolhido] = useState(false);
+  const [contaAberta, setContaAberta] = useState(false);
+  const contaRef = useRef<HTMLDivElement>(null);
+  const [obrasAbertas, setObrasAbertas] = useState(false);
+  const obrasRef = useRef<HTMLDivElement>(null);
+  const [tema, mudarTema] = useTema();
   const local = useLocation();
   const navegar = useNavigate();
   const obraId = useObraAtiva(local.pathname);
@@ -156,33 +163,104 @@ function Moldura() {
   const equipeDoResponsavel = !admin && !!obra && pode("adicionar_membro");
   const projetista = obras.some((o) => o.papel === "projetista");
 
-  return (
-    <div className="app">
-      <nav className="prancheta">
-        <div className="marca">
-          <img className="marca-simbolo" src={SIMBOLO} alt="" />
-          <div>
-            <div className="marca-nome">Projetos</div>
-            <div className="marca-sub">Treèle Construtora</div>
-          </div>
-        </div>
+  useEffect(() => {
+    if (!contaAberta) return;
+    const fecharFora = (event: MouseEvent) => {
+      if (!contaRef.current?.contains(event.target as Node)) setContaAberta(false);
+    };
+    const fecharEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setContaAberta(false);
+    };
+    document.addEventListener("pointerdown", fecharFora);
+    document.addEventListener("keydown", fecharEscape);
+    return () => {
+      document.removeEventListener("pointerdown", fecharFora);
+      document.removeEventListener("keydown", fecharEscape);
+    };
+  }, [contaAberta]);
 
+  useEffect(() => setContaAberta(false), [local.pathname]);
+
+  useEffect(() => {
+    if (!obrasAbertas) return;
+    const fecharFora = (event: PointerEvent) => {
+      if (!obrasRef.current?.contains(event.target as Node)) setObrasAbertas(false);
+    };
+    const fecharEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setObrasAbertas(false);
+    };
+    document.addEventListener("pointerdown", fecharFora);
+    document.addEventListener("keydown", fecharEscape);
+    return () => {
+      document.removeEventListener("pointerdown", fecharFora);
+      document.removeEventListener("keydown", fecharEscape);
+    };
+  }, [obrasAbertas]);
+
+  useEffect(() => setObrasAbertas(false), [local.pathname, menuRecolhido]);
+
+  function sairDaConta() {
+    setContaAberta(false);
+    navegar("/", { replace: true });
+    sair();
+  }
+
+  return (
+    <div className={`app projetos-app ${menuRecolhido ? "menu-recolhido" : ""}`}>
+      <header className="projetos-topbar">
+        <button
+          className="projetos-logo-toggle"
+          type="button"
+          title={menuRecolhido ? "Expandir menu" : "Recolher menu"}
+          aria-label={menuRecolhido ? "Expandir menu" : "Recolher menu"}
+          aria-expanded={!menuRecolhido}
+          onClick={(event) => {
+            const icon = event.currentTarget.querySelector("img");
+            if (icon && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+              icon.getAnimations().forEach((animation) => animation.cancel());
+              icon.animate([{ transform: "rotate(0deg) scale(1)" }, { transform: "rotate(180deg) scale(.9)" }, { transform: "rotate(360deg) scale(1)" }], { duration: 620, easing: "cubic-bezier(.22,.8,.22,1)" });
+            }
+            setMenuRecolhido((valor) => !valor);
+          }}
+        ><img src="/projetos-icon.png" alt="" /></button>
+        <span className="projetos-topbar-title">Projetos <span>· {obra?.nome ?? "Todas as obras"}</span></span>
+        <div className="projetos-conta" ref={contaRef}>
+          <button className="projetos-topbar-conta" type="button" aria-expanded={contaAberta}
+            aria-haspopup="menu" onClick={() => setContaAberta((aberta) => !aberta)}>
+            <span className="projetos-conta-avatar">{usuario?.nome?.trim().charAt(0).toUpperCase() || "U"}</span>
+            <span className="projetos-conta-nome">{usuario?.nome ?? "Minha conta"}</span>
+            <span aria-hidden="true">⌄</span>
+          </button>
+          {contaAberta && <div className="projetos-conta-menu" role="menu">
+            <div className="projetos-conta-identidade"><strong>{usuario?.nome}</strong><span>{usuario?.email}</span></div>
+            <NavLink to="/conta" role="menuitem">Configurações da conta</NavLink>
+            <button type="button" role="menuitem" onClick={() => mudarTema(tema === "claro" ? "escuro" : "claro")}>
+              Tema {tema === "claro" ? "escuro" : "claro"}
+            </button>
+            <button type="button" role="menuitem" onClick={sairDaConta}>Sair da conta</button>
+          </div>}
+        </div>
+      </header>
+      <nav className="prancheta">
         {obras.length > 0 && (
-          <div className="seletor-obra">
+          <div className="seletor-obra" ref={obrasRef}>
             <span className="rotulo">Obra</span>
-            <select
-              value={obra?.id ?? ""}
-              onChange={(e) => navegar(`/obras/${e.target.value}/acervo`)}
-            >
-              <option value="" disabled>
-                Selecione
-              </option>
-              {obras.map((o) => (
-                <option key={o.id} value={o.id}>
-                  {o.codigo} · {o.nome}
-                </option>
-              ))}
-            </select>
+            <button className="seletor-obra-botao" type="button" aria-haspopup="menu"
+              aria-expanded={obrasAbertas} aria-label={`Selecionar obra: ${obra?.nome ?? "nenhuma selecionada"}`}
+              onClick={() => setObrasAbertas((aberto) => !aberto)}>
+              <span className="seletor-obra-codigo">{obra?.codigo ?? "—"}</span>
+              <span className="seletor-obra-nome">{obra?.nome ?? "Selecione uma obra"}</span>
+              <span className="seletor-obra-seta" aria-hidden="true">⌄</span>
+            </button>
+            {obrasAbertas && <div className="seletor-obra-lista" role="menu" aria-label="Obras disponíveis">
+              {obras.map((o) => <button key={o.id} type="button" role="menuitemradio"
+                aria-checked={o.id === obra?.id} className={o.id === obra?.id ? "ativo" : ""}
+                onClick={() => { setObrasAbertas(false); navegar(`/obras/${o.id}/acervo`); }}>
+                <span className="seletor-obra-opcao-codigo">{o.codigo}</span>
+                <span className="seletor-obra-opcao-nome">{o.nome}</span>
+                {o.id === obra?.id && <span className="seletor-obra-marcador" aria-hidden="true">✓</span>}
+              </button>)}
+            </div>}
           </div>
         )}
 
@@ -315,19 +393,7 @@ function Moldura() {
                   : ""}
           </div>
           <div className="acoes">
-            <NavLink to="/conta" className={({ isActive }) => (isActive ? "ativo" : "")}>
-              Minha conta
-            </NavLink>
-            <button
-              onClick={() => {
-                // Volta ao início antes de sair: quem entrar depois começa na
-                // tela de obras, não na última que a pessoa anterior abriu.
-                navegar("/", { replace: true });
-                sair();
-              }}
-            >
-              Sair
-            </button>
+            <button onClick={sairDaConta}>Sair</button>
           </div>
         </div>
       </nav>

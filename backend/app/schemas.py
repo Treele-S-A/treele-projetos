@@ -92,6 +92,12 @@ class SenhaAlterar(BaseModel):
     senha_nova: str = Field(min_length=8, max_length=128)
 
 
+class PerfilAlterar(BaseModel):
+    nome: str = Field(min_length=2, max_length=160)
+    email: EmailStr
+    senha_atual: str | None = None
+
+
 class SenhaRedefinir(BaseModel):
     # No corpo, nunca na URL: endereço com query string vai para o log de
     # acesso da hospedagem, para o histórico do navegador e para proxies.
