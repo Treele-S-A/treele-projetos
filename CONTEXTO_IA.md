@@ -7,6 +7,8 @@ Documentos: **`README.md`** (rodar local, fases), `docs/roteiro.md` (fases segui
 
 ## Onde paramos
 
+- **30/10/2026, integração para publicação:** as melhorias locais de interface, tema, perfil e seletor de obra foram mescladas aos quatro commits recentes do estágio de projetos (tipos de acesso, solicitações externas, chat e 3D). Build do frontend e suíte do backend passaram após o rebase. Próximo passo: publicar a `main` e verificar a implantação; pendente com a TREELE: homologar o visual e a edição de perfil em produção. `.env`, `.env1`, `.env.local` e a configuração local de banco/S3 não entram no Git.
+
 - **30/10/2026, seletor de obra e carimbo:** o seletor nativo da barra lateral foi substituído por uma lista própria com destaque da obra ativa, contraste em temas claro/escuro, fechamento por clique externo/Escape e animação leve. O carimbo de liberação no tema escuro deixou de usar `mix-blend-mode:multiply` e ganhou tinta verde clara legível sobre fundo escuro. Build validado; homologar no localhost. Sem commit/publicação.
 
 - **30/10/2026, PDFs no localhost:** preview usava PostgreSQL de produção, mas `STORAGE_BACKEND=local` com pasta temporária vazia; por isso documentos retornavam 404. Confirmado em leitura que o PDF de MIL existe no S3 de produção. API local reiniciada com `STORAGE_BACKEND=s3` e variáveis S3 já fornecidas no `vercel-producao.env`, sem copiar credenciais ao Git e mantendo `--lifespan off`. `/saude` por localhost e IP responde `storage=s3`; URL pré-assinada para o PDF retornou HTTP 206 `application/pdf`. Usuário precisa reabrir o documento a partir do sistema para obter novo link. Sem commit/publicação.
@@ -89,3 +91,4 @@ Uma linha por trabalho, a mais recente no fim: `AAAA-MM-DD · pessoa · IA usada
 - 2026-10-30 · TI · Codex · corrigido contraste do modo escuro nas telas gerais e nos painéis do visualizador 3D · sem commit a pedido do usuário
 - 2026-10-30 · TI · Codex · API local passou a usar S3 de produção com o banco já configurado; PDF validado por URL assinada · sem commit a pedido do usuário
 - 2026-10-30 · TI · Codex · seletor de obra repaginado e carimbo de liberação legível no tema escuro · sem commit a pedido do usuário
+- 2026-10-30 · TI · Codex · melhorias locais integradas aos commits novos de Projetos, com build e testes validados · 1251c4c (antes do ajuste final)
