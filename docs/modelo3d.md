@@ -228,6 +228,31 @@ só ela naquele andar. **Mostrar todos** volta tudo. **Ocultar todos**
 (27/10/2026) esconde tudo, inclusive o que não está em pavimento nenhum,
 para depois marcar só os 2 andares que se quer ver, em vez de desmarcar 48.
 
+**Limpeza dos pavimentos (30/10/2026)**, pedida por causa do UNO:
+- **Pavimento sem peça não aparece.** O UNO tinha dezenas.
+- **O andar junta níveis próximos, inclusive do mesmo modelo:**
+  - o térreo do UNO vem em três níveis, um por bloco de torres
+    ("TÉRREO - (T02 e 04)" a 0,80 m, "(T01, 03, 06 e 08)" a 1,25 m,
+    "(T05 e 07)" a 1,45 m);
+  - o projeto de incêndio trouxe uns 50 níveis soltos ("Salãuu"…).
+- **Regra:** o andar continua enquanto o próximo nível está a menos de 1 m do
+  anterior e a menos de 2 m do primeiro.
+- **O nome que aparece:**
+  - sai o bloco ("- (T02 e 04)") e a disciplina na frente ("ELE - …");
+  - nome de andar (térreo, pavimento, subsolo, cobertura…) ganha de "nível",
+    que ganha de nome solto; empatados, vale o que tem mais peças;
+  - nome solto não entra no "também".
+- **Resultado no UNO (simulado com os IFC):** de dezenas de linhas para 6 —
+  a implantação da arquitetura (que está em outra origem), térreo, 2º, 3º,
+  4º e cobertura.
+
+**Câmera do conflito (30/10/2026):** o conflito guardado no servidor é
+enquadrado pela região em que as peças A e B se cruzam na cena de agora
+(`regiaoDoConflito`). Na folga, é o trecho entre as duas. O ponto guardado
+podia estar em outra referência, porque o conflito era de antes da correção
+de 26/10 ou de uma sessão com outro modelo aberto primeiro, e a câmera ia
+parar longe. O ponto guardado só vale quando as peças não estão na cena.
+
 O enquadramento usa as caixas calculadas da geometria (`caixaDasPecas`), não
 o `getMergedBox` da biblioteca (mesmo problema do `getBoxes`).
 

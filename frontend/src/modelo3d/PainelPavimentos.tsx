@@ -29,9 +29,30 @@ interface Grupo {
   porModelo: { modelo: ModeloPavimentos; pavimento: Pavimento }[];
 }
 
-// Andares a menos disso, em disciplinas diferentes, são o mesmo (pé-direito
-// típico de 2,88 m; a diferença entre disciplinas no SER foi de 12 cm).
-const MESMO_ANDAR = 0.5;
+// Um andar junta os pavimentos de elevação próxima, de qualquer modelo — e do
+// mesmo modelo também: no UNO, o térreo vem em três níveis por bloco de
+// torres ("TÉRREO - (T02 e 04)" a 0,80 m, "(T01, 03, 06 e 08)" a 1,25 m,
+// "(T05 e 07)" a 1,45 m), e o projeto de incêndio trouxe dezenas de níveis
+// soltos entre eles (TREELE, 30/10/2026). O andar continua enquanto o próximo
+// nível está a menos de SALTO do anterior e a menos de ALTURA_MAXIMA do
+// primeiro (pé-direito típico de 2,72 a 2,88 m).
+const SALTO = 1.0;
+const ALTURA_MAXIMA = 2.0;
+
+// O nome que aparece: sem o bloco ("- (T02 e 04)") e sem a disciplina na
+// frente ("ELE - PAVIMENTO TÉRREO"); o de andar de verdade ganha do resto.
+function limparNome(nome: string): string {
+  return nome
+    .replace(/\s*-?\s*\([^)]*\)\s*$/, "")
+    .replace(/^[A-Z]{2,4}\s*-\s*/, "")
+    .trim() || nome.trim();
+}
+
+function prioridade(nome: string): number {
+  if (/t[ée]rreo|pav|subsolo|cobertura|barrilete|[áa]tico|mezanino|garagem|sobressolo/i.test(nome)) return 0;
+  if (/n[íi]vel|piso|laje/i.test(nome)) return 1;
+  return 2;
+}
 
 /** A elevação vem na unidade do IFC: o maior valor diz qual é (um prédio
  *  não tem 300 m; em centímetro ou milímetro, passa disso). */
@@ -90,24 +111,23 @@ export default function PainelPavimentos({
       const pavimentos = porModelo[modelo.modelId] ?? [];
       const fator = fatorParaMetro(pavimentos);
       for (const pavimento of pavimentos) {
+        // Pavimento sem peça nenhuma só polui a lista (o UNO tem dezenas).
+        if (!Object.values(pavimento.pecas).some((ids) => ids.length)) continue;
         itens.push({ modelo, pavimento, elevacao: pavimento.elevacao === null ? null : pavimento.elevacao * fator });
       }
     }
-    // Em ordem de elevação; um andar novo começa quando a próxima elevação
-    // passa da tolerância ou o modelo já tem um pavimento no andar.
+    // Em ordem de elevação; o andar continua enquanto a próxima elevação está
+    // perto da anterior e o andar não passou da altura máxima.
     const comCota = itens.filter((x) => x.elevacao !== null).sort((a, b) => a.elevacao! - b.elevacao!);
     const lista: Grupo[] = [];
+    let anterior: number | null = null;
     for (const x of comCota) {
       const g = lista[lista.length - 1];
       const cabe =
-        g &&
-        g.elevacao !== null &&
-        x.elevacao! - g.elevacao < MESMO_ANDAR &&
-        !g.porModelo.some((y) => y.modelo.modelId === x.modelo.modelId);
-      if (cabe) {
-        g.porModelo.push({ modelo: x.modelo, pavimento: x.pavimento });
-        if (g.nome !== x.pavimento.nome && !g.outrosNomes.includes(x.pavimento.nome)) g.outrosNomes.push(x.pavimento.nome);
-      } else {
+        g && g.elevacao !== null && anterior !== null &&
+        x.elevacao! - anterior < SALTO && x.elevacao! - g.elevacao < ALTURA_MAXIMA;
+      if (cabe) g.porModelo.push({ modelo: x.modelo, pavimento: x.pavimento });
+      else
         lista.push({
           chave: `${x.modelo.modelId}:${x.pavimento.localId}`,
           nome: x.pavimento.nome,
@@ -115,7 +135,7 @@ export default function PainelPavimentos({
           elevacao: x.elevacao,
           porModelo: [{ modelo: x.modelo, pavimento: x.pavimento }],
         });
-      }
+      anterior = x.elevacao;
     }
     for (const x of itens.filter((y) => y.elevacao === null)) {
       lista.push({
@@ -126,14 +146,20 @@ export default function PainelPavimentos({
         porModelo: [{ modelo: x.modelo, pavimento: x.pavimento }],
       });
     }
-    // O nome que aparece: o que diz "pav" e é mais curto ("5° PAV", e não
-    // "TIPO-001" nem "05 - 5º PAVIMENTO"); os outros vão para o detalhe.
+    // O nome do andar: o de andar de verdade (térreo, pavimento, subsolo,
+    // cobertura) antes de "nível" e de nome solto; entre eles, o que tem mais
+    // peças. Os outros nomes, limpos e sem repetir, vão para o detalhe.
     for (const g of lista) {
-      const nomes = [g.nome, ...g.outrosNomes];
-      const nota = (n: string) => (/pav/i.test(n) ? 0 : 100) + n.length;
-      const melhor = nomes.reduce((a, b) => (nota(b) < nota(a) ? b : a));
-      g.nome = melhor;
-      g.outrosNomes = nomes.filter((n) => n !== melhor);
+      const pesos = new Map<string, number>();
+      for (const { pavimento } of g.porModelo) {
+        const n = limparNome(pavimento.nome);
+        pesos.set(n, (pesos.get(n) ?? 0) + Object.values(pavimento.pecas).reduce((s, ids) => s + ids.length, 0));
+      }
+      const nomes = [...pesos.keys()];
+      nomes.sort((a, b) => prioridade(a) - prioridade(b) || pesos.get(b)! - pesos.get(a)! || a.length - b.length);
+      g.nome = nomes[0];
+      // Nome solto ("Salãuu", do incêndio do UNO) não entra no "também".
+      g.outrosNomes = nomes.slice(1).filter((n) => prioridade(n) < 2 || prioridade(nomes[0]) === 2);
     }
     return lista;
   }, [porModelo, modelos]);
@@ -225,7 +251,7 @@ export default function PainelPavimentos({
               {aberto === g.chave && (
                 <ul className="pavimento-modelos">
                   {g.porModelo.map(({ modelo, pavimento }) => (
-                    <li key={modelo.modelId}>
+                    <li key={`${modelo.modelId}:${pavimento.localId}`}>
                       <button
                         className="link-pequeno mono"
                         onClick={() => isolar(pecasDo(g, undefined, modelo.modelId))}

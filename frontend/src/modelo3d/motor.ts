@@ -12,6 +12,7 @@ import CameraControls from "camera-controls";
 import * as THREE from "three";
 import {
   caixaDasPecas,
+  regiaoDoConflito,
   contarCategorias,
   detectar,
   type ConjuntoConflito,
@@ -133,6 +134,11 @@ export interface Motor {
   focarConflito(conflito: Conflito | null, animar?: boolean): Promise<void>;
   /** Os localIds das peças, pelos GlobalIds (conflito de outra rodada). */
   idsDosGuids(modelId: string, guids: string[]): Promise<number[]>;
+  /** A região do conflito na cena, pelas peças (ver regiaoDoConflito). */
+  regiaoDoConflito(
+    a: { modelId: string; localIds: number[] },
+    b: { modelId: string; localIds: number[] },
+  ): Promise<{ centro: [number, number, number]; min: [number, number, number]; max: [number, number, number] } | null>;
   /** Da cena para as coordenadas do projeto (as do IFC), e de volta. A cena
    *  começa onde está o primeiro modelo aberto, então um ponto guardado na
    *  coordenada da cena mudaria com a ordem dos modelos; o do projeto não. */
@@ -639,6 +645,14 @@ export async function criarMotor(
       const [px, py, pz, ax, ay, az] = olharPara(conflito);
       await world.camera.controls.setLookAt(px, py, pz, ax, ay, az, false);
       world.camera.controls.update(0);
+    },
+    async regiaoDoConflito(a, b) {
+      const r = await regiaoDoConflito(
+        fragments.list.get(a.modelId), a.localIds, fragments.list.get(b.modelId), b.localIds,
+      );
+      if (!r) return null;
+      const v = (p: THREE.Vector3) => p.toArray() as [number, number, number];
+      return { centro: v(r.centro), min: v(r.caixa.min), max: v(r.caixa.max) };
     },
     async idsDosGuids(modelId, guids) {
       const model = fragments.list.get(modelId);

@@ -276,6 +276,40 @@ export async function caixaDasPecas(model: FragmentsModel, ids: number[]): Promi
   return caixa;
 }
 
+/** Onde o conflito está, na cena de agora, pela geometria das peças: a parte
+ *  em que as caixas de A e de B se cruzam (na folga, o trecho entre as duas).
+ *  O ponto guardado no servidor pode estar em outra referência — conflito de
+ *  antes de 26/10/2026, ou de uma sessão com outro modelo aberto primeiro — e
+ *  a câmera ia parar longe (TREELE, 30/10/2026). null sem peças na cena. */
+export async function regiaoDoConflito(
+  modelA: FragmentsModel | undefined,
+  idsA: number[],
+  modelB: FragmentsModel | undefined,
+  idsB: number[],
+): Promise<{ centro: THREE.Vector3; caixa: THREE.Box3 } | null> {
+  if (!modelA || !modelB || !idsA.length || !idsB.length) return null;
+  const doA = await caixas({ modelId: "", disciplina: "", model: modelA }, idsA, () => {});
+  const doB = await caixas({ modelId: "", disciplina: "", model: modelB }, idsB, () => {});
+  const caixaB = new THREE.Box3();
+  for (const c of doB.values()) if (!c.isEmpty()) caixaB.union(c);
+  if (caixaB.isEmpty()) return null;
+  const cruzamento = new THREE.Box3();
+  const todasA = new THREE.Box3();
+  for (const c of doA.values()) {
+    if (c.isEmpty()) continue;
+    todasA.union(c);
+    const parte = c.clone().intersect(caixaB);
+    if (!parte.isEmpty()) cruzamento.union(parte);
+  }
+  if (todasA.isEmpty()) return null;
+  if (!cruzamento.isEmpty()) return { centro: cruzamento.getCenter(new THREE.Vector3()), caixa: cruzamento };
+  // Folga: os pontos mais próximos entre as duas caixas.
+  const pA = todasA.clampPoint(caixaB.getCenter(new THREE.Vector3()), new THREE.Vector3());
+  const pB = caixaB.clampPoint(pA, new THREE.Vector3());
+  const caixa = new THREE.Box3().setFromPoints([pA, pB]);
+  return { centro: caixa.getCenter(new THREE.Vector3()), caixa };
+}
+
 function semAcento(texto: string): string {
   return texto.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 }

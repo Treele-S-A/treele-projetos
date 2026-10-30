@@ -407,16 +407,23 @@ export default function PainelConflitos({
       };
     };
     const centro = (c.centro.length === 3 ? c.centro : [0, 0, 0]) as [number, number, number];
+    const a = await lado(c.documento_a_id, c.guids_a, c.categoria_a, c.nome_a);
+    const b = await lado(c.documento_b_id, [c.guid_b], c.categoria_b, c.nome_b);
+    // Com as peças na cena, a câmera vai aonde elas se cruzam de fato; o
+    // ponto guardado fica só para quando um dos modelos não está aberto.
+    const regiao = await motor.regiaoDoConflito(a, b);
     return {
       id: c.id,
       tipo: c.tipo,
-      a: await lado(c.documento_a_id, c.guids_a, c.categoria_a, c.nome_a),
-      b: await lado(c.documento_b_id, [c.guid_b], c.categoria_b, c.nome_b),
-      centro: motor.paraCena(centro),
-      caixa: {
-        min: motor.paraCena((c.caixa.min ?? centro) as [number, number, number]),
-        max: motor.paraCena((c.caixa.max ?? centro) as [number, number, number]),
-      },
+      a,
+      b,
+      centro: regiao?.centro ?? motor.paraCena(centro),
+      caixa: regiao
+        ? { min: regiao.min, max: regiao.max }
+        : {
+            min: motor.paraCena((c.caixa.min ?? centro) as [number, number, number]),
+            max: motor.paraCena((c.caixa.max ?? centro) as [number, number, number]),
+          },
       medida: c.medida,
     };
   }
