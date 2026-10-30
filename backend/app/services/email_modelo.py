@@ -40,6 +40,9 @@ SELOS = {
     "revisao_liberada": Selo("Liberada para obra", "#3d7330", "#e4eedf"),
     "revisao_reprovada": Selo("Revisão reprovada", "#a23d27", "#f6e3de"),
     "avaliacao_chat": Selo("Chat · 👎", "#a23d27", "#f6e3de"),
+    "solicitacao_acesso": Selo("Pedido de acesso", "#84590d", "#fdf0cc"),
+    "acesso_aprovado": Selo("Acesso aprovado", "#3d7330", "#e4eedf"),
+    "acesso_reprovado": Selo("Acesso não aprovado", "#a23d27", "#f6e3de"),
     "teste": Selo("Teste de e-mail", PETROLEO, "#e3ebec"),
 }
 

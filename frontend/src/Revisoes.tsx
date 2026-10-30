@@ -163,6 +163,12 @@ function LinhaRevisao({
   const [avisoAta, setAvisoAta] = useState<string | null>(null);
 
   const emRevisao = revisao.status === "em_revisao";
+  // A ata é do módulo Qualidade: administrador, ou o projetista envolvido.
+  const eu = useSessao().usuario;
+  const podeVerAta =
+    !!eu?.admin ||
+    revisao.criada_por?.id === eu?.id ||
+    revisao.arquivos.some((a) => a.enviado_por?.id === eu?.id);
   const cancelavel =
     revisao.status !== "cancelado" && (admin || (emRevisao && podeCancelar));
 
@@ -329,7 +335,7 @@ Isto não pode ser desfeito.`)) {
             </div>
           )}
 
-          {revisao.ata && (
+          {revisao.ata && podeVerAta && (
             <div style={{ marginTop: 10 }} className="linha-ata">
               <span className="rotulo">Ata de análise crítica</span>{" "}
               <Link to={`/atas/${revisao.ata.id}`}>{revisao.ata.codigo}</Link>{" "}

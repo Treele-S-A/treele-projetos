@@ -30,7 +30,8 @@ export default function Notificacoes() {
       // Abrir não espera a marcação: se ela falhar, o aviso só segue como não lido.
       api.post(`/notificacoes/${n.id}/lida`).then(contagemMudou, () => {});
     }
-    if (n.documento_id) navegar(`/documentos/${n.documento_id}`);
+    if (n.tipo === "solicitacao_acesso") navegar("/solicitacoes-acesso");
+    else if (n.documento_id) navegar(`/documentos/${n.documento_id}`);
   }
 
   async function marcarTodas() {
@@ -86,7 +87,7 @@ export default function Notificacoes() {
                   <span className="aviso-topo">
                     <strong>{n.titulo}</strong>
                     <span className="silencioso">
-                      <span className="mono">{n.obra_codigo}</span> · {formatarData(n.criada_em)}
+                      <span className="mono">{n.obra_codigo ?? "Acesso"}</span> · {formatarData(n.criada_em)}
                     </span>
                   </span>
                   <span className="aviso-texto">{n.texto}</span>

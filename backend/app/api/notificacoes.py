@@ -25,7 +25,7 @@ def _saida(n: Notificacao) -> NotificacaoOut:
         criada_em=n.criada_em,
         lida=n.lida_em is not None,
         documento_id=n.documento_id,
-        obra_codigo=n.obra.codigo,
+        obra_codigo=n.obra.codigo if n.obra else None,
     )
 
 

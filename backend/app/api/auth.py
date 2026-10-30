@@ -115,7 +115,7 @@ def microsoft_callback(request: Request, code: str = "", state: str = "", error:
         email = (claims.get("email") or claims.get("preferred_username") or "").strip().lower()
         usuario = db.scalar(select(Usuario).where(Usuario.email == email)) if email.endswith("@treele.com.br") else None
         if not email.endswith("@treele.com.br") or (usuario is not None and not usuario.ativo):
-            resposta = RedirectResponse(f"{frontend}/#entra_erro=Conta%20sem%20acesso%20ao%20Projetos", status_code=303)
+            resposta = RedirectResponse(f"{frontend}/#entra_erro=Acesso%20n%C3%A3o%20permitido.%20Solicite%20seu%20acesso.", status_code=303)
         else:
             if usuario is None:
                 usuario = Usuario(
@@ -142,6 +142,14 @@ def microsoft_callback(request: Request, code: str = "", state: str = "", error:
 def login(dados: LoginEntrada, request: Request, db: Session = Depends(get_db)):
     usuario = db.scalar(select(Usuario).where(Usuario.email == dados.email.lower()))
 
+    email_login = dados.email.lower().strip()
+    if usuario is None and not email_login.endswith("@treele.com.br"):
+        # Fora do domínio e sem conta: só entra quem teve o acesso aprovado
+        # (TREELE, 30/10/2026). A tela mostra o link para pedir.
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            {"mensagem": "Acesso não permitido. Solicite seu acesso.", "codigo": "sem_acesso"},
+        )
     if (
         usuario is None
         or not usuario.ativo

@@ -214,13 +214,14 @@ export interface Notificacao {
     | "solicitacao_recusada"
     | "revisao_enviada"
     | "revisao_liberada"
-    | "revisao_reprovada";
+    | "revisao_reprovada"
+    | "solicitacao_acesso";
   titulo: string;
   texto: string;
   criada_em: string;
   lida: boolean;
   documento_id: number | null;
-  obra_codigo: string;
+  obra_codigo: string | null;
 }
 
 export interface Solicitacao {
@@ -408,6 +409,8 @@ export interface Membro {
   usuario_id: number;
   papel: PapelObra;
   usuario: Usuario;
+  /** Disciplinas que vê nesta obra; vazio = todas (projetista externo). */
+  disciplinas?: string[] | null;
 }
 
 export interface Evento {

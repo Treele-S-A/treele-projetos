@@ -3326,3 +3326,51 @@ table.tabela {
 .linha-edicao-acesso td {
   background: var(--nevoa);
 }
+
+/* Pedido de acesso de quem é de fora (30/10/2026) */
+.solicitar-acesso-entrar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  align-items: center;
+  justify-content: center;
+  margin-top: 16px;
+  font-size: 13px;
+  color: var(--tinta-2);
+}
+.cartao-solicitar {
+  max-width: 560px;
+}
+.cartao-solicitar form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.campo-armadilha {
+  position: absolute;
+  left: -10000px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+.dados-solicitacao {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 8px 16px;
+  margin: 0 0 8px;
+}
+.dados-solicitacao dt {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--tinta-3);
+}
+.dados-solicitacao dd {
+  margin: 2px 0 0;
+}
+.cartao-solicitacao-acesso .folha-titulo {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}

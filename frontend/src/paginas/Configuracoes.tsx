@@ -35,13 +35,14 @@ const EXTENSOES = ["dwg", "rvt", "pdf", "ifc"];
 
 export default function Configuracoes() {
   const { obraId } = useParams();
-  const { obras, recarregarObras } = useSessao();
+  const { obras, recarregarObras, usuario } = useSessao();
   const obra = obras.find((o) => o.id === Number(obraId));
 
   if (!obra) return <Carregando />;
 
-  // O engenheiro responsável que não é coordenador só inclui gente na equipe.
-  if (!obra.permissoes.includes("gerenciar")) {
+  // Configurações são só do administrador (30/10/2026); o engenheiro
+  // responsável que não é administrador só mexe na equipe.
+  if (!usuario?.admin) {
     return (
       <>
         <div className="cabecalho-area">
@@ -568,7 +569,12 @@ function Equipe({ obraId, gerencia }: { obraId: number; gerencia: boolean }) {
                   <td className="silencioso mono" style={{ fontSize: 12 }}>
                     {m.usuario.email}
                   </td>
-                  <td>{ROTULO_PAPEL[m.papel]}</td>
+                  <td>
+                    {ROTULO_PAPEL[m.papel]}
+                    {m.disciplinas && m.disciplinas.length > 0 && (
+                      <span className="silencioso" style={{ fontSize: 11.5 }}> · só {m.disciplinas.join(", ")}</span>
+                    )}
+                  </td>
                   <td style={{ textAlign: "right" }}>
                     {/* Administrador é coordenador de todas as obras: não sai. */}
                     {!m.usuario.admin &&

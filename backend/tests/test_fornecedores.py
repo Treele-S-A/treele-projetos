@@ -73,5 +73,7 @@ def test_avaliacao_de_desempenho(cliente, admin, obra):
 def test_quem_ve_fornecedores(cliente, admin, obra):
     coord = _pessoa(cliente, admin, obra, "coordfrn", "coordenador")
     proj = _pessoa(cliente, admin, obra, "projfrn", "projetista")
-    assert cliente.get("/fornecedores", headers=coord).status_code == 200
+    # Módulo Qualidade: só administrador (30/10/2026).
+    assert cliente.get("/fornecedores", headers=admin).status_code == 200
+    assert cliente.get("/fornecedores", headers=coord).status_code == 403
     assert cliente.get("/fornecedores", headers=proj).status_code == 403

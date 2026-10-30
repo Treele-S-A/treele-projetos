@@ -185,6 +185,7 @@ class MembroOut(Modelo):
     usuario_id: int
     papel: PapelObra
     usuario: UsuarioOut
+    disciplinas: list[str] | None = None
 
 
 # --------------------------------------------------------------------------
@@ -333,7 +334,7 @@ class NotificacaoOut(BaseModel):
     criada_em: datetime
     lida: bool
     documento_id: int | None = None
-    obra_codigo: str
+    obra_codigo: str | None = None
 
 
 class NotificacaoContagem(BaseModel):

@@ -145,6 +145,56 @@ aqui também.
 Os acessos da planilha de cargos (97 pessoas) foram cadastrados assim em
 30/10/2026. Quem já existia não foi recriado: só o tipo foi ajustado.
 
+## Acesso de quem é de fora da Treèle (30/10/2026)
+
+Projetista e comercial externos não têm conta Microsoft @treele.
+
+**Na entrada:**
+- Quem tenta entrar com e-mail de fora do domínio e não tem conta vê "Acesso
+  não permitido. Solicite seu acesso", com o link.
+- A tela de entrada já traz "Usuário fora do domínio @treele? Solicite seu
+  acesso" e o botão **Solicitar acesso**.
+
+**O pedido** (`/solicitar-acesso`, sem login):
+- nome, e-mail, empresa (opcional) e função;
+- a função é **comercial** (acesso comercial) ou **projetista** (escolhe as
+  obras e as disciplinas em que está envolvido);
+- a pessoa cria a senha com que vai entrar, guardada só como hash;
+- e-mail @treele é recusado, porque entra com a Microsoft. Também são
+  recusados e-mail que já tem conta e quem já tem um pedido aguardando.
+
+**Aviso aos administradores:** cada pedido gera notificação e e-mail. O
+pedido fica em **Configurações → Solicitações de acesso**, com o contador no
+menu.
+
+**Decisão do administrador:**
+- vê os dados preenchidos, pode ajustar a função (e as obras e disciplinas) e
+  aprova ou reprova, com motivo opcional;
+- a pessoa recebe a resposta por e-mail;
+- aprovado, o usuário nasce com a senha escolhida;
+- o projetista entra como **projetista só nas obras e nas disciplinas
+  aprovadas**: o membro da equipe guarda `disciplinas`, e a restrição vale no
+  acervo, no download, no 3D, no chat e no envio, que recusa outra disciplina.
+
+Código: `api/acesso.py` e as tabelas `solicitacoes_acesso` e
+`obra_membros.disciplinas`. Telas: `paginas/SolicitarAcesso.tsx` e
+`paginas/SolicitacoesAcesso.tsx`. Testes: `tests/test_solicitacao_acesso.py`.
+
+## Módulos do menu (30/10/2026)
+
+- **Projetos**: conforme o papel na obra, como antes.
+- **Configurações**:
+  - só administrador: Configurações da obra, Usuários e Solicitações de acesso;
+  - o engenheiro responsável que não é administrador vê só **Equipe da obra**;
+  - o servidor também recusa a quem não é administrador:
+    - mudar a obra, o logo e o padrão de nomenclatura (`ctx.exigir_admin`);
+    - nomear coordenador.
+- **Qualidade**:
+  - administrador: as atas e os fornecedores;
+  - projetista: só **Atas de análise crítica**, e só as das revisões em que
+    está envolvido (as que enviou ou em que subiu arquivo);
+  - os demais não veem o módulo.
+
 ## As escolhas por trás disso
 
 **Projetista envia mas não libera.** É a separação que faz o controle existir.

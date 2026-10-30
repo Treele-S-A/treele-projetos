@@ -82,6 +82,8 @@ class TipoNotificacao(str, enum.Enum):
     solicitacao_recusada = "solicitacao_recusada"
     # Coordenador reprovou a revisão na análise crítica: quem a enviou.
     revisao_reprovada = "revisao_reprovada"
+    # Pedido de acesso de alguém de fora da Treèle: os administradores.
+    solicitacao_acesso = "solicitacao_acesso"
 
 
 class PapelObra(str, enum.Enum):

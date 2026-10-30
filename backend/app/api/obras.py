@@ -138,7 +138,7 @@ def atualizar(
     request: Request,
     ctx: ContextoObra = Depends(contexto_obra),
 ):
-    ctx.exigir("gerenciar")
+    ctx.exigir_admin()
     if dados.nome is not None:
         ctx.obra.nome = dados.nome.strip()
     if dados.cliente is not None:
@@ -196,7 +196,7 @@ async def enviar_logo(request: Request, ctx: ContextoObra = Depends(contexto_obr
     armazenamento, o logo passa pela API: é pequeno, e precisa ser conferido
     byte a byte antes de ser guardado — é ele que aparece para todo mundo.
     """
-    ctx.exigir("gerenciar")
+    ctx.exigir_admin()
 
     dados = bytearray()
     async for pedaco in request.stream():
@@ -246,7 +246,7 @@ def _trocar_logo(
 
 @router.delete("/{obra_id}/logo", status_code=status.HTTP_204_NO_CONTENT)
 def remover_logo(request: Request, ctx: ContextoObra = Depends(contexto_obra)):
-    ctx.exigir("gerenciar")
+    ctx.exigir_admin()
     anterior = ctx.obra.logo_chave
     if anterior is None:
         return Response(status_code=status.HTTP_204_NO_CONTENT)
@@ -294,7 +294,7 @@ def adicionar_membro(
     request: Request,
     ctx: ContextoObra = Depends(contexto_obra),
 ):
-    gerencia = ctx.pode("gerenciar")
+    gerencia = ctx.usuario.admin
     if not gerencia:
         ctx.exigir(
             "adicionar_membro",
@@ -358,7 +358,7 @@ def remover_membro(
     request: Request,
     ctx: ContextoObra = Depends(contexto_obra),
 ):
-    gerencia = ctx.pode("gerenciar")
+    gerencia = ctx.usuario.admin
     if not gerencia:
         ctx.exigir(
             "remover_membro",
@@ -430,7 +430,7 @@ def definir_padrao(
     request: Request,
     ctx: ContextoObra = Depends(contexto_obra),
 ):
-    ctx.exigir("gerenciar")
+    ctx.exigir_admin()
 
     erros = validar_definicao(dados.template, dados.tokens)
     if erros:

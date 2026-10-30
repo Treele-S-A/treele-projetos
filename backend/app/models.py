@@ -172,6 +172,9 @@ class ObraMembro(Base):
         ForeignKey("usuarios.id", ondelete="CASCADE")
     )
     papel: Mapped[PapelObra] = mapped_column(_enum(PapelObra))
+    # Disciplinas que a pessoa vê nesta obra; vazio = todas. O projetista
+    # externo só vê as disciplinas em que está envolvido (TREELE, 30/10/2026).
+    disciplinas: Mapped[list | None] = mapped_column(JSON, nullable=True)
 
     obra: Mapped["Obra"] = relationship(back_populates="membros")
     usuario: Mapped["Usuario"] = relationship(back_populates="membros")
@@ -473,7 +476,8 @@ class Notificacao(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     usuario_id: Mapped[int] = mapped_column(ForeignKey("usuarios.id", ondelete="CASCADE"))
     tipo: Mapped[TipoNotificacao] = mapped_column(_enum(TipoNotificacao))
-    obra_id: Mapped[int] = mapped_column(ForeignKey("obras.id", ondelete="CASCADE"))
+    # Vazio no aviso que não é de obra (solicitação de acesso).
+    obra_id: Mapped[int | None] = mapped_column(ForeignKey("obras.id", ondelete="CASCADE"), nullable=True)
     documento_id: Mapped[int | None] = mapped_column(
         ForeignKey("documentos.id", ondelete="CASCADE"), nullable=True
     )
@@ -810,3 +814,37 @@ class AvaliacaoFornecedor(Base):
 
     fornecedor: Mapped["FornecedorProjeto"] = relationship(back_populates="avaliacoes")
     avaliado_por: Mapped["Usuario | None"] = relationship()
+
+
+class SolicitacaoAcesso(Base):
+    """Pedido de acesso de quem é de fora da Treèle (TREELE, 30/10/2026):
+    projetista ou comercial externo, sem conta Microsoft @treele. O
+    administrador aprova (com a função ajustada, se quiser) ou reprova.
+
+    A senha a pessoa escolhe ao pedir (guardada só como hash): na aprovação,
+    é com ela que entra."""
+
+    __tablename__ = "solicitacoes_acesso"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    nome: Mapped[str] = mapped_column(String(160))
+    email: Mapped[str] = mapped_column(String(190), index=True)
+    empresa: Mapped[str | None] = mapped_column(String(160), nullable=True)
+    # "comercial" | "projetista"
+    funcao: Mapped[str] = mapped_column(String(20))
+    obras: Mapped[list] = mapped_column(JSON, default=list)
+    disciplinas: Mapped[list] = mapped_column(JSON, default=list)
+    senha_hash: Mapped[str] = mapped_column(String(255))
+    # "pendente" | "aprovada" | "reprovada"
+    status: Mapped[str] = mapped_column(String(12), default="pendente", index=True)
+    motivo: Mapped[str | None] = mapped_column(Text, nullable=True)
+    criada_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=agora)
+    decidida_em: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    decidida_por_id: Mapped[int | None] = mapped_column(
+        ForeignKey("usuarios.id", ondelete="SET NULL"), nullable=True
+    )
+    usuario_id: Mapped[int | None] = mapped_column(
+        ForeignKey("usuarios.id", ondelete="SET NULL"), nullable=True
+    )
+
+    decidida_por: Mapped["Usuario | None"] = relationship(foreign_keys=[decidida_por_id])

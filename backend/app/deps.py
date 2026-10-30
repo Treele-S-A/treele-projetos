@@ -81,6 +81,12 @@ class ContextoObra:
     def pode(self, permissao: str) -> bool:
         return self.usuario.admin or permissao in self.permissoes
 
+    def exigir_admin(self, mensagem: str = "Configurações da obra são só do administrador.") -> None:
+        """O módulo Configurações é só do administrador (TREELE, 30/10/2026); o
+        engenheiro responsável continua mexendo na equipe (adicionar_membro)."""
+        if not self.usuario.admin:
+            raise HTTPException(status.HTTP_403_FORBIDDEN, mensagem)
+
     def exigir(self, permissao: str, mensagem: str | None = None) -> None:
         if not self.pode(permissao):
             raise HTTPException(
@@ -133,8 +139,15 @@ def montar_contexto(db: Session, usuario: Usuario, obra_id: int) -> ContextoObra
         papel = membro.papel if membro else None
     permissoes = set(PERMISSOES.get(papel, set())) if papel else set()
     permissoes |= permissoes_do_responsavel(obra, usuario)
+    # Disciplinas da pessoa nesta obra (projetista externo, 30/10/2026).
+    disciplinas = (
+        frozenset(d.upper() for d in membro.disciplinas)
+        if membro is not None and membro.disciplinas and not usuario.admin
+        else None
+    )
     return ContextoObra(
-        usuario=usuario, obra=obra, papel=papel, permissoes=permissoes, db=db
+        usuario=usuario, obra=obra, papel=papel, permissoes=permissoes, db=db,
+        disciplinas=disciplinas,
     )
 
 

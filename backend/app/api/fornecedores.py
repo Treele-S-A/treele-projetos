@@ -7,8 +7,7 @@ documentação, prazo de entrega e atendimento/comunicação, de 1 a 10. Média 
 ou mais (a régua da planilha): continua qualificado para novas contratações;
 abaixo, desqualificado, com o motivo registrado.
 
-Quem vê e mexe: administradores e coordenadores de alguma obra — quem
-contrata e avalia projetista. O comercial e a equipe de campo não veem.
+Quem vê e mexe: só administradores (módulo Qualidade, 30/10/2026).
 """
 
 from datetime import datetime, timezone
@@ -20,8 +19,7 @@ from sqlalchemy.orm import Session
 
 from ..db import get_db
 from ..deps import usuario_atual
-from ..enums import PapelObra
-from ..models import AvaliacaoFornecedor, FornecedorProjeto, Obra, ObraMembro, Usuario
+from ..models import AvaliacaoFornecedor, FornecedorProjeto, Obra, Usuario
 from ..services import auditoria
 
 router = APIRouter(prefix="/fornecedores", tags=["fornecedores de projetos"])
@@ -41,18 +39,9 @@ NOTA_MINIMA = 6.0
 
 
 def _exigir_acesso(db: Session, usuario: Usuario) -> None:
-    if usuario.admin:
-        return
-    coordena = db.scalar(
-        select(ObraMembro.id).where(
-            ObraMembro.usuario_id == usuario.id, ObraMembro.papel == PapelObra.coordenador
-        ).limit(1)
-    )
-    if usuario.comercial or not coordena:
-        raise HTTPException(
-            status.HTTP_403_FORBIDDEN,
-            "Fornecedores de projetos são do administrador e dos coordenadores de obra.",
-        )
+    # Módulo Qualidade: só administradores (TREELE, 30/10/2026).
+    if not usuario.admin:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Fornecedores de projetos são só do administrador.")
 
 
 class FornecedorEntrada(BaseModel):

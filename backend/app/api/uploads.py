@@ -87,6 +87,12 @@ def iniciar(
             },
         )
 
+    if not ctx.ve_disciplina(r.disciplina_codigo or ""):
+        # Projetista externo só envia nas disciplinas dele (30/10/2026).
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            f"Você não tem acesso à disciplina {r.disciplina_codigo} nesta obra.",
+        )
     disciplina = db.scalar(
         select(Disciplina).where(Disciplina.codigo == r.disciplina_codigo)
     )

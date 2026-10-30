@@ -15,6 +15,10 @@ Documentos: **`README.md`** (rodar local, fases), `docs/roteiro.md` (fases segui
   - o **menu lateral** em três módulos, Projetos, Configurações e Qualidade, cada um com o título acima da linha.
   - **30/10/2026:** os **tipos de acesso** (administrador, comercial, todas as obras, obra específica), editáveis em
     Usuários. Os 97 acessos da planilha de cargos foram cadastrados, e cada pessoa entra com a conta Microsoft.
+  - **30/10/2026:** **solicitação de acesso** para quem é de fora do domínio @treele (projetista ou comercial):
+    pedido na tela de entrada, aprovação em Configurações → Solicitações de acesso, projetista só nas obras e
+    disciplinas aprovadas. Módulos: Configurações e Qualidade só do administrador (com as exceções em
+    `docs/permissoes.md`).
 
   Detalhes em `docs/ata-analise-critica.md`, `docs/fornecedores.md` e `docs/permissoes.md` (tipo de acesso).
 - **Próximo passo:** a TREELE usar a ata e os fornecedores e dizer o que ajustar. Depois, seguir `docs/roteiro.md`.
@@ -55,3 +59,4 @@ Uma linha por trabalho, a mais recente no fim: `AAAA-MM-DD · pessoa · IA usada
 - 2026-10-29 · Estágio de projetos (Vinícius) · Claude Code · ata em PDF (Ver PDF / Baixar PDF na página da ata), gerado no servidor no modelo ENG-FL-001 com ReportLab · (este commit)
 - 2026-10-29 · Estágio de projetos (Vinícius) · Claude Code · módulo Fornecedores de projetos (PRO-FL-002) com avaliação de desempenho; menu lateral em três módulos (Projetos, Configurações, Qualidade) · (este commit)
 - 2026-10-30 · Estágio de projetos (Vinícius) · Claude Code · tipo de acesso editável (novo: usuário de todas as obras), usuário sem senha entra com a Microsoft; cadastro dos 97 acessos da planilha de cargos · (este commit)
+- 2026-10-30 · Estágio de projetos (Vinícius) · Claude Code · solicitação de acesso para externos (projetista por obra e disciplina, comercial), login de fora do domínio barrado com convite; Configurações e Qualidade só do administrador · (este commit)

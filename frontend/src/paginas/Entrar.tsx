@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent } from "react";
+import { Link } from "react-router-dom";
 import { api, ErroApi } from "../api";
 import { Aviso, SIMBOLO } from "../componentes";
 import { useSessao } from "../sessao";
@@ -55,7 +56,17 @@ export default function Entrar() {
           </div>
 
           <form onSubmit={aoEnviar}>
-            {erro && <Aviso tom="erro">{erro}</Aviso>}
+            {erro && (
+              <Aviso tom="erro">
+                {erro.includes("Solicite seu acesso") ? (
+                  <>
+                    Acesso não permitido. <Link to="/solicitar-acesso">Solicite seu acesso</Link>.
+                  </>
+                ) : (
+                  erro
+                )}
+              </Aviso>
+            )}
 
             <label className="campo">
               <span className="rotulo">E-mail</span>
@@ -109,7 +120,14 @@ export default function Entrar() {
             </button>
           </div>
         </div>
-        <p className="legenda">Sem acesso? Peça ao coordenador da obra.</p>
+        {/* Projetista e comercial de fora (TREELE, 30/10/2026): pedem o
+            acesso antes de tentar entrar. */}
+        <div className="solicitar-acesso-entrar">
+          <span>Usuário fora do domínio @treele? Solicite seu acesso</span>
+          <Link className="botao secundario pequeno" to="/solicitar-acesso">
+            Solicitar acesso
+          </Link>
+        </div>
       </div>
     </div>
   );

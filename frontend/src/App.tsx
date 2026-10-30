@@ -26,6 +26,8 @@ import SolicitacoesGerais from "./paginas/SolicitacoesGerais";
 import Atas from "./paginas/Atas";
 import Ata from "./paginas/Ata";
 import Fornecedores from "./paginas/Fornecedores";
+import SolicitarAcesso from "./paginas/SolicitarAcesso";
+import SolicitacoesAcesso from "./paginas/SolicitacoesAcesso";
 import Usuarios from "./paginas/Usuarios";
 
 // O visualizador 3D (three.js + leitor de IFC) só carrega quando alguém abre um
@@ -140,10 +142,19 @@ function Moldura() {
     usuario?.admin ?? false,
   );
 
+  // Pedidos de acesso de quem é de fora: só o administrador (30/10/2026).
+  const pedidosAcesso = useContador(
+    local.pathname, "/acesso/solicitacoes/pendentes", "pendentes", "treele:acesso",
+    usuario?.admin ?? false,
+  );
+
   const pode = (p: string) => obra?.permissoes.includes(p) ?? false;
-  // Fornecedores de projetos (PRO-FL-002): quem avalia — administrador e
-  // coordenadores (TREELE, 29/10/2026).
-  const veFornecedores = !!usuario?.admin || obras.some((o) => o.papel === "coordenador");
+  const admin = !!usuario?.admin;
+  // Módulos (TREELE, 30/10/2026): Configurações só do administrador — o
+  // engenheiro responsável vê a "Equipe da obra"; Qualidade só do
+  // administrador, menos as atas, que o projetista vê (as das revisões dele).
+  const equipeDoResponsavel = !admin && !!obra && pode("adicionar_membro");
+  const projetista = obras.some((o) => o.papel === "projetista");
 
   return (
     <div className="app">
@@ -234,10 +245,10 @@ function Moldura() {
             </NavLink>
           )}
 
-          {(usuario?.admin || (obra && (pode("gerenciar") || pode("adicionar_membro")))) && (
+          {(admin || equipeDoResponsavel) && (
             <>
               <div className="modulo-menu">Configurações</div>
-              {obra && pode("gerenciar") && (
+              {obra && admin && (
                 <NavLink
                   to={`/obras/${obra.id}/configuracoes`}
                   className={({ isActive }) => (isActive ? "ativo" : "")}
@@ -245,15 +256,27 @@ function Moldura() {
                   Configurações da obra
                 </NavLink>
               )}
-              {usuario?.admin && (
-                <NavLink to="/usuarios" className={({ isActive }) => (isActive ? "ativo" : "")}>
-                  Usuários
-                </NavLink>
+              {admin && (
+                <>
+                  <NavLink to="/usuarios" className={({ isActive }) => (isActive ? "ativo" : "")}>
+                    Usuários
+                  </NavLink>
+                  <NavLink
+                    to="/solicitacoes-acesso"
+                    className={({ isActive }) => `com-contador ${isActive ? "ativo" : ""}`}
+                  >
+                    Solicitações de acesso
+                    <Contador
+                      total={pedidosAcesso}
+                      rotulo={(n) => (n === 1 ? "1 aguardando análise" : `${n} aguardando análise`)}
+                    />
+                  </NavLink>
+                </>
               )}
-              {/* Engenheiro responsável sem papel de coordenador: só a equipe. */}
-              {obra && !pode("gerenciar") && pode("adicionar_membro") && (
+              {/* Engenheiro responsável que não é administrador: só a equipe. */}
+              {equipeDoResponsavel && (
                 <NavLink
-                  to={`/obras/${obra.id}/configuracoes`}
+                  to={`/obras/${obra!.id}/configuracoes`}
                   className={({ isActive }) => (isActive ? "ativo" : "")}
                 >
                   Equipe da obra
@@ -262,13 +285,13 @@ function Moldura() {
             </>
           )}
 
-          {!usuario?.comercial && (
+          {(admin || projetista) && (
             <>
               <div className="modulo-menu">Qualidade</div>
               <NavLink to="/atas" className={({ isActive }) => (isActive ? "ativo" : "")}>
                 Atas de análise crítica
               </NavLink>
-              {veFornecedores && (
+              {admin && (
                 <NavLink
                   to="/fornecedores"
                   className={({ isActive }) => (isActive ? "ativo" : "")}
@@ -320,9 +343,11 @@ function Moldura() {
 
 export default function App() {
   const { usuario, carregando } = useSessao();
+  const local = useLocation();
 
   if (carregando) return <Carregando texto="Abrindo o acervo" />;
-  if (!usuario) return <Entrar />;
+  // Sem login, só a entrada e o pedido de acesso (30/10/2026).
+  if (!usuario) return local.pathname === "/solicitar-acesso" ? <SolicitarAcesso /> : <Entrar />;
 
   // Toda entrada começa na carteira de obras (TREELE, 06/10/2026). Link de
   // e-mail é exceção natural: ele já traz o endereço, e não passa por aqui.
@@ -357,6 +382,8 @@ export default function App() {
         <Route path="/atas" element={<Atas />} />
         <Route path="/atas/:ataId" element={<Ata />} />
         <Route path="/fornecedores" element={<Fornecedores />} />
+        <Route path="/solicitacoes-acesso" element={<SolicitacoesAcesso />} />
+        <Route path="/solicitar-acesso" element={<Navigate to="/obras" replace />} />
         <Route path="*" element={<Navigate to={inicial} replace />} />
       </Route>
     </Routes>

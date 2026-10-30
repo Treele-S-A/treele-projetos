@@ -12,6 +12,7 @@ from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 from .api import (
+    acesso,
     arquivos,
     atas,
     auth,
@@ -98,6 +99,7 @@ for modulo in (
     vistas,
     atas,
     fornecedores,
+    acesso,
     storage_local,
 ):
     app.include_router(modulo.router, prefix=settings.api_prefix)

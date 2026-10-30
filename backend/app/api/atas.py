@@ -14,10 +14,10 @@ from sqlalchemy import Text, cast, func, select
 from sqlalchemy.orm import Session
 
 from ..db import get_db
-from ..deps import montar_contexto, usuario_atual
+from ..deps import usuario_atual
 from ..enums import StatusRevisao
 from ..config import settings
-from ..models import AtaAnalise, Obra, ObraMembro, Revisao, Usuario
+from ..models import AtaAnalise, AtaAnaliseRevisao, Arquivo, Obra, Revisao, Usuario
 from ..schemas import Pagina
 from ..services import ata_pdf
 from ..services import atas as servico
@@ -258,13 +258,22 @@ def criar(
     return _completa(db, ata)
 
 
-def _obras_visiveis(db: Session, usuario: Usuario):
-    """Atas são da equipe: o comercial não vê; o administrador vê todas."""
+def _atas_visiveis(usuario: Usuario):
+    """Módulo Qualidade (TREELE, 30/10/2026): o administrador vê todas as atas;
+    o projetista, só as das revisões em que está envolvido — que enviou, ou
+    em que subiu arquivo. Quem fez a análise também vê a sua. O comercial
+    não vê nenhuma. None = todas."""
     if usuario.comercial and not usuario.admin:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "O perfil comercial só consulta e baixa arquivos.")
-    if usuario.admin or usuario.todas_obras:
+    if usuario.admin:
         return None
-    return select(ObraMembro.obra_id).where(ObraMembro.usuario_id == usuario.id)
+    envolvidas = select(Revisao.id).where(
+        (Revisao.criada_por_id == usuario.id)
+        | Revisao.id.in_(select(Arquivo.revisao_id).where(Arquivo.enviado_por_id == usuario.id))
+    )
+    return select(AtaAnaliseRevisao.ata_id).where(AtaAnaliseRevisao.revisao_id.in_(envolvidas)).union(
+        select(AtaAnalise.id).where(AtaAnalise.criada_por_id == usuario.id)
+    )
 
 
 @router.get("", response_model=Pagina[AtaLinha])
@@ -279,9 +288,9 @@ def listar(
     db: Session = Depends(get_db),
 ):
     consulta = select(AtaAnalise)
-    obras = _obras_visiveis(db, usuario)
-    if obras is not None:
-        consulta = consulta.where(AtaAnalise.obra_id.in_(obras))
+    visiveis = _atas_visiveis(usuario)
+    if visiveis is not None:
+        consulta = consulta.where(AtaAnalise.id.in_(visiveis))
     if obra_id:
         consulta = consulta.where(AtaAnalise.obra_id == obra_id)
     if disciplina_id:
@@ -318,8 +327,9 @@ def detalhe(
     ata = db.get(AtaAnalise, ata_id)
     if ata is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Ata não encontrada.")
-    ctx = montar_contexto(db, usuario, ata.obra_id)
-    ctx.somente_equipe()
+    visiveis = _atas_visiveis(usuario)
+    if visiveis is not None and ata.id not in set(db.scalars(visiveis)):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Ata não encontrada.")
     return _completa(db, ata)
 
 
@@ -333,8 +343,9 @@ def pdf(
     ata = db.get(AtaAnalise, ata_id)
     if ata is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Ata não encontrada.")
-    ctx = montar_contexto(db, usuario, ata.obra_id)
-    ctx.somente_equipe()
+    visiveis = _atas_visiveis(usuario)
+    if visiveis is not None and ata.id not in set(db.scalars(visiveis)):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Ata não encontrada.")
     conteudo = ata_pdf.gerar(_completa(db, ata).model_dump())
     return Response(
         conteudo,
