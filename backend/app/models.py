@@ -71,6 +71,9 @@ class Usuario(Base):
     # Perfil comercial: vê todas as obras, mas só a disciplina COM liberada para
     # obra, e só baixa. Nunca é administrador nem membro de equipe (deps.py).
     comercial: Mapped[bool] = mapped_column(Boolean, default=False, server_default="0")
+    # Papel "obra" em todas as obras, inclusive as criadas depois, sem precisar
+    # de equipe (TREELE, 30/10/2026; ver services/acesso.py).
+    todas_obras: Mapped[bool] = mapped_column(Boolean, default=False, server_default="0")
     ativo: Mapped[bool] = mapped_column(Boolean, default=True)
     criado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=agora)
 

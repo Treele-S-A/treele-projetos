@@ -123,10 +123,14 @@ def montar_contexto(db: Session, usuario: Usuario, obra_id: int) -> ContextoObra
             ObraMembro.obra_id == obra_id, ObraMembro.usuario_id == usuario.id
         )
     )
-    if membro is None and not usuario.admin:
+    if membro is None and not usuario.admin and not usuario.todas_obras:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Você não participa desta obra.")
 
-    papel = membro.papel if membro else None
+    if membro is None and usuario.todas_obras:
+        # "Todas as obras": equipe de campo em toda obra, sem cadastro na equipe.
+        papel = PapelObra.obra
+    else:
+        papel = membro.papel if membro else None
     permissoes = set(PERMISSOES.get(papel, set())) if papel else set()
     permissoes |= permissoes_do_responsavel(obra, usuario)
     return ContextoObra(

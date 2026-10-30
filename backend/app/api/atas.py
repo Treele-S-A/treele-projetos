@@ -262,7 +262,7 @@ def _obras_visiveis(db: Session, usuario: Usuario):
     """Atas são da equipe: o comercial não vê; o administrador vê todas."""
     if usuario.comercial and not usuario.admin:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "O perfil comercial só consulta e baixa arquivos.")
-    if usuario.admin:
+    if usuario.admin or usuario.todas_obras:
         return None
     return select(ObraMembro.obra_id).where(ObraMembro.usuario_id == usuario.id)
 

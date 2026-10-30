@@ -310,7 +310,7 @@ class Ferramentas:
 
     def _obras_visiveis(self) -> list[Obra]:
         consulta = select(Obra).where(Obra.ativa.is_(True)).order_by(Obra.codigo)
-        if not self.usuario.admin and not self.usuario.comercial:
+        if not self.usuario.admin and not self.usuario.comercial and not self.usuario.todas_obras:
             consulta = consulta.where(
                 Obra.id.in_(
                     select(ObraMembro.obra_id).where(ObraMembro.usuario_id == self.usuario.id)

@@ -73,10 +73,14 @@ def listar(
 
     consulta = select(Obra).order_by(Obra.codigo)
     # Comercial vê todas as obras, sem papel: o contexto restringe o resto.
-    if not usuario.admin and not usuario.comercial:
+    if not usuario.admin and not usuario.comercial and not usuario.todas_obras:
         if not papeis:
             return []
         consulta = consulta.where(Obra.id.in_(papeis.keys()))
+    if usuario.todas_obras and not usuario.admin:
+        # Sem equipe na obra, o papel é o de "obra" (ver deps.montar_contexto).
+        for o in db.scalars(select(Obra.id)):
+            papeis.setdefault(o, PapelObra.obra)
     if not incluir_inativas:
         consulta = consulta.where(Obra.ativa.is_(True))
 

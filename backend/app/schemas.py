@@ -52,15 +52,39 @@ class UsuarioOut(Modelo):
     email: EmailStr
     admin: bool
     comercial: bool = False
+    todas_obras: bool = False
     ativo: bool
+
+
+class ObraDoUsuario(BaseModel):
+    obra_id: int
+    codigo: str
+    papel: PapelObra
+
+
+class UsuarioComAcesso(UsuarioOut):
+    """Na tela de usuários: o tipo de acesso e as obras da equipe."""
+
+    tipo: str
+    obras: list[ObraDoUsuario] = []
 
 
 class UsuarioCriar(BaseModel):
     nome: str = Field(min_length=2, max_length=160)
     email: EmailStr
-    senha: str = Field(min_length=8, max_length=128)
+    # Sem senha, a pessoa entra com a conta Microsoft da Treèle (30/10/2026).
+    senha: str | None = Field(default=None, min_length=8, max_length=128)
     admin: bool = False
     comercial: bool = False
+    # Tipo de acesso (services/acesso.py); quando vem, vale sobre admin/comercial.
+    tipo: str | None = None
+    obras: list[int] = []
+
+
+class AcessoAlterar(BaseModel):
+    tipo: str
+    # Só para "obra_especifica": as obras em que a pessoa fica.
+    obras: list[int] | None = None
 
 
 class SenhaAlterar(BaseModel):

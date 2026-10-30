@@ -117,6 +117,34 @@ O comercial **nunca entra em equipe** de obra: um papel ali daria permissões
 que o perfil não pode ter. E um usuário é administrador ou comercial, nunca os
 dois.
 
+## Tipo de acesso (30/10/2026)
+
+Cada pessoa tem um dos quatro tipos da planilha de cargos da TREELE. O
+administrador troca o tipo depois em **Usuários → Editar acesso**. A regra
+fica em `services/acesso.py`.
+
+| Tipo | O que vê |
+|---|---|
+| Administrador | Tudo; entra como coordenador em toda obra |
+| Comercial | Todas as obras, só a disciplina COM liberada (acima) |
+| Usuário de todas as obras | Papel **obra** em toda obra, inclusive nas criadas depois, sem estar na equipe. Recebe os avisos de liberação de toda obra |
+| Usuário de obra específica | Só as obras da equipe dele; entrando por aqui, com papel **obra** (o papel muda na equipe da obra) |
+
+Trocar o tipo arruma a equipe junto:
+- o administrador rebaixado deixa de ser coordenador das obras em que só
+  estava por ser administrador;
+- quem vira comercial ou "todas as obras" sai das equipes, porque o tipo já dá
+  o acesso;
+- em obra específica, ficam só as obras marcadas.
+
+**Senha**: usuário criado sem senha entra com **Entrar com Microsoft**, pela
+conta corporativa. O login acha a pessoa pelo e-mail, e a senha local fica uma
+que ninguém sabe. Assim a senha é sempre a da Microsoft, e trocá-la lá vale
+aqui também.
+
+Os acessos da planilha de cargos (97 pessoas) foram cadastrados assim em
+30/10/2026. Quem já existia não foi recriado: só o tipo foi ajustado.
+
 ## As escolhas por trás disso
 
 **Projetista envia mas não libera.** É a separação que faz o controle existir.

@@ -31,7 +31,7 @@ TEXTO_MAX_NO_AVISO = 600
 
 
 def _membros(db: Session, obra_id: int, papel: PapelObra) -> list[Usuario]:
-    return list(
+    membros = list(
         db.scalars(
             select(Usuario)
             .join(ObraMembro, ObraMembro.usuario_id == Usuario.id)
@@ -42,6 +42,14 @@ def _membros(db: Session, obra_id: int, papel: PapelObra) -> list[Usuario]:
             )
         )
     )
+    if papel == PapelObra.obra:
+        # "Todas as obras" (30/10/2026): equipe de obra em toda obra, mesmo sem
+        # estar na equipe dela — a não ser que esteja com outro papel nela.
+        com_equipe = select(ObraMembro.usuario_id).where(ObraMembro.obra_id == obra_id)
+        membros += list(db.scalars(select(Usuario).where(
+            Usuario.todas_obras.is_(True), Usuario.ativo.is_(True), Usuario.id.not_in(com_equipe),
+        )))
+    return membros
 
 
 def projetista_da_ultima(db: Session, documento: Documento) -> list[Usuario]:

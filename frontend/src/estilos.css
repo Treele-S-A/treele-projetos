@@ -3321,3 +3321,8 @@ table.tabela {
     grid-template-columns: 1fr 1fr 24px;
   }
 }
+
+/* Edição do tipo de acesso, na tabela de usuários (30/10/2026) */
+.linha-edicao-acesso td {
+  background: var(--nevoa);
+}

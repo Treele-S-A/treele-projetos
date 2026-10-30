@@ -72,6 +72,8 @@ def _papeis(db: Session, usuario: Usuario) -> str:
         return "administrador (vê tudo, em todas as obras)"
     if usuario.comercial:
         return "comercial (vê só a disciplina COM liberada para obra, em todas as obras)"
+    if usuario.todas_obras:
+        return "equipe de obra em todas as obras (vê e baixa o que está liberado para obra)"
     papeis = [
         f"{m.obra.codigo}: {m.papel.value}"
         for m in db.query(ObraMembro).filter(ObraMembro.usuario_id == usuario.id)
