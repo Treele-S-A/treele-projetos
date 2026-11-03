@@ -7,6 +7,8 @@ Documentos: **`README.md`** (rodar local, fases), `docs/roteiro.md` (fases segui
 
 ## Onde paramos
 
+- **03/11/2026, câmera em todos os conflitos:** só o primeiro conflito clicado saía bem enquadrado; nos seguintes, a caixa da região somava as peças de todos os conflitos já clicados e a câmera se afastava. A região agora usa só as peças do conflito clicado. Testado com os modelos do SER (HID × EST, 71 conflitos): o conflito clicado em quarto lugar fica igual a quando é o primeiro. Também apagados de produção, a pedido, os documentos de teste SER-EST-PE-TESTE e SER-HID-PE-TESTE (cópias de 21/10).
+
 - **03/11/2026, visualizador 3D em tela cheia de novo:** com a barra superior de 62 px da moldura nova, o 3D ficava menor e a página rolava por trás dele; a roda do mouse apertada disparava a rolagem automática do navegador. Agora, em `/modelos`, o menu recolhe sozinho (o logo traz de volta), a área perde a margem e o 3D ocupa toda a altura abaixo da barra; a roda apertada não rola mais a página. Ao sair do 3D, o menu volta. Também conferido o SER: os 10 modelos estão alinhados entre si e os pavimentos agrupam em 20 andares (Subsolo a Cobertura).
 
 - **30/10/2026, integração para publicação:** as melhorias locais de interface, tema, perfil e seletor de obra foram mescladas aos quatro commits recentes do estágio de projetos (tipos de acesso, solicitações externas, chat e 3D). Build do frontend e suíte do backend passaram após o rebase. Próximo passo: publicar a `main` e verificar a implantação; pendente com a TREELE: homologar o visual e a edição de perfil em produção. `.env`, `.env1`, `.env.local` e a configuração local de banco/S3 não entram no Git.
@@ -94,4 +96,5 @@ Uma linha por trabalho, a mais recente no fim: `AAAA-MM-DD · pessoa · IA usada
 - 2026-10-30 · TI · Codex · API local passou a usar S3 de produção com o banco já configurado; PDF validado por URL assinada · sem commit a pedido do usuário
 - 2026-10-30 · TI · Codex · seletor de obra repaginado e carimbo de liberação legível no tema escuro · sem commit a pedido do usuário
 - 2026-10-30 · TI · Codex · melhorias locais integradas aos commits novos de Projetos, com build e testes validados · 1251c4c (antes do ajuste final)
-- 2026-11-03 · Vinícius · Claude · visualizador 3D volta a ocupar a tela toda na moldura nova; roda apertada não rola a página · (este commit)
+- 2026-11-03 · Vinícius · Claude · visualizador 3D volta a ocupar a tela toda na moldura nova; roda apertada não rola a página · 9e235e8
+- 2026-11-03 · Vinícius · Claude · câmera enquadra cada conflito como o primeiro; apagados os documentos SER-*-TESTE · (este commit)

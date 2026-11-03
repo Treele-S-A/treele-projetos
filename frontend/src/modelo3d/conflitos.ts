@@ -288,15 +288,19 @@ export async function regiaoDoConflito(
   idsB: number[],
 ): Promise<{ centro: THREE.Vector3; caixa: THREE.Box3 } | null> {
   if (!modelA || !modelB || !idsA.length || !idsB.length) return null;
+  // caixas() devolve tudo o que o modelo já mediu: só as peças deste
+  // conflito entram. Somando tudo, a caixa crescia a cada clique e só o
+  // primeiro conflito saía enquadrado (TREELE, 03/11/2026).
   const doA = await caixas({ modelId: "", disciplina: "", model: modelA }, idsA, () => {});
   const doB = await caixas({ modelId: "", disciplina: "", model: modelB }, idsB, () => {});
+  const deste = (doModelo: Map<number, THREE.Box3>, ids: number[]) =>
+    ids.map((id) => doModelo.get(id)).filter((c): c is THREE.Box3 => !!c && !c.isEmpty());
   const caixaB = new THREE.Box3();
-  for (const c of doB.values()) if (!c.isEmpty()) caixaB.union(c);
+  for (const c of deste(doB, idsB)) caixaB.union(c);
   if (caixaB.isEmpty()) return null;
   const cruzamento = new THREE.Box3();
   const todasA = new THREE.Box3();
-  for (const c of doA.values()) {
-    if (c.isEmpty()) continue;
+  for (const c of deste(doA, idsA)) {
     todasA.union(c);
     const parte = c.clone().intersect(caixaB);
     if (!parte.isEmpty()) cruzamento.union(parte);
