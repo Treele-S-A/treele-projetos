@@ -3499,3 +3499,16 @@ table.tabela {
 .pagina-cronograma .gantt-corpo { flex: 1; min-height: 0; }
 .pagina-cronograma .gantt-rolo, .pagina-cronograma .gantt-detalhe { height: auto; min-height: 0; }
 .pagina-cronograma .gantt-rodape { padding: 6px 12px; }
+
+/* "Perguntar ao acervo" na barra do topo, ao lado do nome (03/11/2026). */
+.vaga-assistente { margin-left: auto; display: flex; }
+.projetos-topbar .projetos-conta { margin-left: 0; }
+.vaga-assistente .assistente-botao {
+  position: static;
+  padding: 8px 14px;
+  font-size: 13px;
+  box-shadow: none;
+}
+@media (max-width: 700px) {
+  .vaga-assistente .assistente-botao { padding: 7px 10px; font-size: 12px; }
+}

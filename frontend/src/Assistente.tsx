@@ -3,6 +3,7 @@
  *  só nesta tela: nada fica guardado no servidor. */
 
 import { Fragment, useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { Link } from "react-router-dom";
 import { api, ErroApi, lerToken } from "./api";
 import { useSessao } from "./sessao";
@@ -291,6 +292,9 @@ export default function Assistente({ obraId }: { obraId: number | null }) {
     if (aberto) campo.current?.focus();
   }, [aberto]);
 
+  const [vaga, setVaga] = useState<HTMLElement | null>(null);
+  useEffect(() => setVaga(document.getElementById("vaga-assistente")), []);
+
   if (!ligado) return null;
 
   const papelNaObra = obras.find((o) => o.id === obraId)?.papel;
@@ -342,16 +346,20 @@ export default function Assistente({ obraId }: { obraId: number | null }) {
     void perguntar(texto);
   }
 
+  const botao = !aberto && (
+    <button className="assistente-botao" onClick={() => setAberto(true)}>
+      <span className="assistente-icone" aria-hidden="true">
+        ✦
+      </span>
+      Perguntar ao acervo
+    </button>
+  );
+
   return (
     <>
-      {!aberto && (
-        <button className="assistente-botao" onClick={() => setAberto(true)}>
-          <span className="assistente-icone" aria-hidden="true">
-            ✦
-          </span>
-          Perguntar ao acervo
-        </button>
-      )}
+      {/* O botão mora na barra do topo, ao lado do nome (03/11/2026): flutuando
+          no canto, cobria tabela e texto. Sem a barra, volta a flutuar. */}
+      {vaga ? createPortal(botao, vaga) : botao}
 
       {aberto && (
         <aside className="assistente-painel" aria-label="Assistente do acervo">

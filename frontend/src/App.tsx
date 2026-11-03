@@ -235,6 +235,7 @@ function Moldura() {
           }}
         ><img src="/projetos-icon.png" alt="" /></button>
         <span className="projetos-topbar-title">Projetos <span>· {obra?.nome ?? "Todas as obras"}</span></span>
+        <div id="vaga-assistente" className="vaga-assistente" />
         <div className="projetos-conta" ref={contaRef}>
           <button className="projetos-topbar-conta" type="button" aria-expanded={contaAberta}
             aria-haspopup="menu" onClick={() => setContaAberta((aberta) => !aberta)}>
