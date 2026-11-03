@@ -14,12 +14,13 @@ Separar Documento de Revisão é o que permite responder "qual é a última vers
 liberada disto?" sem depender de ninguém ter nomeado a pasta direito.
 """
 
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 
 from sqlalchemy import (
     JSON,
     BigInteger,
     Boolean,
+    Date,
     DateTime,
     Float,
     ForeignKey,
@@ -848,3 +849,78 @@ class SolicitacaoAcesso(Base):
     )
 
     decidida_por: Mapped["Usuario | None"] = relationship(foreign_keys=[decidida_por_id])
+
+
+class Cronograma(Base):
+    """Cronograma de projetos da obra, em Gantt — PRO-FL-001 (TREELE, 03/11/2026).
+
+    Um por obra. As datas das atividades não ficam guardadas: saem do início
+    do projeto, das durações (em dias úteis) e das predecessoras, a cada
+    leitura (services/cronograma.py). Guardado fica só o que a pessoa decide:
+    duração, vínculos, progresso e, quando ela arrasta a barra, a data de
+    "não iniciar antes de". Só os coordenadores da obra veem e mexem."""
+
+    __tablename__ = "cronogramas"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    obra_id: Mapped[int] = mapped_column(ForeignKey("obras.id", ondelete="CASCADE"), unique=True)
+    inicio: Mapped[date] = mapped_column(Date)
+    criado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=agora)
+    atualizado_em: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    atualizado_por_id: Mapped[int | None] = mapped_column(
+        ForeignKey("usuarios.id", ondelete="SET NULL"), nullable=True
+    )
+
+    atualizado_por: Mapped["Usuario | None"] = relationship()
+    atividades: Mapped[list["CronogramaAtividade"]] = relationship(
+        back_populates="cronograma", cascade="all, delete-orphan",
+        order_by="CronogramaAtividade.ordem, CronogramaAtividade.id",
+    )
+
+
+class CronogramaAtividade(Base):
+    """Uma linha do Gantt. Duração 0 é marco (um ponto, sem barra)."""
+
+    __tablename__ = "cronograma_atividades"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    cronograma_id: Mapped[int] = mapped_column(
+        ForeignKey("cronogramas.id", ondelete="CASCADE"), index=True
+    )
+    ordem: Mapped[int] = mapped_column(Integer, default=0)
+    fase: Mapped[str] = mapped_column(String(120))
+    nome: Mapped[str] = mapped_column(String(200))
+    area: Mapped[str | None] = mapped_column(String(60), nullable=True)
+    responsavel: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    duracao: Mapped[int] = mapped_column(Integer, default=5)
+    inicio_fixo: Mapped[date | None] = mapped_column(Date, nullable=True)
+    progresso: Mapped[int] = mapped_column(Integer, default=0)
+    observacao: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    cronograma: Mapped["Cronograma"] = relationship(back_populates="atividades")
+    predecessoras: Mapped[list["CronogramaVinculo"]] = relationship(
+        foreign_keys="CronogramaVinculo.sucessora_id", cascade="all, delete-orphan",
+        back_populates="sucessora", order_by="CronogramaVinculo.id",
+    )
+
+
+class CronogramaVinculo(Base):
+    """Predecessora de uma atividade: TI (término-início), II (início-início)
+    ou TT (término-término), com defasagem em dias úteis (pode ser negativa)."""
+
+    __tablename__ = "cronograma_vinculos"
+    __table_args__ = (UniqueConstraint("predecessora_id", "sucessora_id", name="uq_cronograma_vinculo"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    predecessora_id: Mapped[int] = mapped_column(
+        ForeignKey("cronograma_atividades.id", ondelete="CASCADE"), index=True
+    )
+    sucessora_id: Mapped[int] = mapped_column(
+        ForeignKey("cronograma_atividades.id", ondelete="CASCADE"), index=True
+    )
+    tipo: Mapped[str] = mapped_column(String(2), default="TI")
+    defasagem: Mapped[int] = mapped_column(Integer, default=0)
+
+    sucessora: Mapped["CronogramaAtividade"] = relationship(
+        foreign_keys=[sucessora_id], back_populates="predecessoras"
+    )

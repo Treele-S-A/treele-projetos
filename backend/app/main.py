@@ -19,6 +19,7 @@ from .api import (
     chat,
     conflitos,
     catalogos,
+    cronograma,
     fornecedores,
     documentos,
     eventos,
@@ -99,6 +100,7 @@ for modulo in (
     vistas,
     atas,
     fornecedores,
+    cronograma,
     acesso,
     storage_local,
 ):

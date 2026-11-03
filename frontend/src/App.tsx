@@ -24,6 +24,7 @@ import Obras from "./paginas/Obras";
 import Registro from "./paginas/Registro";
 import SolicitacoesGerais from "./paginas/SolicitacoesGerais";
 import Atas from "./paginas/Atas";
+import Cronograma, { EscolherCronograma } from "./paginas/Cronograma";
 import Ata from "./paginas/Ata";
 import Fornecedores from "./paginas/Fornecedores";
 import SolicitarAcesso from "./paginas/SolicitarAcesso";
@@ -162,6 +163,8 @@ function Moldura() {
   // administrador, menos as atas, que o projetista vê (as das revisões dele).
   const equipeDoResponsavel = !admin && !!obra && pode("adicionar_membro");
   const projetista = obras.some((o) => o.papel === "projetista");
+  // Cronograma de projetos (PRO-FL-001): só dos coordenadores (03/11/2026).
+  const coordenador = admin || obras.some((o) => o.papel === "coordenador");
 
   useEffect(() => {
     if (!contaAberta) return;
@@ -368,12 +371,22 @@ function Moldura() {
             </>
           )}
 
-          {(admin || projetista) && (
+          {(admin || projetista || coordenador) && (
             <>
               <div className="modulo-menu">Qualidade</div>
-              <NavLink to="/atas" className={({ isActive }) => (isActive ? "ativo" : "")}>
-                Atas de análise crítica
-              </NavLink>
+              {(admin || projetista) && (
+                <NavLink to="/atas" className={({ isActive }) => (isActive ? "ativo" : "")}>
+                  Atas de análise crítica
+                </NavLink>
+              )}
+              {coordenador && (
+                <NavLink
+                  to="/cronograma"
+                  className={() => (local.pathname.endsWith("/cronograma") ? "ativo" : "")}
+                >
+                  Cronograma de projetos
+                </NavLink>
+              )}
               {admin && (
                 <NavLink
                   to="/fornecedores"
@@ -451,6 +464,8 @@ export default function App() {
         <Route path="/notificacoes" element={<Notificacoes />} />
         <Route path="/solicitacoes" element={<SolicitacoesGerais />} />
         <Route path="/atas" element={<Atas />} />
+        <Route path="/cronograma" element={<EscolherCronograma />} />
+        <Route path="/obras/:obraId/cronograma" element={<Cronograma />} />
         <Route path="/atas/:ataId" element={<Ata />} />
         <Route path="/fornecedores" element={<Fornecedores />} />
         <Route path="/solicitacoes-acesso" element={<SolicitacoesAcesso />} />
