@@ -3481,3 +3481,21 @@ table.tabela {
   .gantt-corpo { flex-direction: column; }
   .gantt-detalhe { width: auto; height: auto; border-left: 0; border-top: 1px solid var(--traco-medio); }
 }
+
+/* Cronograma em tela cheia, como o 3D (03/11/2026): o menu recolhe, a área
+   perde a margem e o Gantt ocupa a altura toda abaixo da barra. */
+.projetos-app.tela-do-cronograma > .area {
+  padding: 12px 16px 12px;
+  height: calc(100vh - 62px);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.pagina-cronograma { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+.pagina-cronograma .cabecalho-area { margin-bottom: 8px; }
+.pagina-cronograma .cabecalho-area h1 { font-size: 22px; }
+.pagina-cronograma > .folha.gantt { flex: 1; min-height: 0; display: flex; flex-direction: column; margin: 0; }
+.pagina-cronograma .gantt-barra { padding: 8px 12px; gap: 8px 12px; }
+.pagina-cronograma .gantt-corpo { flex: 1; min-height: 0; }
+.pagina-cronograma .gantt-rolo, .pagina-cronograma .gantt-detalhe { height: auto; min-height: 0; }
+.pagina-cronograma .gantt-rodape { padding: 6px 12px; }

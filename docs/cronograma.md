@@ -25,6 +25,10 @@ Toda alteração devolve o cronograma inteiro recalculado; a tela não faz conta
 
 ## Na tela
 
+- Tela cheia, como o visualizador 3D: o menu recolhe ao abrir (o logo traz de
+  volta) e o Gantt ocupa a altura toda. A tabela tem três tamanhos — completa,
+  compacta (dias, início e término; o padrão) e só nomes —, e o navegador
+  lembra a escolha.
 - Tabela editável: nome, responsável, dias, início (muda o "não iniciar antes
   de"), término (muda a duração), % e predecessoras no formato do MS Project:
   `3; 5II+2; 7TT-1` (aceita também FS/SS/FF).

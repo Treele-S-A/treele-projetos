@@ -205,7 +205,10 @@ function Moldura() {
   // O visualizador 3D ocupa a tela toda: o menu recolhe ao abrir (o logo
   // traz de volta) e volta ao sair (TREELE, 03/11/2026).
   const telaDoModelo = local.pathname.startsWith("/modelos");
-  useEffect(() => setMenuRecolhido(telaDoModelo), [telaDoModelo]);
+  // O cronograma em Gantt também (03/11/2026): ver as barras é a prioridade.
+  const telaDoCronograma = /^\/obras\/\d+\/cronograma/.test(local.pathname);
+  const telaCheia = telaDoModelo || telaDoCronograma;
+  useEffect(() => setMenuRecolhido(telaCheia), [telaCheia]);
 
   function sairDaConta() {
     setContaAberta(false);
@@ -214,7 +217,7 @@ function Moldura() {
   }
 
   return (
-    <div className={`app projetos-app ${menuRecolhido ? "menu-recolhido" : ""} ${telaDoModelo ? "tela-do-modelo" : ""}`}>
+    <div className={`app projetos-app ${menuRecolhido ? "menu-recolhido" : ""} ${telaDoModelo ? "tela-do-modelo" : ""} ${telaDoCronograma ? "tela-do-cronograma" : ""}`}>
       <header className="projetos-topbar">
         <button
           className="projetos-logo-toggle"

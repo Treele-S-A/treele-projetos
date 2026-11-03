@@ -111,8 +111,19 @@ type Zoom = "dia" | "semana" | "mes";
 const PX: Record<Zoom, number> = { dia: 26, semana: 9, mes: 3.2 };
 const LINHA = 32;
 const CABECALHO = 46;
-const COLUNAS = "40px minmax(220px, 1fr) 112px 58px 92px 84px 54px 104px";
-const LARGURA_TABELA = 800;
+// A tabela em três tamanhos: aqui a prioridade é ver as barras (03/11/2026).
+type ModoTabela = "completa" | "compacta" | "nomes";
+interface Tabela {
+  modo: ModoTabela;
+  colunas: string;
+  largura: number;
+}
+const TABELAS: Record<ModoTabela, Tabela> = {
+  completa: { modo: "completa", colunas: "40px minmax(220px, 1fr) 112px 58px 92px 84px 54px 104px", largura: 800 },
+  compacta: { modo: "compacta", colunas: "40px minmax(170px, 1fr) 50px 92px 86px", largura: 440 },
+  nomes: { modo: "nomes", colunas: "40px minmax(150px, 1fr)", largura: 250 },
+};
+const CHAVE_TABELA = "treele.gantt.tabela";
 
 // ============================================================ páginas
 
@@ -190,7 +201,7 @@ export default function Cronograma() {
   }
 
   return (
-    <>
+    <div className="pagina-cronograma">
       <div className="cabecalho-area">
         <div>
           <span className="rotulo">Qualidade · PRO-FL-001</span>
@@ -209,7 +220,7 @@ export default function Cronograma() {
       )}
       {dados && !dados.existe && <CriarCronograma url={url} obra={dados.obra} salvar={salvar} />}
       {dados && dados.existe && <Gantt dados={dados} url={url} salvar={salvar} />}
-    </>
+    </div>
   );
 }
 
@@ -267,6 +278,15 @@ function Gantt({ dados, url, salvar }: { dados: Dados; url: string; salvar: (p: 
   const [setas, setSetas] = useState(true);
   const [critico, setCritico] = useState(true);
   const [arraste, setArraste] = useState<Arraste | null>(null);
+  const [modoTabela, setModoTabela] = useState<ModoTabela>(() => {
+    try {
+      const v = localStorage.getItem(CHAVE_TABELA) as ModoTabela | null;
+      return v && v in TABELAS ? v : "compacta";
+    } catch {
+      return "compacta";
+    }
+  });
+  const tab = TABELAS[modoTabela];
   const rolo = useRef<HTMLDivElement>(null);
   const px = PX[zoom];
   const atividades = dados.atividades;
@@ -445,6 +465,22 @@ function Gantt({ dados, url, salvar }: { dados: Dados; url: string; salvar: (p: 
             </button>
           ))}
         </div>
+        <div className="seletor-visao" role="group" aria-label="Tabela">
+          {(["completa", "compacta", "nomes"] as ModoTabela[]).map((m) => (
+            <button key={m} className={modoTabela === m ? "ativo" : ""}
+              title={m === "completa" ? "Todas as colunas" : m === "compacta" ? "Dias, início e término" : "Só o nome: mais espaço para as barras"}
+              onClick={() => {
+                setModoTabela(m);
+                try {
+                  localStorage.setItem(CHAVE_TABELA, m);
+                } catch {
+                  /* sem preferência guardada */
+                }
+              }}>
+              {m === "completa" ? "Tabela" : m === "compacta" ? "Compacta" : "Só nomes"}
+            </button>
+          ))}
+        </div>
         <button className="botao secundario pequeno" onClick={irParaHoje}>Hoje</button>
         <label className="gantt-opcao"><input type="checkbox" checked={critico} onChange={(e) => setCritico(e.target.checked)} /> Caminho crítico</label>
         <label className="gantt-opcao"><input type="checkbox" checked={setas} onChange={(e) => setSetas(e.target.checked)} /> Vínculos</label>
@@ -461,25 +497,29 @@ function Gantt({ dados, url, salvar }: { dados: Dados; url: string; salvar: (p: 
       <div className="gantt-corpo">
         <div className="gantt-rolo" ref={rolo} onPointerMove={duranteArraste} onPointerUp={terminarArraste}
           onPointerCancel={() => setArraste(null)}>
-          <div className="gantt-conteudo" style={{ width: LARGURA_TABELA + largura }}>
+          <div className="gantt-conteudo" style={{ width: tab.largura + largura }}>
             {/* Cabeçalho: colunas e régua */}
             <div className="gantt-linha gantt-topo" style={{ height: CABECALHO }}>
-              <div className="gantt-celulas gantt-titulos" style={{ gridTemplateColumns: COLUNAS, width: LARGURA_TABELA }}>
-                <span>Nº</span><span>Atividade</span><span>Responsável</span><span title="Dias úteis; 0 é marco">Dias</span>
-                <span>Início</span><span>Término</span><span>%</span><span title="Ex.: 3; 5II+2; 7TT">Predec.</span>
+              <div className="gantt-celulas gantt-titulos" style={{ gridTemplateColumns: tab.colunas, width: tab.largura }}>
+                <span>Nº</span><span>Atividade</span>
+                {tab.modo === "completa" && <span>Responsável</span>}
+                {tab.modo !== "nomes" && (
+                  <><span title="Dias úteis; 0 é marco">Dias</span><span>Início</span><span>Término</span></>
+                )}
+                {tab.modo === "completa" && <><span>%</span><span title="Ex.: 3; 5II+2; 7TT">Predec.</span></>}
               </div>
               <Regua origem={origem} totalDias={totalDias} px={px} zoom={zoom} />
             </div>
 
             <div className="gantt-linhas" style={{ position: "relative" }}>
-              <Fundo origem={origem} totalDias={totalDias} px={px} zoom={zoom} altura={linhas.length * LINHA} x={x} />
+              <Fundo esquerda={tab.largura} origem={origem} totalDias={totalDias} px={px} zoom={zoom} altura={linhas.length * LINHA} x={x} />
               {setas && (
-                <Setas atividades={atividades} posicao={posicao} largura={largura} altura={linhas.length * LINHA}
+                <Setas esquerda={tab.largura} atividades={atividades} posicao={posicao} largura={largura} altura={linhas.length * LINHA}
                   selecionada={selecionada} />
               )}
               {linhas.map((l) =>
                 l.tipo === "fase" ? (
-                  <LinhaFase key={`f:${l.fase}`} l={l} recolhida={recolhidas.has(l.fase)} x={x} px={px}
+                  <LinhaFase key={`f:${l.fase}`} tab={tab} l={l} recolhida={recolhidas.has(l.fase)} x={x} px={px}
                     alternar={() => {
                       const s = new Set(recolhidas);
                       if (s.has(l.fase)) s.delete(l.fase); else s.add(l.fase);
@@ -488,7 +528,7 @@ function Gantt({ dados, url, salvar }: { dados: Dados; url: string; salvar: (p: 
                     renomear={(para) => salvar(api.patch<Dados>(`${url}/fases`, { de: l.fase, para }))}
                     adicionar={() => novaAtividade(l.fase, l.atividades[l.atividades.length - 1]?.id)} />
                 ) : (
-                  <LinhaAtividade key={l.a.id} a={l.a} selecionada={selecionada === l.a.id} critico={critico}
+                  <LinhaAtividade key={l.a.id} tab={tab} a={l.a} selecionada={selecionada === l.a.id} critico={critico}
                     pos={posicao.get(l.a.id)!} numeroDe={numeroDe} idDe={idDe} px={px}
                     arrastando={arraste?.id === l.a.id}
                     aoSelecionar={() => setSelecionada(l.a.id)} alterar={alterar} definirPredecessoras={definirPredecessoras}
@@ -551,8 +591,8 @@ function Regua({ origem, totalDias, px, zoom }: { origem: string; totalDias: num
   );
 }
 
-function Fundo({ origem, totalDias, px, zoom, altura, x }: {
-  origem: string; totalDias: number; px: number; zoom: Zoom; altura: number; x: (d: string) => number;
+function Fundo({ esquerda, origem, totalDias, px, zoom, altura, x }: {
+  esquerda: number; origem: string; totalDias: number; px: number; zoom: Zoom; altura: number; x: (d: string) => number;
 }) {
   const faixas: ReactNode[] = [];
   for (let i = 0; i < totalDias; i++) {
@@ -564,7 +604,7 @@ function Fundo({ origem, totalDias, px, zoom, altura, x }: {
   }
   const h = hoje();
   return (
-    <div className="gantt-fundo" style={{ left: LARGURA_TABELA, width: totalDias * px, height: altura }}>
+    <div className="gantt-fundo" style={{ left: esquerda, width: totalDias * px, height: altura }}>
       {faixas}
       {h >= origem && diasEntre(origem, h) < totalDias && (
         <span className="gantt-hoje" style={{ left: x(h) + px / 2 }} title={`Hoje, ${completa(h)}`} />
@@ -573,7 +613,8 @@ function Fundo({ origem, totalDias, px, zoom, altura, x }: {
   );
 }
 
-function Setas({ atividades, posicao, largura, altura, selecionada }: {
+function Setas({ esquerda, atividades, posicao, largura, altura, selecionada }: {
+  esquerda: number;
   atividades: Atividade[];
   posicao: Map<number, { linha: number; x1: number; x2: number }>;
   largura: number;
@@ -611,7 +652,7 @@ function Setas({ atividades, posicao, largura, altura, selecionada }: {
     }
   }
   return (
-    <svg className="gantt-setas" style={{ left: LARGURA_TABELA }} width={largura} height={altura}>
+    <svg className="gantt-setas" style={{ left: esquerda }} width={largura} height={altura}>
       <defs>
         <marker id="gantt-ponta" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto">
           <path d="M0,0 L8,4 L0,8 z" />
@@ -627,7 +668,8 @@ function Setas({ atividades, posicao, largura, altura, selecionada }: {
 
 // ------------------------------------------------------------ linhas
 
-function LinhaFase({ l, recolhida, x, px, alternar, renomear, adicionar }: {
+function LinhaFase({ tab, l, recolhida, x, px, alternar, renomear, adicionar }: {
+  tab: Tabela;
   l: Extract<Linha, { tipo: "fase" }>;
   recolhida: boolean;
   x: (d: string) => number;
@@ -641,7 +683,7 @@ function LinhaFase({ l, recolhida, x, px, alternar, renomear, adicionar }: {
   const x2 = x(l.termino) + px;
   return (
     <div className="gantt-linha gantt-linha-fase" style={{ height: LINHA }}>
-      <div className="gantt-celulas" style={{ gridTemplateColumns: COLUNAS, width: LARGURA_TABELA }}>
+      <div className="gantt-celulas" style={{ gridTemplateColumns: tab.colunas, width: tab.largura }}>
         <button className="gantt-seta-fase" onClick={alternar} aria-label={recolhida ? "Expandir fase" : "Recolher fase"}>
           {recolhida ? "▸" : "▾"}
         </button>
@@ -655,12 +697,15 @@ function LinhaFase({ l, recolhida, x, px, alternar, renomear, adicionar }: {
             <button className="gantt-mais" onClick={adicionar} title="Nova atividade nesta fase">+</button>
           </span>
         )}
-        <span />
-        <span className="num">{indice(l.termino) - indice(l.inicio) + 1}</span>
-        <span>{curta(l.inicio)}</span>
-        <span>{curta(l.termino)}</span>
-        <span className="num">{Math.round(l.progresso)}</span>
-        <span />
+        {tab.modo === "completa" && <span />}
+        {tab.modo !== "nomes" && (
+          <>
+            <span className="num">{indice(l.termino) - indice(l.inicio) + 1}</span>
+            <span>{curta(l.inicio)}</span>
+            <span>{curta(l.termino)}</span>
+          </>
+        )}
+        {tab.modo === "completa" && <><span className="num">{Math.round(l.progresso)}</span><span /></>}
       </div>
       <div className="gantt-trilho">
         <div className="gantt-resumo-fase" style={{ left: x1, width: Math.max(4, x2 - x1) }}>
@@ -696,7 +741,8 @@ function Celula({ valor, tipo = "text", salvar, rotulo, ...resto }: {
   );
 }
 
-function LinhaAtividade({ a, selecionada, critico, pos, numeroDe, idDe, px, arrastando, aoSelecionar, alterar, definirPredecessoras, comecarArraste }: {
+function LinhaAtividade({ tab, a, selecionada, critico, pos, numeroDe, idDe, px, arrastando, aoSelecionar, alterar, definirPredecessoras, comecarArraste }: {
+  tab: Tabela;
   a: Atividade;
   selecionada: boolean;
   critico: boolean;
@@ -723,11 +769,14 @@ function LinhaAtividade({ a, selecionada, critico, pos, numeroDe, idDe, px, arra
     (a.inicio_fixo ? `\nNão iniciar antes de ${completa(a.inicio_fixo)}` : "");
   return (
     <div className={`gantt-linha ${selecionada ? "selecionada" : ""}`} style={{ height: LINHA }} onClick={aoSelecionar}>
-      <div className="gantt-celulas" style={{ gridTemplateColumns: COLUNAS, width: LARGURA_TABELA }}>
+      <div className="gantt-celulas" style={{ gridTemplateColumns: tab.colunas, width: tab.largura }}>
         <span className="num gantt-numero">{a.numero}</span>
         <Celula valor={a.nome} rotulo="Atividade" salvar={(v) => v.trim() && alterar(a.id, { nome: v.trim() })}
           className={a.critica && critico && !concluida ? "texto-critico" : ""} />
-        <Celula valor={a.responsavel ?? ""} rotulo="Responsável" salvar={(v) => alterar(a.id, { responsavel: v })} />
+        {tab.modo === "completa" && (
+          <Celula valor={a.responsavel ?? ""} rotulo="Responsável" salvar={(v) => alterar(a.id, { responsavel: v })} />
+        )}
+        {tab.modo !== "nomes" && <>
         <Celula valor={String(a.duracao)} tipo="number" min={0} rotulo="Duração em dias úteis" className="num"
           salvar={(v) => v !== "" && alterar(a.id, { duracao: Math.max(0, Math.round(Number(v))) })} />
         <span className="gantt-data">
@@ -741,6 +790,8 @@ function LinhaAtividade({ a, selecionada, critico, pos, numeroDe, idDe, px, arra
         </span>
         <Celula valor={a.termino} tipo="date" rotulo="Término" title="Mudar o término muda a duração"
           salvar={(v) => v && alterar(a.id, { duracao: Math.max(1, indice(v) - indice(a.inicio) + 1) })} />
+        </>}
+        {tab.modo === "completa" && <>
         <Celula valor={String(a.progresso)} tipo="number" min={0} max={100} rotulo="Porcentagem concluída" className="num"
           salvar={(v) => v !== "" && alterar(a.id, { progresso: Math.min(100, Math.max(0, Math.round(Number(v)))) })} />
         <span className="gantt-pred">
@@ -753,6 +804,7 @@ function LinhaAtividade({ a, selecionada, critico, pos, numeroDe, idDe, px, arra
               return definirPredecessoras(a.id, r);
             }} />
         </span>
+        </>}
       </div>
       <div className="gantt-trilho">
         {marco ? (
