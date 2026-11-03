@@ -19,7 +19,7 @@ from ..deps import ContextoObra, contexto_obra, usuario_atual
 from ..enums import PapelObra
 from ..models import Cronograma, CronogramaAtividade, CronogramaVinculo, Obra, ObraMembro, Usuario
 from ..services import auditoria
-from ..services.cronograma import MODELO, TIPOS, CicloNoCronograma, calcular, gera_ciclo
+from ..services.cronograma import MODELO, STATUS, TIPOS, CicloNoCronograma, calcular, gera_ciclo
 
 router = APIRouter(tags=["cronograma de projetos"])
 
@@ -58,30 +58,37 @@ def _saida(db: Session, ctx: ContextoObra, c: Cronograma | None) -> dict:
         calc = calcular(c)
     except CicloNoCronograma:  # não deveria acontecer: os vínculos são conferidos ao gravar
         calc = {}
-    hoje = date.today()
     atividades = []
     for n, a in enumerate(c.atividades, start=1):
         r = calc.get(a.id)
         atividades.append({
             "id": a.id, "numero": n, "fase": a.fase, "nome": a.nome, "area": a.area,
             "responsavel": a.responsavel, "duracao": a.duracao, "inicio_fixo": a.inicio_fixo,
-            "progresso": a.progresso, "observacao": a.observacao,
+            "status": a.status, "observacao": a.observacao,
+            "inicio_planejado": r.inicio_planejado if r else c.inicio,
+            "termino_planejado": r.termino_planejado if r else c.inicio,
+            "plano_congelado": a.inicio_base is not None,
+            "inicio_real": a.inicio_real, "termino_real": a.termino_real,
             "inicio": r.inicio if r else c.inicio, "termino": r.termino if r else c.inicio,
             "folga": r.folga if r else 0, "critica": bool(r and r.critica),
-            "atrasada": bool(r and a.progresso < 100 and r.termino < hoje),
+            "atraso": r.atraso if r else 0, "atrasada": bool(r and r.atrasada),
             "predecessoras": [
                 {"predecessora_id": v.predecessora_id, "tipo": v.tipo, "defasagem": v.defasagem}
                 for v in a.predecessoras
             ],
         })
-    total = sum(max(a.duracao, 1) for a in c.atividades) or 1
-    feito = sum(max(a.duracao, 1) * a.progresso for a in c.atividades) / total
+    concluidas = [x for x in atividades if x["status"] == "concluido"]
     return {
         "obra": obra,
         "existe": True,
         "inicio": c.inicio,
         "termino": max((x["termino"] for x in atividades), default=c.inicio),
-        "progresso": round(feito, 1),
+        "termino_planejado": max((x["termino_planejado"] for x in atividades), default=c.inicio),
+        "total": len(atividades),
+        "concluidas": len(concluidas),
+        "no_prazo": sum(1 for x in concluidas if x["atraso"] <= 0),
+        "concluidas_com_atraso": sum(1 for x in concluidas if x["atraso"] > 0),
+        "atrasadas": sum(1 for x in atividades if x["atrasada"]),
         "atualizado_em": c.atualizado_em,
         "atualizado_por": c.atualizado_por.nome if c.atualizado_por else None,
         "atividades": atividades,
@@ -148,7 +155,7 @@ def criar(
             for chave, nome, area, responsavel, duracao, _ in itens:
                 ordem += 1
                 a = CronogramaAtividade(cronograma_id=c.id, ordem=ordem, fase=fase, nome=nome, area=area,
-                                        responsavel=responsavel, duracao=duracao, progresso=0)
+                                        responsavel=responsavel, duracao=duracao, status="nao_iniciado")
                 db.add(a)
                 chaves[chave] = a
         db.flush()
@@ -283,7 +290,7 @@ def criar_atividade(
         pos = (da_fase[-1] + 1) if da_fase else len(lista)
     nova = CronogramaAtividade(
         cronograma_id=c.id, fase=dados.fase.strip(), nome=dados.nome.strip(), duracao=dados.duracao,
-        responsavel=_limpar(dados.responsavel), area=_limpar(dados.area), progresso=0,
+        responsavel=_limpar(dados.responsavel), area=_limpar(dados.area), status="nao_iniciado",
     )
     lista.insert(pos, nova)
     db.add(nova)
@@ -302,8 +309,54 @@ class AlterarAtividade(BaseModel):
     duracao: int | None = Field(default=None, ge=0, le=2000)
     # null tira a data fixada (a atividade volta a seguir as predecessoras).
     inicio_fixo: date | None = None
-    progresso: int | None = Field(default=None, ge=0, le=100)
+    status: str | None = None
+    # null apaga o registro.
+    inicio_real: date | None = None
+    termino_real: date | None = None
     observacao: str | None = Field(default=None, max_length=4000)
+
+    @field_validator("status")
+    @classmethod
+    def _status(cls, v: str | None) -> str | None:
+        if v is not None and v not in STATUS:
+            raise ValueError("O status é nao_iniciado, em_andamento ou concluido.")
+        return v
+
+
+def _registrar_realizado(a: CronogramaAtividade, dados: "AlterarAtividade", campos: set[str], antes) -> None:
+    """Status e datas realizadas andam juntos: marcar em andamento registra o
+    início (hoje, se não veio data); concluído, o término; preencher as
+    datas acerta o status. Ao começar, o planejado congela (inicio_base e
+    termino_base): é com ele que o atraso fica registrado."""
+    if not campos & {"status", "inicio_real", "termino_real"}:
+        return
+    hoje = date.today()
+    previsto = antes.inicio if antes else hoje
+    if "inicio_real" in campos:
+        a.inicio_real = dados.inicio_real
+    if "termino_real" in campos:
+        a.termino_real = dados.termino_real
+    if "status" in campos and dados.status:
+        if dados.status == "nao_iniciado":
+            a.inicio_real = a.termino_real = None
+        elif dados.status == "em_andamento":
+            a.inicio_real = a.inicio_real or min(previsto, hoje)
+            a.termino_real = None
+        else:
+            a.termino_real = a.termino_real or hoje
+            a.inicio_real = a.inicio_real or min(previsto, a.termino_real)
+        a.status = dados.status
+    else:
+        if a.termino_real and not a.inicio_real:
+            a.inicio_real = min(previsto, a.termino_real)
+        a.status = "concluido" if a.termino_real else "em_andamento" if a.inicio_real else "nao_iniciado"
+    if a.inicio_real and a.termino_real and a.termino_real < a.inicio_real:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "O término realizado é antes do início realizado.")
+    if a.inicio_real and a.inicio_base is None and antes:
+        a.inicio_base = antes.inicio_planejado
+        a.termino_base = antes.termino_planejado
+    if not a.inicio_real and a.status == "nao_iniciado":
+        a.inicio_base = a.termino_base = None
 
 
 @router.patch("/obras/{obra_id}/cronograma/atividades/{atividade_id}")
@@ -317,8 +370,13 @@ def alterar_atividade(
     _exigir(ctx)
     c = _cronograma(db, ctx)
     a = _atividade(c, atividade_id)
+    try:
+        antes = calcular(c).get(a.id)
+    except CicloNoCronograma:
+        antes = None
     fase_antes = a.fase
-    for campo in dados.model_fields_set:
+    campos = dados.model_fields_set
+    for campo in campos - {"status", "inicio_real", "termino_real"}:
         valor = getattr(dados, campo)
         if campo in ("fase", "nome"):
             if valor is None:
@@ -326,9 +384,10 @@ def alterar_atividade(
             valor = valor.strip()
         elif campo in ("area", "responsavel", "observacao"):
             valor = _limpar(valor)
-        elif campo in ("duracao", "progresso") and valor is None:
+        elif campo == "duracao" and valor is None:
             continue
         setattr(a, campo, valor)
+    _registrar_realizado(a, dados, campos, antes)
     if a.fase != fase_antes:
         # Mudou de fase: vai para o fim dela, para a fase seguir contínua.
         lista = [x for x in c.atividades if x is not a]

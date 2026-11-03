@@ -1,7 +1,7 @@
 /** Cronograma de projetos em Gantt — PRO-FL-001 (TREELE, 03/11/2026).
  *
  *  Um por obra, só para os coordenadores dela. À esquerda, a tabela editável
- *  (nome, responsável, duração em dias úteis, início, término, progresso e
+ *  (nome, responsável, duração em dias úteis, planejado × realizado, status e
  *  predecessoras no formato do MS Project: "3; 5II+2; 7TT"); à direita, as
  *  barras, que se arrastam (muda o "não iniciar antes de") e se esticam pela
  *  ponta (muda a duração). As datas, a folga e o caminho crítico vêm
@@ -15,6 +15,14 @@ import { Aviso, Carregando, Vazio } from "../componentes";
 import { CHAVE_OBRA } from "../sessao";
 
 type Tipo = "TI" | "II" | "TT";
+type Status = "nao_iniciado" | "em_andamento" | "concluido";
+const STATUS: [Status, string][] = [
+  ["nao_iniciado", "Não iniciado"],
+  ["em_andamento", "Em andamento"],
+  ["concluido", "Concluído"],
+];
+const rotuloStatus = (s: Status) => STATUS.find(([v]) => v === s)?.[1] ?? s;
+const diasUteis = (n: number) => `${Math.abs(n)} dia${Math.abs(n) === 1 ? "" : "s"} út${Math.abs(n) === 1 ? "il" : "eis"}`;
 interface Vinculo {
   predecessora_id: number;
   tipo: Tipo;
@@ -29,10 +37,19 @@ interface Atividade {
   responsavel: string | null;
   duracao: number;
   inicio_fixo: string | null;
-  progresso: number;
+  status: Status;
   observacao: string | null;
+  /** O plano: congela quando a atividade começa (plano_congelado). */
+  inicio_planejado: string;
+  termino_planejado: string;
+  plano_congelado: boolean;
+  inicio_real: string | null;
+  termino_real: string | null;
+  /** A previsão (o realizado onde houver): é o que desenha a barra. */
   inicio: string;
   termino: string;
+  /** Dias úteis do término previsto ou realizado contra o planejado; positivo é atraso. */
+  atraso: number;
   folga: number;
   critica: boolean;
   atrasada: boolean;
@@ -43,7 +60,12 @@ interface Dados {
   existe: boolean;
   inicio?: string;
   termino?: string;
-  progresso?: number;
+  termino_planejado?: string;
+  total?: number;
+  concluidas?: number;
+  no_prazo?: number;
+  concluidas_com_atraso?: number;
+  atrasadas?: number;
   atualizado_em?: string | null;
   atualizado_por?: string | null;
   atividades: Atividade[];
@@ -119,8 +141,8 @@ interface Tabela {
   largura: number;
 }
 const TABELAS: Record<ModoTabela, Tabela> = {
-  completa: { modo: "completa", colunas: "40px minmax(220px, 1fr) 112px 58px 92px 84px 54px 104px", largura: 800 },
-  compacta: { modo: "compacta", colunas: "40px minmax(170px, 1fr) 50px 92px 86px", largura: 440 },
+  completa: { modo: "completa", colunas: "40px minmax(200px, 1fr) 104px 48px 90px 90px 90px 90px 116px 92px", largura: 970 },
+  compacta: { modo: "compacta", colunas: "40px minmax(170px, 1fr) 90px 90px 90px 90px 116px", largura: 700 },
   nomes: { modo: "nomes", colunas: "40px minmax(150px, 1fr)", largura: 250 },
 };
 const CHAVE_TABELA = "treele.gantt.tabela";
@@ -237,8 +259,8 @@ function CriarCronograma({ url, obra, salvar }: { url: string; obra: Dados["obra
       <div className="folha-corpo gantt-criar">
         <h2>{obra.codigo} · {obra.nome} ainda não tem cronograma</h2>
         <p className="silencioso">
-          O modelo traz 56 atividades em 8 fases, das planilhas PRO-FL-001 e do macrofluxo do Vivere Due, já com as
-          predecessoras. As durações são estimadas, em dias úteis: ajuste o que for diferente nesta obra.
+          O modelo traz 48 atividades em 7 fases, já com as predecessoras: o cronograma do Residencial Treviso, como a
+          equipe ajustou a partir da PRO-FL-001 e do macrofluxo do Vivere Due. As durações são estimadas, em dias úteis: ajuste o que for diferente nesta obra.
         </p>
         <label className="campo">
           <span className="rotulo">Início do projeto</span>
@@ -260,7 +282,8 @@ function CriarCronograma({ url, obra, salvar }: { url: string; obra: Dados["obra
 // ============================================================ o Gantt
 
 type Linha =
-  | { tipo: "fase"; fase: string; atividades: Atividade[]; inicio: string; termino: string; progresso: number }
+  | { tipo: "fase"; fase: string; atividades: Atividade[]; inicio: string; termino: string; concluidas: number;
+      inicioPlan: string; terminoPlan: string }
   | { tipo: "atividade"; a: Atividade };
 
 interface Arraste {
@@ -300,12 +323,13 @@ function Gantt({ dados, url, salvar }: { dados: Dados; url: string; salvar: (p: 
     const saida: Linha[] = [];
     for (const fase of fases) {
       const da = atividades.filter((a) => a.fase === fase);
-      const peso = da.reduce((s, a) => s + Math.max(a.duracao, 1), 0) || 1;
       saida.push({
         tipo: "fase", fase, atividades: da,
         inicio: da.reduce((m, a) => (a.inicio < m ? a.inicio : m), da[0].inicio),
         termino: da.reduce((m, a) => (a.termino > m ? a.termino : m), da[0].termino),
-        progresso: da.reduce((s, a) => s + Math.max(a.duracao, 1) * a.progresso, 0) / peso,
+        concluidas: da.filter((a) => a.status === "concluido").length,
+        inicioPlan: da.reduce((m, a) => (a.inicio_planejado < m ? a.inicio_planejado : m), da[0].inicio_planejado),
+        terminoPlan: da.reduce((m, a) => (a.termino_planejado > m ? a.termino_planejado : m), da[0].termino_planejado),
       });
       if (!recolhidas.has(fase)) for (const a of da) saida.push({ tipo: "atividade", a });
     }
@@ -325,7 +349,7 @@ function Gantt({ dados, url, salvar }: { dados: Dados; url: string; salvar: (p: 
 
   // Onde está cada atividade (para as setas), já com o arraste em andamento.
   const posicao = useMemo(() => {
-    const m = new Map<number, { linha: number; x1: number; x2: number }>();
+    const m = new Map<number, { linha: number; x1: number; x2: number; p1: number; p2: number }>();
     linhas.forEach((l, i) => {
       if (l.tipo !== "atividade") return;
       const { a } = l;
@@ -337,7 +361,12 @@ function Gantt({ dados, url, salvar }: { dados: Dados; url: string; salvar: (p: 
           ter = a.duracao > 0 ? dataDoIndice(indice(ini) + a.duracao - 1) : ini;
         } else ter = dataDoIndice(Math.max(indice(a.inicio), indice(a.termino) + arraste.dias));
       }
-      m.set(a.id, { linha: i, x1: x(ini), x2: a.duracao > 0 ? x(ter) + px : x(ini) });
+      const marco = ini === ter && a.duracao === 0;
+      m.set(a.id, {
+        linha: i, x1: x(ini), x2: marco ? x(ini) : x(ter) + px,
+        p1: x(a.inicio_planejado), p2: a.inicio_planejado === a.termino_planejado && a.duracao === 0
+          ? x(a.inicio_planejado) : x(a.termino_planejado) + px,
+      });
     });
     return m;
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -394,10 +423,14 @@ function Gantt({ dados, url, salvar }: { dados: Dados; url: string; salvar: (p: 
   }
 
   function exportarCsv() {
-    const cab = ["Nº", "Fase", "Atividade", "Área", "Responsável", "Duração (dias úteis)", "Início", "Término", "% concluído", "Predecessoras", "Folga", "Crítica"];
+    const cab = ["Nº", "Fase", "Atividade", "Área", "Responsável", "Duração (dias úteis)", "Início planejado",
+      "Término planejado", "Início realizado", "Término realizado", "Status", "Atraso (dias úteis)", "Predecessoras",
+      "Folga", "Crítica"];
     const linhasCsv = atividades.map((a) => [
-      a.numero, a.fase, a.nome, a.area ?? "", a.responsavel ?? "", a.duracao, completa(a.inicio), completa(a.termino),
-      a.progresso, vinculosEmTexto(a, numeroDe), a.folga, a.critica ? "sim" : "",
+      a.numero, a.fase, a.nome, a.area ?? "", a.responsavel ?? "", a.duracao, completa(a.inicio_planejado),
+      completa(a.termino_planejado), a.inicio_real ? completa(a.inicio_real) : "", a.termino_real ? completa(a.termino_real) : "",
+      rotuloStatus(a.status), a.status === "nao_iniciado" && a.atraso <= 0 ? "" : a.atraso,
+      vinculosEmTexto(a, numeroDe), a.folga, a.critica ? "sim" : "",
     ]);
     const csv = [cab, ...linhasCsv].map((l) => l.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(";")).join("\r\n");
     const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8" });
@@ -411,6 +444,11 @@ function Gantt({ dados, url, salvar }: { dados: Dados; url: string; salvar: (p: 
   // Arrastar a barra: mover muda o "não iniciar antes de"; a ponta, a duração.
   function comecarArraste(e: PE, a: Atividade, modo: Arraste["modo"]) {
     if (e.button !== 0) return;
+    // Começou: o início é o realizado, não se arrasta (a ponta ainda estica).
+    if (modo === "mover" && a.status !== "nao_iniciado") {
+      setSelecionada(a.id);
+      return;
+    }
     e.preventDefault();
     e.stopPropagation();
     try {
@@ -453,9 +491,15 @@ function Gantt({ dados, url, salvar }: { dados: Dados; url: string; salvar: (p: 
             onBlur={(e) => e.target.value && e.target.value !== dados.inicio && salvar(api.patch<Dados>(url, { inicio: e.target.value }))} />
         </label>
         <div className="gantt-resumo">
-          <span><b>{dados.termino ? completa(dados.termino) : "—"}</b> término previsto</span>
-          <span><b>{(dados.progresso ?? 0).toLocaleString("pt-BR", { maximumFractionDigits: 0 })}%</b> concluído</span>
-          <span className={atrasadas ? "gantt-alerta" : ""}><b>{atrasadas}</b> atrasada{atrasadas === 1 ? "" : "s"}</span>
+          <span title={dados.termino_planejado ? `Planejado: ${completa(dados.termino_planejado)}` : undefined}>
+            <b className={dados.termino && dados.termino_planejado && dados.termino > dados.termino_planejado ? "texto-critico" : ""}>
+              {dados.termino ? completa(dados.termino) : "—"}
+            </b> término previsto
+          </span>
+          <span><b>{dados.concluidas ?? 0}/{dados.total ?? 0}</b> concluídas</span>
+          <span className="texto-no-prazo"><b>{dados.no_prazo ?? 0}</b> no prazo</span>
+          <span className={dados.concluidas_com_atraso ? "gantt-alerta" : ""}><b>{dados.concluidas_com_atraso ?? 0}</b> concluída{dados.concluidas_com_atraso === 1 ? "" : "s"} com atraso</span>
+          <span className={atrasadas ? "gantt-alerta" : ""}><b>{atrasadas}</b> atrasada{atrasadas === 1 ? "" : "s"} em aberto</span>
           <span><b>{criticas}</b> no caminho crítico</span>
         </div>
         <div className="seletor-visao" role="group" aria-label="Escala">
@@ -502,11 +546,17 @@ function Gantt({ dados, url, salvar }: { dados: Dados; url: string; salvar: (p: 
             <div className="gantt-linha gantt-topo" style={{ height: CABECALHO }}>
               <div className="gantt-celulas gantt-titulos" style={{ gridTemplateColumns: tab.colunas, width: tab.largura }}>
                 <span>Nº</span><span>Atividade</span>
-                {tab.modo === "completa" && <span>Responsável</span>}
+                {tab.modo === "completa" && <><span>Responsável</span><span title="Dias úteis; 0 é marco">Dias</span></>}
                 {tab.modo !== "nomes" && (
-                  <><span title="Dias úteis; 0 é marco">Dias</span><span>Início</span><span>Término</span></>
+                  <>
+                    <span title="Pelo plano; congela quando a atividade começa">Início plan.</span>
+                    <span>Término plan.</span>
+                    <span>Início real.</span>
+                    <span>Término real.</span>
+                    <span>Status</span>
+                  </>
                 )}
-                {tab.modo === "completa" && <><span>%</span><span title="Ex.: 3; 5II+2; 7TT">Predec.</span></>}
+                {tab.modo === "completa" && <span title="Ex.: 3; 5II+2; 7TT">Predec.</span>}
               </div>
               <Regua origem={origem} totalDias={totalDias} px={px} zoom={zoom} />
             </div>
@@ -616,7 +666,7 @@ function Fundo({ esquerda, origem, totalDias, px, zoom, altura, x }: {
 function Setas({ esquerda, atividades, posicao, largura, altura, selecionada }: {
   esquerda: number;
   atividades: Atividade[];
-  posicao: Map<number, { linha: number; x1: number; x2: number }>;
+  posicao: Map<number, { linha: number; x1: number; x2: number; p1: number; p2: number }>;
   largura: number;
   altura: number;
   selecionada: number | null;
@@ -697,19 +747,23 @@ function LinhaFase({ tab, l, recolhida, x, px, alternar, renomear, adicionar }: 
             <button className="gantt-mais" onClick={adicionar} title="Nova atividade nesta fase">+</button>
           </span>
         )}
-        {tab.modo === "completa" && <span />}
+        {tab.modo === "completa" && <><span /><span className="num">{indice(l.termino) - indice(l.inicio) + 1}</span></>}
         {tab.modo !== "nomes" && (
           <>
-            <span className="num">{indice(l.termino) - indice(l.inicio) + 1}</span>
-            <span>{curta(l.inicio)}</span>
-            <span>{curta(l.termino)}</span>
+            <span>{curta(l.inicioPlan)}</span>
+            <span>{curta(l.terminoPlan)}</span>
+            <span />
+            <span className={l.termino > l.terminoPlan ? "texto-critico" : ""} title="Término previsto da fase">
+              {curta(l.termino)}
+            </span>
+            <span className="num">{l.concluidas}/{l.atividades.length}</span>
           </>
         )}
-        {tab.modo === "completa" && <><span className="num">{Math.round(l.progresso)}</span><span /></>}
+        {tab.modo === "completa" && <span />}
       </div>
       <div className="gantt-trilho">
         <div className="gantt-resumo-fase" style={{ left: x1, width: Math.max(4, x2 - x1) }}>
-          <i style={{ width: `${l.progresso}%` }} />
+          <i style={{ width: `${(100 * l.concluidas) / Math.max(1, l.atividades.length)}%` }} />
         </div>
       </div>
     </div>
@@ -746,7 +800,7 @@ function LinhaAtividade({ tab, a, selecionada, critico, pos, numeroDe, idDe, px,
   a: Atividade;
   selecionada: boolean;
   critico: boolean;
-  pos: { linha: number; x1: number; x2: number };
+  pos: { linha: number; x1: number; x2: number; p1: number; p2: number };
   numeroDe: Map<number, number>;
   idDe: Map<number, number>;
   px: number;
@@ -758,13 +812,18 @@ function LinhaAtividade({ tab, a, selecionada, critico, pos, numeroDe, idDe, px,
 }) {
   const [erroPred, setErroPred] = useState<string | null>(null);
   const marco = a.duracao === 0;
-  const concluida = a.progresso >= 100;
+  const concluida = a.status === "concluido";
   const classe = [
     "gantt-barra-atividade",
-    concluida ? "concluida" : a.atrasada ? "atrasada" : critico && a.critica ? "critica" : "",
+    concluida ? "concluida" : a.atrasada ? "atrasada" : critico && a.critica ? "critica"
+      : a.status === "em_andamento" ? "andamento" : "",
     arrastando ? "arrastando" : "",
   ].join(" ");
-  const dica = `${a.numero} · ${a.nome}\n${completa(a.inicio)} a ${completa(a.termino)} · ${a.duracao} dias úteis · ${a.progresso}%` +
+  const situacao = a.status === "concluido"
+    ? a.atraso > 0 ? `Concluída com ${diasUteis(a.atraso)} de atraso` : "Concluída no prazo"
+    : a.atraso > 0 ? `Atrasada: ${diasUteis(a.atraso)} além do planejado` : rotuloStatus(a.status);
+  const dica = `${a.numero} · ${a.nome} · ${situacao}\nPlanejado: ${completa(a.inicio_planejado)} a ${completa(a.termino_planejado)}` +
+    `\n${concluida ? "Realizado" : "Previsto"}: ${completa(a.inicio)} a ${completa(a.termino)} · ${a.duracao} dias úteis` +
     `\nFolga: ${a.folga} dia${Math.abs(a.folga) === 1 ? "" : "s"} útil${Math.abs(a.folga) === 1 ? "" : "eis"}${a.critica ? " (caminho crítico)" : ""}` +
     (a.inicio_fixo ? `\nNão iniciar antes de ${completa(a.inicio_fixo)}` : "");
   return (
@@ -773,27 +832,44 @@ function LinhaAtividade({ tab, a, selecionada, critico, pos, numeroDe, idDe, px,
         <span className="num gantt-numero">{a.numero}</span>
         <Celula valor={a.nome} rotulo="Atividade" salvar={(v) => v.trim() && alterar(a.id, { nome: v.trim() })}
           className={a.critica && critico && !concluida ? "texto-critico" : ""} />
-        {tab.modo === "completa" && (
+        {tab.modo === "completa" && <>
           <Celula valor={a.responsavel ?? ""} rotulo="Responsável" salvar={(v) => alterar(a.id, { responsavel: v })} />
-        )}
+          <Celula valor={String(a.duracao)} tipo="number" min={0} rotulo="Duração em dias úteis" className="num"
+            salvar={(v) => v !== "" && alterar(a.id, { duracao: Math.max(0, Math.round(Number(v))) })} />
+        </>}
         {tab.modo !== "nomes" && <>
-        <Celula valor={String(a.duracao)} tipo="number" min={0} rotulo="Duração em dias úteis" className="num"
-          salvar={(v) => v !== "" && alterar(a.id, { duracao: Math.max(0, Math.round(Number(v))) })} />
-        <span className="gantt-data">
-          <Celula valor={a.inicio} tipo="date" rotulo="Início"
-            title={a.inicio_fixo ? `Fixado: não iniciar antes de ${completa(a.inicio_fixo)}` : "Calculado pelas predecessoras. Mudar fixa a data."}
-            salvar={(v) => v && alterar(a.id, { inicio_fixo: v })} />
-          {a.inicio_fixo && (
-            <button className="gantt-pino" title="Data fixada por você. Clique para voltar a seguir as predecessoras."
-              onClick={(e) => { e.stopPropagation(); alterar(a.id, { inicio_fixo: null }); }}>●</button>
-          )}
-        </span>
-        <Celula valor={a.termino} tipo="date" rotulo="Término" title="Mudar o término muda a duração"
-          salvar={(v) => v && alterar(a.id, { duracao: Math.max(1, indice(v) - indice(a.inicio) + 1) })} />
+        {a.plano_congelado ? (
+          <>
+            <span className="gantt-congelado" title="Planejado congelado quando a atividade começou">{completa(a.inicio_planejado)}</span>
+            <span className="gantt-congelado" title="Planejado congelado quando a atividade começou">{completa(a.termino_planejado)}</span>
+          </>
+        ) : (
+          <>
+            <span className="gantt-data">
+              <Celula valor={a.inicio_planejado} tipo="date" rotulo="Início planejado"
+                title={a.inicio_fixo ? `Fixado: não iniciar antes de ${completa(a.inicio_fixo)}` : "Calculado pelas predecessoras. Mudar fixa a data."}
+                salvar={(v) => v && alterar(a.id, { inicio_fixo: v })} />
+              {a.inicio_fixo && (
+                <button className="gantt-pino" title="Data fixada por você. Clique para voltar a seguir as predecessoras."
+                  onClick={(e) => { e.stopPropagation(); alterar(a.id, { inicio_fixo: null }); }}>●</button>
+              )}
+            </span>
+            <Celula valor={a.termino_planejado} tipo="date" rotulo="Término planejado" title="Mudar o término muda a duração"
+              salvar={(v) => v && alterar(a.id, { duracao: Math.max(1, indice(v) - indice(a.inicio_planejado) + 1) })} />
+          </>
+        )}
+        <Celula valor={a.inicio_real ?? ""} tipo="date" rotulo="Início realizado" title="Preencher marca em andamento"
+          salvar={(v) => alterar(a.id, { inicio_real: v || null })} />
+        <Celula valor={a.termino_real ?? ""} tipo="date" rotulo="Término realizado"
+          className={a.termino_real ? (a.atraso > 0 ? "texto-critico" : "texto-no-prazo") : ""}
+          title={a.termino_real ? situacao : "Preencher marca concluído"}
+          salvar={(v) => alterar(a.id, { termino_real: v || null })} />
+        <select className={`gantt-status ${a.status} ${a.atrasada ? "atrasada" : ""}`} value={a.status} aria-label="Status"
+          title={situacao} onChange={(e) => alterar(a.id, { status: e.target.value as Status })}>
+          {STATUS.map(([v, rotulo]) => <option key={v} value={v}>{rotulo}</option>)}
+        </select>
         </>}
         {tab.modo === "completa" && <>
-        <Celula valor={String(a.progresso)} tipo="number" min={0} max={100} rotulo="Porcentagem concluída" className="num"
-          salvar={(v) => v !== "" && alterar(a.id, { progresso: Math.min(100, Math.max(0, Math.round(Number(v)))) })} />
         <span className="gantt-pred">
           <Celula valor={vinculosEmTexto(a, numeroDe)} rotulo="Predecessoras" className={erroPred ? "invalida" : ""}
             title={erroPred ?? "Ex.: 3; 5II+2; 7TT"}
@@ -807,13 +883,16 @@ function LinhaAtividade({ tab, a, selecionada, critico, pos, numeroDe, idDe, px,
         </>}
       </div>
       <div className="gantt-trilho">
+        {(pos.p1 !== pos.x1 || pos.p2 !== pos.x2) && (
+          <span className="gantt-plano" style={{ left: pos.p1, width: Math.max(3, pos.p2 - pos.p1) }}
+            title={`Planejado: ${completa(a.inicio_planejado)} a ${completa(a.termino_planejado)}`} />
+        )}
         {marco ? (
           <span className={`gantt-marco ${concluida ? "concluida" : ""}`} style={{ left: pos.x1 + px / 2 - 7 }} title={dica}
             onPointerDown={(e) => comecarArraste(e, a, "mover")} />
         ) : (
           <div className={classe} style={{ left: pos.x1, width: Math.max(px, pos.x2 - pos.x1) }} title={dica}
             onPointerDown={(e) => comecarArraste(e, a, "mover")}>
-            <i style={{ width: `${a.progresso}%` }} />
             <span className="gantt-ponta" onPointerDown={(e) => comecarArraste(e, a, "esticar")} />
           </div>
         )}
@@ -876,19 +955,41 @@ function Detalhe({ a, fases, numeroDe, atividades, fechar, alterar, definirPrede
             salvar={(v) => v !== "" && alterar(a.id, { duracao: Math.max(0, Math.round(Number(v))) })} />
         </label>
         <label className="campo">
-          <span className="rotulo">Concluído: {a.progresso}%</span>
-          <input type="range" min={0} max={100} step={5} defaultValue={a.progresso} key={a.progresso}
-            onPointerUp={(e) => alterar(a.id, { progresso: Number((e.target as HTMLInputElement).value) })}
-            onKeyUp={(e) => alterar(a.id, { progresso: Number((e.target as HTMLInputElement).value) })} />
+          <span className="rotulo">Status</span>
+          <select value={a.status} onChange={(e) => alterar(a.id, { status: e.target.value as Status })}>
+            {STATUS.map(([v, rotulo]) => <option key={v} value={v}>{rotulo}</option>)}
+          </select>
+        </label>
+      </div>
+      <div className="gantt-detalhe-duas">
+        <label className="campo">
+          <span className="rotulo">Início realizado</span>
+          <Celula valor={a.inicio_real ?? ""} tipo="date" rotulo="Início realizado"
+            salvar={(v) => alterar(a.id, { inicio_real: v || null })} />
+        </label>
+        <label className="campo">
+          <span className="rotulo">Término realizado</span>
+          <Celula valor={a.termino_real ?? ""} tipo="date" rotulo="Término realizado"
+            salvar={(v) => alterar(a.id, { termino_real: v || null })} />
         </label>
       </div>
       <p className="gantt-datas">
-        <b>{completa(a.inicio)}</b> a <b>{completa(a.termino)}</b>
+        Planejado: <b>{completa(a.inicio_planejado)}</b> a <b>{completa(a.termino_planejado)}</b>
+        {a.plano_congelado && <span className="silencioso"> (congelado no início)</span>}
+        <br />
+        {a.status === "concluido" ? "Realizado" : "Previsto"}: <b>{completa(a.inicio)}</b> a <b>{completa(a.termino)}</b>
         {a.duracao === 0 && " · marco"}
+        <br />
+        {a.status === "concluido"
+          ? a.atraso > 0
+            ? <strong className="texto-critico">Concluída com {diasUteis(a.atraso)} de atraso</strong>
+            : <strong className="texto-no-prazo">Concluída no prazo</strong>
+          : a.atraso > 0
+            ? <strong className="gantt-alerta">{diasUteis(a.atraso)} além do planejado</strong>
+            : <span>Dentro do planejado</span>}
         <br />
         Folga {a.folga} dia{Math.abs(a.folga) === 1 ? "" : "s"} út{Math.abs(a.folga) === 1 ? "il" : "eis"}
         {a.critica && <strong className="texto-critico"> · caminho crítico</strong>}
-        {a.atrasada && <strong className="gantt-alerta"> · atrasada</strong>}
       </p>
       <label className="campo">
         <span className="rotulo">Não iniciar antes de</span>

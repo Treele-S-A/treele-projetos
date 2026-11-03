@@ -894,7 +894,14 @@ class CronogramaAtividade(Base):
     responsavel: Mapped[str | None] = mapped_column(String(120), nullable=True)
     duracao: Mapped[int] = mapped_column(Integer, default=5)
     inicio_fixo: Mapped[date | None] = mapped_column(Date, nullable=True)
-    progresso: Mapped[int] = mapped_column(Integer, default=0)
+    # nao_iniciado | em_andamento | concluido (no lugar do % desde 03/11/2026).
+    status: Mapped[str] = mapped_column(String(14), default="nao_iniciado")
+    # O realizado, registrado pela equipe.
+    inicio_real: Mapped[date | None] = mapped_column(Date, nullable=True)
+    termino_real: Mapped[date | None] = mapped_column(Date, nullable=True)
+    # O planejado congelado quando a atividade começou: o histórico do atraso.
+    inicio_base: Mapped[date | None] = mapped_column(Date, nullable=True)
+    termino_base: Mapped[date | None] = mapped_column(Date, nullable=True)
     observacao: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     cronograma: Mapped["Cronograma"] = relationship(back_populates="atividades")

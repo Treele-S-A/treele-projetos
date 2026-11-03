@@ -23,6 +23,22 @@ Nada de data guardada na atividade: o servidor calcula a cada leitura
 
 Toda alteração devolve o cronograma inteiro recalculado; a tela não faz conta.
 
+## Planejado × realizado e status (03/11/2026)
+
+- **Status** no lugar do %: Não iniciado, Em andamento, Concluído. Status e
+  datas andam juntos: marcar Em andamento registra o início realizado (hoje);
+  Concluído, o término (hoje). Preencher as datas acerta o status.
+- **Planejado**: o cálculo pelo plano (durações, vínculos, "não iniciar antes
+  de"). Congela quando a atividade começa (`inicio_base`/`termino_base`): mudar
+  o plano depois não apaga o atraso já registrado.
+- **Realizado**: início e término que a equipe registra.
+- **Previsão** (as barras): o realizado onde houver; o que não começou não
+  começa antes de hoje; o que está em andamento termina no mínimo hoje.
+- **Atraso**: término realizado (ou previsto) menos o planejado, em dias úteis.
+  O término realizado fica vermelho quando atrasou e verde no prazo; o traço
+  fino sob a barra é o planejado. No topo: concluídas, no prazo, concluídas
+  com atraso e atrasadas em aberto.
+
 ## Na tela
 
 - Tela cheia, como o visualizador 3D: o menu recolhe ao abrir (o logo traz de
@@ -38,7 +54,16 @@ Toda alteração devolve o cronograma inteiro recalculado; a tela não faz conta
 - Escala em dias, semanas ou meses; "Hoje"; liga/desliga vínculos e caminho
   crítico; exportar CSV para o Excel.
 
-## O modelo (56 atividades, 8 fases)
+## O modelo (48 atividades, 7 fases)
+
+Desde 03/11/2026 o modelo é o cronograma do **Residencial Treviso (TRE)** como a
+equipe o ajustou (nomes "Aprovação Copel/Sanepar", executivos com "executivo"
+no nome, responsáveis), menos o projeto de drenagem, a aprovação nas
+concessionárias e a fase de análise de engenharia da CEF. A aprovação do
+projeto de drenagem passou a depender da terraplenagem. Abaixo, a primeira
+versão, de onde o Treviso partiu.
+
+### Primeira versão (56 atividades, 8 fases)
 
 Compilado em 03/11/2026 de duas planilhas:
 

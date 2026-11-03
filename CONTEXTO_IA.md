@@ -7,6 +7,8 @@ Documentos: **`README.md`** (rodar local, fases), `docs/roteiro.md` (fases segui
 
 ## Onde paramos
 
+- **03/11/2026, cronograma: status e planejado × realizado; modelo = Treviso:** o % virou status (não iniciado, em andamento, concluído); colunas de início/término planejados (congelam quando a atividade começa) e realizados, com atraso em dias úteis e resumo de concluídas no prazo/com atraso. O modelo de cronograma novo passou a ser o do TRE (48 atividades, 7 fases), sem drenagem (28), aprovação nas concessionárias (33) e a fase da CEF; essas linhas também saíram dos cronogramas do UNO e do TRE em produção, a pedido. Migração `f3c5e7a9b1d4`.
+
 - **03/11/2026, "Perguntar ao acervo" na barra do topo:** o botão do chat saiu do canto inferior direito (cobria tabelas) e foi para a barra superior, ao lado do nome da pessoa, por portal (`#vaga-assistente` em App.tsx).
 
 - **03/11/2026, cronograma de projetos em Gantt (PRO-FL-001):** novo item em Qualidade, só para coordenadores da obra (administrador incluso). Um cronograma por obra, criado vazio ou pelo modelo de 56 atividades em 8 fases compilado da PRO-FL-001 e do macrofluxo do Vivere Due, com as predecessoras. Datas em dias úteis calculadas no servidor (TI/II/TT com defasagem, "não iniciar antes de" ao arrastar a barra, folga e caminho crítico). Tabela editável estilo MS Project, barras arrastáveis, fases recolhíveis, exportação CSV. Durações do modelo são estimativas para os coordenadores ajustarem. Detalhes em `docs/cronograma.md`. Em tela cheia como o 3D (menu recolhe sozinho) e com a tabela em três tamanhos (completa, compacta, só nomes), lembrando a escolha.
@@ -104,4 +106,5 @@ Uma linha por trabalho, a mais recente no fim: `AAAA-MM-DD · pessoa · IA usada
 - 2026-11-03 · Vinícius · Claude · câmera enquadra cada conflito como o primeiro; apagados os documentos SER-*-TESTE · b1f8826
 - 2026-11-03 · Vinícius · Claude · cronograma de projetos em Gantt (PRO-FL-001) no módulo Qualidade, só coordenadores · e68121b
 - 2026-11-03 · Vinícius · Claude · cronograma em tela cheia e tabela em três tamanhos · 4b72ca4
-- 2026-11-03 · Vinícius · Claude · botão "Perguntar ao acervo" na barra do topo · (este commit)
+- 2026-11-03 · Vinícius · Claude · botão "Perguntar ao acervo" na barra do topo · bf6826f
+- 2026-11-03 · Vinícius · Claude · cronograma: status, planejado × realizado e modelo do Treviso; exclusões no UNO e TRE · (este commit)

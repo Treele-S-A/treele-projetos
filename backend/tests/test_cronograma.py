@@ -58,20 +58,24 @@ def test_cria_pelo_modelo_e_calcula(cliente, admin, obra):
     assert len(c["atividades"]) == total and [a["numero"] for a in c["atividades"]] == list(range(1, total + 1))
     por = {a["nome"]: a for a in c["atividades"]}
     # Marco no início; o que vem depois dele começa no mesmo dia.
-    assert por["Reunião de passagem (Incorporação → Projetos)"]["inicio"] == "2026-11-02"
+    assert por["Reunião de passagem (Incorporação → Projetos)"]["inicio_planejado"] == "2026-11-02"
     topo = por["Levantamento topográfico planialtimétrico"]
-    assert topo["inicio"] == "2026-11-02" and topo["termino"] == "2026-11-13"  # 10 dias úteis
+    assert topo["inicio_planejado"] == "2026-11-02" and topo["termino_planejado"] == "2026-11-13"  # 10 dias úteis
     # TI: o estudo preliminar começa no dia útil seguinte ao fim da topografia.
-    assert por["Estudo preliminar de implantação"]["inicio"] == "2026-11-16"
+    assert por["Estudo preliminar de implantação"]["inicio_planejado"] == "2026-11-16"
     # II +10: a estrutura começa 10 dias úteis depois do início do arquitetônico.
-    arq, est = por["Projeto arquitetônico"], por["Projeto estrutural"]
-    assert indice(date.fromisoformat(est["inicio"])) - indice(date.fromisoformat(arq["inicio"])) >= 10
+    arq, est = por["Projeto arquitetônico"], por["Projeto estrutural executivo"]
+    assert indice(date.fromisoformat(est["inicio_planejado"])) - indice(date.fromisoformat(arq["inicio_planejado"])) >= 10
     # Gás: II com o ante-projeto de incêndio (o vínculo do macrofluxo).
-    assert por["Projeto de rede de gás"]["inicio"] == por["Ante-projeto de incêndio"]["inicio"]
+    assert por["Projeto de rede de gás"]["inicio_planejado"] == por["Ante-projeto de incêndio"]["inicio_planejado"]
+    # Fora do modelo (03/11/2026): drenagem, aprovação nas concessionárias e a CEF.
+    assert "Projeto de drenagem" not in por and not any("análise de engenharia" in n for n in por)
+    assert por["Aprovação do projeto de drenagem"]["predecessoras"][0]["predecessora_id"] == por["Projeto de terraplenagem"]["id"]
     # O caminho crítico chega ao fim do projeto e tem folga zero.
     criticas = [a for a in c["atividades"] if a["critica"]]
     assert criticas and all(a["folga"] <= 0 for a in criticas)
     assert max(a["termino"] for a in criticas) == c["termino"]
+    assert c["termino_planejado"] <= c["termino"]
     assert cliente.post(url, json={"inicio": "2026-11-02"}, headers=admin).status_code == 409
 
 
@@ -82,16 +86,16 @@ def test_edita_arrasta_e_vincula(cliente, admin, obra):
     topo, ep = por["Levantamento topográfico planialtimétrico"], por["Estudo preliminar de implantação"]
 
     # Mais duração empurra a sucessora.
-    c = cliente.patch(f"{url}/atividades/{topo['id']}", json={"duracao": 15, "progresso": 40}, headers=admin).json()
+    c = cliente.patch(f"{url}/atividades/{topo['id']}", json={"duracao": 15}, headers=admin).json()
     por = {a["id"]: a for a in c["atividades"]}
-    assert por[topo["id"]]["termino"] == "2026-11-20" and por[topo["id"]]["progresso"] == 40
-    assert por[ep["id"]]["inicio"] == "2026-11-23"
+    assert por[topo["id"]]["termino_planejado"] == "2026-11-20"
+    assert por[ep["id"]]["inicio_planejado"] == "2026-11-23"
 
     # Arrastar a barra fixa o "não iniciar antes de"; tirar devolve ao cálculo.
     c = cliente.patch(f"{url}/atividades/{ep['id']}", json={"inicio_fixo": "2026-12-01"}, headers=admin).json()
-    assert {a["id"]: a for a in c["atividades"]}[ep["id"]]["inicio"] == "2026-12-01"
+    assert {a["id"]: a for a in c["atividades"]}[ep["id"]]["inicio_planejado"] == "2026-12-01"
     c = cliente.patch(f"{url}/atividades/{ep['id']}", json={"inicio_fixo": None}, headers=admin).json()
-    assert {a["id"]: a for a in c["atividades"]}[ep["id"]]["inicio"] == "2026-11-23"
+    assert {a["id"]: a for a in c["atividades"]}[ep["id"]]["inicio_planejado"] == "2026-11-23"
 
     # Nova atividade logo abaixo, com predecessora TT.
     c = cliente.post(f"{url}/atividades", json={"fase": ep["fase"], "nome": "Visita ao terreno", "duracao": 2,
@@ -103,7 +107,7 @@ def test_edita_arrasta_e_vincula(cliente, admin, obra):
     assert r.status_code == 200, r.text
     feita = next(a for a in r.json()["atividades"] if a["id"] == nova["id"])
     ep_agora = next(a for a in r.json()["atividades"] if a["id"] == ep["id"])
-    assert feita["termino"] == ep_agora["termino"] and feita["predecessoras"][0]["tipo"] == "TT"
+    assert feita["termino_planejado"] == ep_agora["termino_planejado"] and feita["predecessoras"][0]["tipo"] == "TT"
 
     # Ciclo é recusado.
     r = cliente.put(f"{url}/atividades/{topo['id']}/predecessoras", json=[{"predecessora_id": nova["id"]}], headers=admin)
@@ -141,4 +145,44 @@ def test_recomecar_em_branco(cliente, admin, obra):
     c = cliente.post(url, json={"inicio": "2026-11-02", "modelo": False}, headers=admin).json()
     assert c["existe"] and c["atividades"] == []
     c = cliente.post(f"{url}/atividades", json={"fase": "Projetos", "nome": "Primeira"}, headers=admin).json()
-    assert c["atividades"][0]["inicio"] == "2026-11-02" and c["atividades"][0]["termino"] == "2026-11-06"
+    assert c["atividades"][0]["inicio_planejado"] == "2026-11-02" and c["atividades"][0]["termino_planejado"] == "2026-11-06"
+
+
+def test_status_realizado_e_atraso(cliente, admin):
+    """Status e datas realizadas: o planejado congela ao começar, e o atraso
+    fica registrado mesmo que o plano mude depois."""
+    r = cliente.post("/obras", json={"codigo": "CRR", "nome": "Obra realizado", "endereco": "Rua B, 2 – Curitiba – PR"},
+                     headers=admin)
+    url = f"/obras/{r.json()['id']}/cronograma"
+    c = cliente.post(url, json={"inicio": "2026-10-05", "modelo": False}, headers=admin).json()
+    c = cliente.post(f"{url}/atividades", json={"fase": "Projetos", "nome": "A", "duracao": 5}, headers=admin).json()
+    a = c["atividades"][0]
+    assert a["status"] == "nao_iniciado" and a["termino_planejado"] == "2026-10-09" and not a["plano_congelado"]
+
+    # Em andamento com a data de início: o plano congela.
+    c = cliente.patch(f"{url}/atividades/{a['id']}", json={"inicio_real": "2026-10-07"}, headers=admin).json()
+    a = c["atividades"][0]
+    assert a["status"] == "em_andamento" and a["plano_congelado"] and a["inicio_planejado"] == "2026-10-05"
+
+    # Mudar a duração depois não reescreve o planejado de quem já começou.
+    c = cliente.patch(f"{url}/atividades/{a['id']}", json={"duracao": 10}, headers=admin).json()
+    assert c["atividades"][0]["termino_planejado"] == "2026-10-09"
+
+    # Concluída três dias úteis depois do planejado: atraso 3, e entra no resumo.
+    c = cliente.patch(f"{url}/atividades/{a['id']}", json={"termino_real": "2026-10-14"}, headers=admin).json()
+    a = c["atividades"][0]
+    assert a["status"] == "concluido" and a["termino"] == "2026-10-14" and a["atraso"] == 3
+    assert c["concluidas"] == 1 and c["concluidas_com_atraso"] == 1 and c["no_prazo"] == 0
+
+    # Término antes do início é recusado; voltar a não iniciado limpa tudo.
+    r = cliente.patch(f"{url}/atividades/{a['id']}", json={"termino_real": "2026-10-01"}, headers=admin)
+    assert r.status_code == 422
+    c = cliente.patch(f"{url}/atividades/{a['id']}", json={"status": "nao_iniciado"}, headers=admin).json()
+    a = c["atividades"][0]
+    assert a["inicio_real"] is None and a["termino_real"] is None and not a["plano_congelado"]
+
+    # Concluído pelo status, sem datas: término hoje, início no previsto.
+    c = cliente.patch(f"{url}/atividades/{a['id']}", json={"status": "concluido"}, headers=admin).json()
+    a = c["atividades"][0]
+    assert a["status"] == "concluido" and a["termino_real"] == date.today().isoformat() and a["inicio_real"]
+    assert cliente.patch(f"{url}/atividades/{a['id']}", json={"status": "pela_metade"}, headers=admin).status_code == 422

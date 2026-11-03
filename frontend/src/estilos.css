@@ -3512,3 +3512,15 @@ table.tabela {
 @media (max-width: 700px) {
   .vaga-assistente .assistente-botao { padding: 7px 10px; font-size: 12px; }
 }
+
+/* Cronograma: planejado × realizado e status (03/11/2026). */
+.texto-no-prazo, .gantt-entrada.texto-no-prazo { color: var(--liberado); }
+.gantt-congelado { font-size: 11.5px; color: var(--tinta-2); padding-left: 8px !important; }
+.gantt-status { width: 100%; height: 24px; padding: 0 4px; border: 1px solid var(--traco-fino); border-radius: 12px;
+  background: var(--folha); color: var(--tinta-2); font: inherit; font-size: 11.5px; cursor: pointer; }
+.gantt-status.em_andamento { border-color: var(--link); color: var(--link); }
+.gantt-status.concluido { border-color: var(--liberado-marca); background: var(--liberado-fundo); color: var(--liberado); }
+.gantt-status.atrasada { border-color: var(--reprovado-marca); color: var(--reprovado); }
+.gantt-barra-atividade.andamento { background: var(--link); }
+.gantt-plano { position: absolute; top: 27px; height: 3px; border-radius: 2px; background: var(--traco-forte); opacity: .8; }
+
