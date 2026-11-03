@@ -107,4 +107,5 @@ Uma linha por trabalho, a mais recente no fim: `AAAA-MM-DD · pessoa · IA usada
 - 2026-11-03 · Vinícius · Claude · cronograma de projetos em Gantt (PRO-FL-001) no módulo Qualidade, só coordenadores · e68121b
 - 2026-11-03 · Vinícius · Claude · cronograma em tela cheia e tabela em três tamanhos · 4b72ca4
 - 2026-11-03 · Vinícius · Claude · botão "Perguntar ao acervo" na barra do topo · bf6826f
-- 2026-11-03 · Vinícius · Claude · cronograma: status, planejado × realizado e modelo do Treviso; exclusões no UNO e TRE · (este commit)
+- 2026-11-03 · Vinícius · Claude · cronograma: status, planejado × realizado e modelo do Treviso; exclusões no UNO e TRE · 5d74e97
+- 2026-11-03 · Vinícius · Claude · chat: sugestões e respostas legíveis no tema escuro · (este commit)
