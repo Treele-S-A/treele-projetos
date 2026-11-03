@@ -199,6 +199,11 @@ function Moldura() {
 
   useEffect(() => setObrasAbertas(false), [local.pathname, menuRecolhido]);
 
+  // O visualizador 3D ocupa a tela toda: o menu recolhe ao abrir (o logo
+  // traz de volta) e volta ao sair (TREELE, 03/11/2026).
+  const telaDoModelo = local.pathname.startsWith("/modelos");
+  useEffect(() => setMenuRecolhido(telaDoModelo), [telaDoModelo]);
+
   function sairDaConta() {
     setContaAberta(false);
     navegar("/", { replace: true });
@@ -206,7 +211,7 @@ function Moldura() {
   }
 
   return (
-    <div className={`app projetos-app ${menuRecolhido ? "menu-recolhido" : ""}`}>
+    <div className={`app projetos-app ${menuRecolhido ? "menu-recolhido" : ""} ${telaDoModelo ? "tela-do-modelo" : ""}`}>
       <header className="projetos-topbar">
         <button
           className="projetos-logo-toggle"

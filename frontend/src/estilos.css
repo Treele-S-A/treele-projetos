@@ -1780,6 +1780,19 @@ table.tabela {
 }
 
 /* ------------------------------------------------ visualizador 3D (21/10/2026) */
+/* Tela toda abaixo da barra de 62 px da moldura nova (03/11/2026): sem a
+   margem da área, a página não rola por trás do 3D. */
+.projetos-app.tela-do-modelo > .area {
+  padding: 0;
+  height: calc(100vh - 62px);
+  overflow: hidden;
+}
+.projetos-app.tela-do-modelo .visualizador {
+  height: 100%;
+  min-height: 0;
+  border: 0;
+  border-radius: 0;
+}
 .visualizador {
   position: relative;
   display: grid;

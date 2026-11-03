@@ -670,7 +670,16 @@ export default function Modelo3D() {
         )}
       </aside>
 
-      <div className="visualizador-palco" ref={palco} onContextMenu={(e) => e.preventDefault()}>
+      <div
+        className="visualizador-palco"
+        ref={palco}
+        onContextMenu={(e) => e.preventDefault()}
+        // A roda apertada gira o modelo; sem isto, o navegador também liga a
+        // rolagem automática da página.
+        onMouseDown={(e) => {
+          if (e.button === 1) e.preventDefault();
+        }}
+      >
         {menu && (
           <div
             className="menu-modelo"

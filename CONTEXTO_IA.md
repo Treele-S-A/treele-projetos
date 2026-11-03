@@ -7,6 +7,8 @@ Documentos: **`README.md`** (rodar local, fases), `docs/roteiro.md` (fases segui
 
 ## Onde paramos
 
+- **03/11/2026, visualizador 3D em tela cheia de novo:** com a barra superior de 62 px da moldura nova, o 3D ficava menor e a página rolava por trás dele; a roda do mouse apertada disparava a rolagem automática do navegador. Agora, em `/modelos`, o menu recolhe sozinho (o logo traz de volta), a área perde a margem e o 3D ocupa toda a altura abaixo da barra; a roda apertada não rola mais a página. Ao sair do 3D, o menu volta. Também conferido o SER: os 10 modelos estão alinhados entre si e os pavimentos agrupam em 20 andares (Subsolo a Cobertura).
+
 - **30/10/2026, integração para publicação:** as melhorias locais de interface, tema, perfil e seletor de obra foram mescladas aos quatro commits recentes do estágio de projetos (tipos de acesso, solicitações externas, chat e 3D). Build do frontend e suíte do backend passaram após o rebase. Próximo passo: publicar a `main` e verificar a implantação; pendente com a TREELE: homologar o visual e a edição de perfil em produção. `.env`, `.env1`, `.env.local` e a configuração local de banco/S3 não entram no Git.
 
 - **30/10/2026, seletor de obra e carimbo:** o seletor nativo da barra lateral foi substituído por uma lista própria com destaque da obra ativa, contraste em temas claro/escuro, fechamento por clique externo/Escape e animação leve. O carimbo de liberação no tema escuro deixou de usar `mix-blend-mode:multiply` e ganhou tinta verde clara legível sobre fundo escuro. Build validado; homologar no localhost. Sem commit/publicação.
@@ -92,3 +94,4 @@ Uma linha por trabalho, a mais recente no fim: `AAAA-MM-DD · pessoa · IA usada
 - 2026-10-30 · TI · Codex · API local passou a usar S3 de produção com o banco já configurado; PDF validado por URL assinada · sem commit a pedido do usuário
 - 2026-10-30 · TI · Codex · seletor de obra repaginado e carimbo de liberação legível no tema escuro · sem commit a pedido do usuário
 - 2026-10-30 · TI · Codex · melhorias locais integradas aos commits novos de Projetos, com build e testes validados · 1251c4c (antes do ajuste final)
+- 2026-11-03 · Vinícius · Claude · visualizador 3D volta a ocupar a tela toda na moldura nova; roda apertada não rola a página · (este commit)
