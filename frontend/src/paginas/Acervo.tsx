@@ -111,6 +111,8 @@ export default function Acervo() {
   // Liberação em lote (TREELE, 15/10/2026): a seleção sobrevive à troca de
   // página e de filtro — dá para marcar de várias páginas e liberar de uma vez.
   const podeLiberar = obra?.permissoes.includes("publicar") ?? false;
+  const verEmRevisao = obra?.permissoes.includes("ver_em_revisao") ?? false;
+  const verObsoletos = obra?.permissoes.includes("ver_obsoletos") ?? false;
   const [marcadas, setMarcadas] = useState<Map<number, Marcada>>(new Map());
   const [painelLote, setPainelLote] = useState<"liberar" | "baixar" | null>(null);
   // Download em lote (TREELE, 21/10/2026): marca as linhas, escolhe os
@@ -602,10 +604,12 @@ export default function Acervo() {
               >
                 <option value="">Todos</option>
                 <option value="liberado_para_obra">Liberado para obra</option>
-                <option value="em_revisao">Em revisão</option>
-                <option value="obsoleto">Obsoleto</option>
-                <option value="reprovado">Reprovada</option>
-                <option value="cancelado">Cancelado</option>
+                {/* Só o que este perfil enxerga (status_visiveis, no servidor): para
+                    a obra, as outras opções trariam sempre uma lista vazia. */}
+                {verEmRevisao && <option value="em_revisao">Em revisão</option>}
+                {verObsoletos && <option value="obsoleto">Obsoleto</option>}
+                {verEmRevisao && <option value="reprovado">Reprovada</option>}
+                {verEmRevisao && <option value="cancelado">Cancelado</option>}
               </select>
             </label>
             <label className="campo">
