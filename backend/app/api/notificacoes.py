@@ -87,7 +87,7 @@ def email_teste(usuario: Usuario = Depends(usuario_atual)):
         raise HTTPException(
             status.HTTP_403_FORBIDDEN, "Somente um administrador testa o envio de e-mail."
         )
-    saudacao = f"Olá, {usuario.nome.split()[0]}."
+    saudacao = email_modelo.saudacao(usuario.nome)
     corpo = (
         "Se este e-mail chegou, as notificações por e-mail estão funcionando.\n\n"
         "Como vão chegar os avisos:\nRevisão enviada, solicitada, autorizada, recusada e "

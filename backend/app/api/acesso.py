@@ -11,10 +11,10 @@ Rotas públicas (sem login): ``GET /acesso/opcoes`` e ``POST /acesso/solicitacoe
 As demais, só administrador.
 """
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, field_validator
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
@@ -22,7 +22,7 @@ from ..config import settings
 from ..db import get_db
 from ..deps import usuario_admin
 from ..enums import PapelObra, TipoNotificacao
-from ..models import Disciplina, Notificacao, Obra, ObraMembro, SolicitacaoAcesso, Usuario
+from ..models import Disciplina, Evento, Notificacao, Obra, ObraMembro, SolicitacaoAcesso, Usuario
 from ..security import gerar_hash_senha
 from ..services import auditoria, email, email_modelo
 
@@ -42,6 +42,13 @@ class SolicitacaoEntrada(BaseModel):
     senha: str = Field(min_length=8, max_length=128)
     # Armadilha para robô: campo escondido na tela, que pessoa não preenche.
     site: str | None = None
+
+    @field_validator("nome", mode="before")
+    @classmethod
+    def _uma_linha(cls, nome):
+        # Rota pública: nome só de espaços quebrava a saudação do e-mail, e
+        # quebra de linha, o assunto dele.
+        return " ".join(nome.split()) if isinstance(nome, str) else nome
 
 
 class Decisao(BaseModel):
@@ -105,7 +112,7 @@ def _saida(db: Session, s: SolicitacaoAcesso) -> SolicitacaoOut:
 
 
 def _email_simples(para: str, nome: str, assunto: str, tipo: str, titulo: str, texto: str, link: str, botao: str):
-    saudacao = f"Olá, {nome.split()[0]}."
+    saudacao = email_modelo.saudacao(nome)
     return email.Mensagem(
         para=para,
         assunto=assunto,
@@ -137,6 +144,16 @@ def opcoes(db: Session = Depends(get_db)):
 def solicitar(dados: SolicitacaoEntrada, request: Request, db: Session = Depends(get_db)):
     if dados.site:  # robô: finge que deu certo e não grava nada
         return {"ok": True}
+    # Cada pedido manda e-mail para todos os administradores: sem limite, um robô
+    # enche a caixa de todo mundo trocando o e-mail a cada envio.
+    ip = auditoria._ip(request)
+    if ip:
+        recentes = db.scalar(select(func.count(Evento.id)).where(
+            Evento.acao == "acesso_solicitado", Evento.ip == ip,
+            Evento.criado_em >= datetime.now(timezone.utc) - timedelta(hours=1),
+        ))
+        if (recentes or 0) >= settings.acesso_pedidos_por_hora:
+            raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS, "Muitos pedidos deste endereço. Tente de novo em uma hora.")
     email_pedido = dados.email.lower().strip()
     if email_pedido.endswith(DOMINIO):
         raise HTTPException(

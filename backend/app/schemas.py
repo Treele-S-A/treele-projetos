@@ -3,7 +3,7 @@
 from datetime import datetime
 from typing import Generic, TypeVar
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 from .enums import (
     PapelObra,
@@ -69,8 +69,14 @@ class UsuarioComAcesso(UsuarioOut):
     obras: list[ObraDoUsuario] = []
 
 
+def _uma_linha(texto):
+    """Nome só de espaços passava pelo tamanho mínimo e quebrava a saudação do e-mail."""
+    return " ".join(texto.split()) if isinstance(texto, str) else texto
+
+
 class UsuarioCriar(BaseModel):
     nome: str = Field(min_length=2, max_length=160)
+    limpar_nome = field_validator("nome", mode="before")(_uma_linha)
     email: EmailStr
     # Sem senha, a pessoa entra com a conta Microsoft da Treèle (30/10/2026).
     senha: str | None = Field(default=None, min_length=8, max_length=128)
@@ -94,6 +100,7 @@ class SenhaAlterar(BaseModel):
 
 class PerfilAlterar(BaseModel):
     nome: str = Field(min_length=2, max_length=160)
+    limpar_nome = field_validator("nome", mode="before")(_uma_linha)
     email: EmailStr
     senha_atual: str | None = None
 
@@ -226,6 +233,9 @@ class NomeAnalisado(BaseModel):
     nome_arquivo: str
     valido: bool
     erros: list[str]
+    # False só quando o erro é o nome. Com o nome certo, o que recusa é outra
+    # coisa (arquivo liberado, revisão sem autorização), e a tela diz isso.
+    nome_no_padrao: bool = True
     codigo_documento: str | None = None
     disciplina: str | None = None
     fase: str | None = None
@@ -276,6 +286,8 @@ class AtaResumo(Modelo):
     codigo: str
     resultado: str
     criada_em: datetime
+    # Quem fez a análise vê a ata dela: a tela usa para mostrar o link.
+    criada_por_id: int | None = None
 
 
 class RevisaoOut(Modelo):

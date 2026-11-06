@@ -64,6 +64,11 @@
   --revisao-marca: var(--marca-amarelo);
   --obsoleto: #b3261e;
   --obsoleto-fundo: #fcebe9;
+  --nota-insatisfatorio: #b3261e;
+  --nota-regular: #c26a00;
+  --nota-bom: #6a8f1a;
+  --nota-muito-bom: #3f7a24;
+  --nota-excelente: #2c6a2e;
   --obsoleto-marca: #d93a2f;
   --cancelado: #5e6e75;
   --cancelado-fundo: #eef2f3;
@@ -2629,6 +2634,7 @@ table.tabela {
   display: flex;
   gap: 12px;
   align-items: flex-start;
+  justify-content: space-between;
   padding: 16px 20px 12px;
   border-bottom: 1px solid var(--traco-fino);
 }
@@ -3499,6 +3505,13 @@ table.tabela {
 .pagina-cronograma .gantt-corpo { flex: 1; min-height: 0; }
 .pagina-cronograma .gantt-rolo, .pagina-cronograma .gantt-detalhe { height: auto; min-height: 0; }
 .pagina-cronograma .gantt-rodape { padding: 6px 12px; }
+/* No celular, a barra e o rodapé ocupavam a tela e sobravam 31 px para o Gantt:
+   aqui ele tem altura própria, e a página rola. */
+@media (max-width: 900px) {
+  .projetos-app.tela-do-cronograma > .area { height: auto; overflow: visible; display: block; }
+  .pagina-cronograma > .folha.gantt { display: block; overflow: visible; }
+  .pagina-cronograma .gantt-rolo { flex: none; height: 70vh; min-height: 380px; }
+}
 
 /* "Perguntar ao acervo" na barra do topo, ao lado do nome (03/11/2026). */
 .vaga-assistente { margin-left: auto; display: flex; }
@@ -3523,4 +3536,28 @@ table.tabela {
 .gantt-status.atrasada { border-color: var(--reprovado-marca); color: var(--reprovado); }
 .gantt-barra-atividade.andamento { background: var(--link); }
 .gantt-plano { position: absolute; top: 27px; height: 3px; border-radius: 2px; background: var(--traco-forte); opacity: .8; }
+
+/* Checkup de 04/11/2026: tabela nas respostas do chat, tela de falha ao abrir e
+   a barra do topo em tela estreita. */
+.assistente-tabela { margin: 8px 0; overflow-x: auto; }
+.assistente-tabela table { border-collapse: collapse; font-size: 12.5px; min-width: 100%; }
+/* A resposta quebra palavra longa em qualquer ponto; na tabela isso deixava "R00" em três linhas. */
+.assistente-tabela th, .assistente-tabela td { padding: 4px 8px; border: 1px solid var(--traco-fino); text-align: left; overflow-wrap: normal; word-break: normal; }
+.assistente-tabela th { background: var(--nevoa); font-weight: 700; }
+.assistente-msg code { padding: 0 3px; border-radius: 3px; background: var(--nevoa); font-family: var(--fonte-mono); font-size: 0.92em; }
+.tela-falha-abrir { max-width: 520px; margin: 12vh auto 0; padding: 0 16px; }
+@media (max-width: 700px) {
+  .projetos-conta-nome { display: none; }
+  .vaga-assistente .assistente-botao-texto { display: none; }
+}
+/* Só na tela: no papel, a ata segue o modelo mesmo quando sai de um celular. */
+@media screen and (max-width: 700px) {
+  /* A ata tinha 34px de margem e três colunas no topo: passava da tela e cortava o texto. */
+  .eng-fl { padding: 14px 12px 24px; }
+  .eng-fl-cabecalho { grid-template-columns: 1fr; justify-items: center; gap: 6px; }
+  .eng-fl-controle { align-items: center; }
+  .eng-fl-barra { margin: 18px -12px -24px; }
+  /* Os botões de situação (Aguardando, Aprovadas…) saíam da folha, e os últimos não dava para tocar. */
+  .seletor-visao { flex-wrap: wrap; max-width: 100%; border-radius: 16px; }
+}
 

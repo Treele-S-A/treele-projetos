@@ -31,8 +31,10 @@ export default function Ata() {
         document.title = `${a.codigo} · Projetos`;
       })
       .catch((ex) => vivo && setErro(ex instanceof ErroApi ? ex.message : "Não foi possível abrir a ata."));
+    const tituloAntes = document.title;
     return () => {
       vivo = false;
+      document.title = tituloAntes;
     };
   }, [ataId]);
 

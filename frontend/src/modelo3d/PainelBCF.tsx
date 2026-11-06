@@ -6,7 +6,7 @@
  *  pelo painel de conflitos. */
 
 import { useEffect, useRef, useState } from "react";
-import { formatarData } from "../api";
+import { formatarData, hojeLocal } from "../api";
 import type { EstadoCena, Motor, TopicoBcf, TopicoImportado } from "./motor";
 import type { PedidoVistaConflito } from "./PainelConflitos";
 
@@ -29,7 +29,7 @@ export function baixarArquivo(blob: Blob, nome: string) {
 }
 
 export function hojeArquivo() {
-  return new Date().toISOString().slice(0, 10);
+  return hojeLocal();
 }
 
 export default function PainelBCF({
@@ -162,7 +162,7 @@ export default function PainelBCF({
       {topicos && topicos.length > 0 && (
         <>
           <p style={{ fontSize: 12.5, margin: "4px 0 0" }}>
-            <strong>{topicos.length} tópicos</strong> <span className="silencioso">· {arquivo}</span>
+            <strong>{topicos.length === 1 ? "1 tópico" : `${topicos.length} tópicos`}</strong> <span className="silencioso">· {arquivo}</span>
           </p>
           <ol className="lista-bcf">
             {topicos.map((t) => (

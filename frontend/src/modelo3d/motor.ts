@@ -331,6 +331,9 @@ export async function criarMotor(
   }
   const aoTeclar = (e: KeyboardEvent) => {
     if (!regua.enabled && !areas.enabled) return;
+    // Digitando na busca ou no título da vista, a tecla é do campo: Backspace
+    // não pode apagar a medida que está sob o mouse.
+    if (e.target instanceof Element && e.target.closest("input, textarea, select")) return;
     if (e.key === "Enter" && areas.enabled) areas.endCreation();
     else if (e.key === "Escape") {
       regua.cancelCreation();
@@ -417,6 +420,74 @@ export async function criarMotor(
       comGeometria.set(modelId, p);
     }
     return p;
+  };
+
+  let ultimoFoco = 0;
+  let filaFoco: Promise<void> = Promise.resolve();
+  /** Pinta o conflito e deixa o resto translúcido. A câmera fica de fora: a
+   *  próxima troca não precisa esperar a animação acabar. */
+  const pintarFoco = async (conflito: Conflito | null): Promise<boolean> => {
+    // As peças do conflito anterior voltam ao normal (e logo abaixo viram
+    // fantasma com o resto).
+    if (destaque) {
+      for (const [modelId, ids] of destaque) {
+        const model = fragments.list.get(modelId);
+        if (model && ids.size) await model.resetHighlight([...ids]);
+      }
+    }
+    if (!conflito) {
+      // Sem conflito em foco não há o que desfazer (a seleção da pessoa fica).
+      if (!destaque && !emFoco) return true;
+      destaque = null;
+      destaqueA = {};
+      if (emFoco) {
+        for (const [modelId, model] of fragments.list) await model.resetOpacity([...(await pecas(modelId))]);
+        emFoco = null;
+      }
+      aoSelecionar(null);
+      await fragments.core.update(true);
+      return true;
+    }
+    if (Object.keys(highlighter.selection.select ?? {}).length) await highlighter.clear("select");
+    // A em laranja e B em magenta translúcido, pintados direto no modelo:
+    // pela ferramenta de seleção da biblioteca, cada conflito levava uns
+    // 3 s (medido em 22/10/2026), e a exportação em BCF com fotos, minutos.
+    // Um lado pode não estar na cena (conflito de outra rodada, modelo
+    // fechado): enquadra do mesmo jeito, pela região guardada.
+    const atuais = new Map<string, Set<number>>();
+    for (const [lado, material] of [
+      [conflito.a, MATERIAL_A],
+      [conflito.b, MATERIAL_B],
+    ] as const) {
+      const model = lado.modelId ? fragments.list.get(lado.modelId) : undefined;
+      if (!model || !lado.localIds.length) continue;
+      // Do segundo conflito em diante, a peça já está translúcida com o resto,
+      // e a biblioteca mantém essa opacidade por cima do destaque: A e B saíam
+      // quase apagadas e só o primeiro conflito ficava certo.
+      await model.resetHighlight(lado.localIds);
+      await model.highlight(lado.localIds, material);
+      const s = atuais.get(lado.modelId) ?? new Set<number>();
+      lado.localIds.forEach((id) => s.add(id));
+      atuais.set(lado.modelId, s);
+    }
+    // O resto vira fantasma: o conflito costuma estar atrás de laje e viga.
+    // Da primeira vez, todas as peças; depois, só as do conflito anterior
+    // (um modelo de arquitetura tem dezenas de milhares de peças).
+    for (const [modelId, model] of fragments.list) {
+      const alvo = emFoco ? (destaque?.get(modelId) ?? new Set<number>()) : await pecas(modelId);
+      const ids = [...alvo].filter((id) => !atuais.get(modelId)?.has(id));
+      if (ids.length) await model.setOpacity(ids, 0.12);
+    }
+    emFoco = atuais;
+    destaque = atuais;
+    // A peça A é a seleção: as propriedades aparecem, e Isolar, Esconder e
+    // a Nova vista valem para ela.
+    destaqueA = conflito.a.modelId && conflito.a.localIds.length
+      ? { [conflito.a.modelId]: new Set(conflito.a.localIds) }
+      : {};
+    selecao = destaqueA;
+    if (Object.keys(destaqueA).length) aoSelecionar(await propriedades(fragments, destaqueA));
+    return true;
   };
 
   return {
@@ -584,60 +655,17 @@ export async function criarMotor(
       }
     },
     async focarConflito(conflito, animar = true) {
-      // As peças do conflito anterior voltam ao normal (e logo abaixo viram
-      // fantasma com o resto).
-      if (destaque) {
-        for (const [modelId, ids] of destaque) {
-          const model = fragments.list.get(modelId);
-          if (model && ids.size) await model.resetHighlight([...ids]);
-        }
-      }
-      if (!conflito) {
-        destaque = null;
-        destaqueA = {};
-        if (emFoco) {
-          for (const [modelId, model] of fragments.list) await model.resetOpacity([...(await pecas(modelId))]);
-          emFoco = null;
-        }
-        aoSelecionar(null);
-        await fragments.core.update(true);
-        return;
-      }
-      if (Object.keys(highlighter.selection.select ?? {}).length) await highlighter.clear("select");
-      // A em laranja e B em magenta translúcido, pintados direto no modelo:
-      // pela ferramenta de seleção da biblioteca, cada conflito levava uns
-      // 3 s (medido em 22/10/2026), e a exportação em BCF com fotos, minutos.
-      // Um lado pode não estar na cena (conflito de outra rodada, modelo
-      // fechado): enquadra do mesmo jeito, pela região guardada.
-      const atuais = new Map<string, Set<number>>();
-      for (const [lado, material] of [
-        [conflito.a, MATERIAL_A],
-        [conflito.b, MATERIAL_B],
-      ] as const) {
-        const model = lado.modelId ? fragments.list.get(lado.modelId) : undefined;
-        if (!model || !lado.localIds.length) continue;
-        await model.highlight(lado.localIds, material);
-        const s = atuais.get(lado.modelId) ?? new Set<number>();
-        lado.localIds.forEach((id) => s.add(id));
-        atuais.set(lado.modelId, s);
-      }
-      // O resto vira fantasma: o conflito costuma estar atrás de laje e viga.
-      // Da primeira vez, todas as peças; depois, só as do conflito anterior
-      // (um modelo de arquitetura tem dezenas de milhares de peças).
-      for (const [modelId, model] of fragments.list) {
-        const alvo = emFoco ? (destaque?.get(modelId) ?? new Set<number>()) : await pecas(modelId);
-        const ids = [...alvo].filter((id) => !atuais.get(modelId)?.has(id));
-        if (ids.length) await model.setOpacity(ids, 0.12);
-      }
-      emFoco = atuais;
-      destaque = atuais;
-      // A peça A é a seleção: as propriedades aparecem, e Isolar, Esconder e
-      // a Nova vista valem para ela.
-      destaqueA = conflito.a.modelId && conflito.a.localIds.length
-        ? { [conflito.a.modelId]: new Set(conflito.a.localIds) }
-        : {};
-      selecao = destaqueA;
-      if (Object.keys(destaqueA).length) aoSelecionar(await propriedades(fragments, destaqueA));
+      // Pintar um conflito leva segundos, e as chamadas ao modelo se misturam:
+      // com cliques seguidos na lista, a peça A sumia e o resto perdia a
+      // transparência. Uma troca de cada vez, e os pedidos que ficaram para
+      // trás nem começam: vale o último.
+      const pedido = ++ultimoFoco;
+      const vez = filaFoco.then(() => (pedido === ultimoFoco ? pintarFoco(conflito) : false));
+      filaFoco = vez.then(
+        () => undefined,
+        () => undefined,
+      );
+      if (!(await vez) || !conflito) return;
       await world.camera.controls.setLookAt(...olharPara(conflito), animar);
       await fragments.core.update(true);
     },

@@ -7,6 +7,7 @@ import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException, status
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
@@ -34,6 +35,7 @@ from .api import (
 )
 from .config import settings
 from .db import engine
+from .erros_validacao import tratar_validacao
 from .migracoes import preparar_banco
 from .services.storage import ArmazenamentoS3, armazenamento
 
@@ -46,6 +48,19 @@ async def ciclo_de_vida(_: FastAPI):
     yield
 
 
+def enderecos_da_documentacao(ambiente: str, prefixo: str) -> dict[str, str | None]:
+    """A documentação acompanha o prefixo; sem isso ela ficaria na raiz, junto
+    com as telas. Em produção fica fechada (TREELE, 04/11/2026): o mapa completo
+    da API, aberto a quem passar, não ajuda ninguém que trabalha no sistema."""
+    if ambiente == "producao":
+        return {"docs_url": None, "redoc_url": None, "openapi_url": None}
+    return {
+        "docs_url": prefixo + "/docs",
+        "redoc_url": prefixo + "/redoc",
+        "openapi_url": prefixo + "/openapi.json",
+    }
+
+
 app = FastAPI(
     title=settings.app_nome,
     version="1.0.0",
@@ -54,12 +69,10 @@ app = FastAPI(
         "catálogo por obra/disciplina/fase/tipo, status e trilha de auditoria."
     ),
     lifespan=ciclo_de_vida,
-    # A documentação acompanha o prefixo. Sem isto ela ficaria na raiz, junto
-    # com as telas, descrevendo rotas que moram em outro lugar.
-    docs_url=settings.api_prefix + "/docs",
-    redoc_url=settings.api_prefix + "/redoc",
-    openapi_url=settings.api_prefix + "/openapi.json",
+    **enderecos_da_documentacao(settings.ambiente, settings.api_prefix),
 )
+
+app.add_exception_handler(RequestValidationError, tratar_validacao)
 
 # Versão no ar: o commit que a Vercel publicou. Vai em toda resposta, para a
 # tela aberta antes de uma atualização perceber que ficou velha (ver api.ts).

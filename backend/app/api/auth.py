@@ -1,20 +1,22 @@
+import hashlib
 import secrets
 import time
 import logging
 import re
+from datetime import datetime, timedelta, timezone
 from urllib.parse import urlencode
 
 import httpx
 import jwt
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import RedirectResponse
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from ..db import get_db
 from ..config import settings
 from ..deps import usuario_atual
-from ..models import Usuario
+from ..models import Evento, Usuario
 from ..schemas import LoginEntrada, PerfilAlterar, SenhaAlterar, TokenSaida, UsuarioOut
 from ..security import conferir_senha, criar_token, gerar_hash_senha, ler_token, validade
 from ..services import auditoria
@@ -162,11 +164,27 @@ def login(dados: LoginEntrada, request: Request, db: Session = Depends(get_db)):
             status.HTTP_403_FORBIDDEN,
             {"mensagem": "Acesso não permitido. Solicite seu acesso.", "codigo": "sem_acesso"},
         )
+    # Sem limite, dava para testar senhas à vontade. Conta por e-mail, para um
+    # robô não bloquear o escritório inteiro, que sai pelo mesmo IP; o login com
+    # a Microsoft não passa por aqui e segue funcionando.
+    marca = "login:" + hashlib.sha256(email_login.encode("utf-8")).hexdigest()[:16]
+    tentativas = db.scalar(select(func.count(Evento.id)).where(
+        Evento.acao == "login_falhou", Evento.entidade == marca,
+        Evento.criado_em >= datetime.now(timezone.utc) - timedelta(minutes=settings.login_bloqueio_minutos),
+    ))
+    if (tentativas or 0) >= settings.login_tentativas_max:
+        raise HTTPException(
+            status.HTTP_429_TOO_MANY_REQUESTS,
+            f"Muitas tentativas de entrada com este e-mail. Espere {settings.login_bloqueio_minutos} "
+            "minutos ou use \"Entrar com Microsoft\".",
+        )
     if (
         usuario is None
         or not usuario.ativo
         or not conferir_senha(dados.senha, usuario.senha_hash)
     ):
+        auditoria.registrar(db, acao="login_falhou", entidade=marca, usuario=usuario, request=request)
+        db.commit()
         # Mensagem única de propósito: não revela se o e-mail existe.
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "E-mail ou senha incorretos.")
 
@@ -203,6 +221,11 @@ def alterar_perfil(
     if len(nome) < 2:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Informe um nome com pelo menos 2 caracteres.")
     if email != usuario.email:
+        # Conta de fora não vira @treele.com.br por conta própria: o login da
+        # Microsoft acha a conta pelo e-mail, e quem chegasse depois com aquele
+        # endereço entraria numa conta cuja senha o externo conhece.
+        if not usuario.email.endswith("@treele.com.br"):
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, "Conta externa não troca o e-mail por aqui: fale com a Treèle.")
         if not email.endswith("@treele.com.br"):
             raise HTTPException(status.HTTP_400_BAD_REQUEST, "Use um e-mail corporativo da Treèle.")
         if not dados.senha_atual or not conferir_senha(dados.senha_atual, usuario.senha_hash):

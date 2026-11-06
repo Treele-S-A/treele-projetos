@@ -28,6 +28,17 @@ const ROTULO_ACAO: Record<string, string> = {
   membro_removido: "Removeu da equipe",
   padrao_definido: "Alterou a nomenclatura",
   lista_mestra_exportada: "Exportou lista mestra",
+  ata_analise_registrada: "Registrou ata de análise crítica",
+  membro_papel_alterado: "Trocou o papel na equipe",
+  conjunto_conflito_criado: "Criou conjunto de conflitos",
+  conjunto_conflito_alterado: "Alterou conjunto de conflitos",
+  conjunto_conflito_apagado: "Apagou conjunto de conflitos",
+  conflitos_detectados: "Detectou conflitos",
+  conflito_alterado: "Alterou conflito",
+  vista_criada: "Criou vista do 3D",
+  cronograma_criado: "Criou o cronograma",
+  cronograma_apagado: "Apagou o cronograma",
+  fornecedor_avaliado: "Avaliou fornecedor",
 };
 
 function descrever(e: Evento): string {
@@ -36,6 +47,17 @@ function descrever(e: Evento): string {
   if (d.documento) partes.push(String(d.documento));
   if (d.revisao) partes.push(`R${d.revisao}`);
   if (d.arquivo) partes.push(String(d.arquivo));
+  if (d.ata) partes.push(String(d.ata));
+  if (d.titulo) partes.push(String(d.titulo));
+  if (d.nome) partes.push(String(d.nome));
+  if (d.razao_social) partes.push(String(d.razao_social));
+  const n = e.detalhes as Record<string, unknown>;
+  if (typeof n.encontrados === "number") {
+    partes.push(`${n.encontrados} encontrados, ${n.novos} novos, ${n.resolvidos} resolvidos`);
+  }
+  if (e.acao === "ata_analise_registrada" && d.resultado) {
+    partes.push(d.resultado === "conforme" ? "conforme" : "não conforme");
+  }
   if (Array.isArray(d.obsoletadas) && d.obsoletadas.length > 0) {
     partes.push(`tornou obsoleta ${d.obsoletadas.map((r) => `R${r}`).join(", ")}`);
   }
@@ -70,6 +92,7 @@ export default function Registro() {
     const p = new URLSearchParams({ pagina: String(pagina), por_pagina: "50" });
     if (acao) p.set("acao", acao);
     setCarregando(true);
+    setErro(null);
     api
       .get<Pagina<Evento>>(`/obras/${obraId}/eventos?${p}`)
       .then(setDados)

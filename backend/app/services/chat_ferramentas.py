@@ -27,7 +27,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from ..config import settings
-from ..deps import ContextoObra, montar_contexto, status_visiveis
+from ..deps import ContextoObra, montar_contexto, restringir_disciplinas, status_visiveis
 from ..enums import StatusRevisao, StatusSolicitacao, TipoArquivo
 from ..models import (
     Disciplina,
@@ -39,7 +39,7 @@ from ..models import (
     SolicitacaoRevisao,
     Usuario,
 )
-from . import auditoria
+from . import auditoria, tempo
 from .storage import armazenamento
 
 LIMITE_DOCUMENTOS = 40
@@ -678,11 +678,14 @@ class Ferramentas:
         }
         if not self.usuario.comercial:
             saida["solicitacoes_aguardando_autorizacao"] = self.db.scalar(
-                select(func.count(SolicitacaoRevisao.id))
-                .join(Documento, SolicitacaoRevisao.documento_id == Documento.id)
-                .where(
-                    Documento.obra_id == ctx.obra.id,
-                    SolicitacaoRevisao.status == StatusSolicitacao.aberta,
+                restringir_disciplinas(
+                    select(func.count(SolicitacaoRevisao.id))
+                    .join(Documento, SolicitacaoRevisao.documento_id == Documento.id)
+                    .where(
+                        Documento.obra_id == ctx.obra.id,
+                        SolicitacaoRevisao.status == StatusSolicitacao.aberta,
+                    ),
+                    ctx,
                 )
             ) or 0
         return saida
@@ -704,7 +707,7 @@ class Ferramentas:
             ).all():
                 if not ctx.ve_disciplina(doc.disciplina.codigo):
                     continue
-                itens.append({
+                itens.append((rev.publicada_em, {
                     "link": f"/documentos/{doc.id}",
                     "obra": ctx.obra.codigo,
                     "codigo": doc.codigo,
@@ -713,14 +716,15 @@ class Ferramentas:
                     "status_hoje": ROTULO_STATUS[rev.status.value],
                     "liberada_em": _data(rev.publicada_em),
                     "o_que_mudou": rev.descricao,
-                })
-        itens.sort(key=lambda i: i["liberada_em"] or "", reverse=True)
-        return {"dias": dias, "total": len(itens), "liberacoes": itens[:LIMITE_DOCUMENTOS]}
+                }))
+        # Pela data de verdade: o texto "03/11/2026" vinha depois de "28/10/2026".
+        itens.sort(key=lambda par: par[0], reverse=True)
+        return {"dias": dias, "total": len(itens), "liberacoes": [i for _, i in itens[:LIMITE_DOCUMENTOS]]}
 
     def consultar_conflitos(self, obra=None, disciplina=None, situacao=None, busca=None, listar=False):
         """Os conflitos guardados pelas detecções do visualizador 3D (22/10/2026),
         com as mesmas regras da tela: o comercial não vê."""
-        from ..api.conflitos import conflitos_unicos
+        from ..api.conflitos import conflitos_unicos, ve_conflito
         from ..models import ConjuntoConflito, RodadaConflito
 
         if self.usuario.comercial:
@@ -730,7 +734,7 @@ class Ferramentas:
         termo = _normalizar(busca or "")
         obras = []
         for ctx in self._contextos(obra):
-            todos = conflitos_unicos(self.db, ctx.obra.id)
+            todos = [c for c in conflitos_unicos(self.db, ctx.obra.id) if ve_conflito(ctx, c)]
             conjuntos = list(self.db.scalars(
                 select(ConjuntoConflito).where(ConjuntoConflito.obra_id == ctx.obra.id)
             ))
@@ -813,6 +817,8 @@ class Ferramentas:
             if situacao in {s.value for s in StatusSolicitacao}:
                 consulta = consulta.where(SolicitacaoRevisao.status == StatusSolicitacao(situacao))
             for s, doc in self.db.execute(consulta).all():
+                if not ctx.ve_disciplina(doc.disciplina.codigo):
+                    continue
                 item = _solicitacao(s)
                 item.update({"obra": ctx.obra.codigo, "codigo": doc.codigo,
                              "titulo": doc.titulo, "link": f"/documentos/{doc.id}"})
@@ -860,7 +866,7 @@ def _conflito(c) -> dict[str, Any]:
 
 
 def _data(valor: datetime | None) -> str | None:
-    return valor.strftime("%d/%m/%Y %H:%M") if valor else None
+    return tempo.data_hora_br(valor) if valor else None
 
 
 SITUACAO = {

@@ -7,6 +7,7 @@ import { useTema } from "../tema";
 export default function Conta() {
   const { usuario, recarregarUsuario } = useSessao();
   const [tema, mudarTema] = useTema();
+  const externa = !!usuario && !usuario.email.endsWith("@treele.com.br");
   const [nome, setNome] = useState(usuario?.nome ?? "");
   const [email, setEmail] = useState(usuario?.email ?? "");
   const [senhaEmail, setSenhaEmail] = useState("");
@@ -96,9 +97,10 @@ export default function Conta() {
               <input value={nome} onChange={(e) => setNome(e.target.value)} minLength={2} maxLength={160} autoComplete="name" required />
             </label>
             <label className="campo"><span className="rotulo">E-mail de acesso</span>
-              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" required />
+              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" required disabled={externa} />
             </label>
           </div>
+          {externa && <p className="silencioso conta-ajuda">Para trocar o e-mail de uma conta externa, fale com a Treèle.</p>}
           {email.trim().toLowerCase() !== usuario?.email && <>
             <label className="campo conta-senha-email"><span className="rotulo">Senha atual para confirmar a troca de e-mail</span>
               <input type="password" value={senhaEmail} onChange={(e) => setSenhaEmail(e.target.value)} autoComplete="current-password" required />

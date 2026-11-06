@@ -154,6 +154,7 @@ export default function Modelo3D() {
   const [conflitos, setConflitos] = useState(parametros.get("conflitos") === "1");
   const conjuntoPedido = parametros.get("conjunto");
   const [pavimentos, setPavimentos] = useState(false);
+  const [pavimentosOcultos, setPavimentosOcultos] = useState<Set<string>>(new Set());
   const [bcf, setBcf] = useState(false);
   const [medindo, setMedindo] = useState<ModoMedida | null>(null);
   const [medidas, setMedidas] = useState<Medida[]>([]);
@@ -310,9 +311,12 @@ export default function Modelo3D() {
     window.location.reload();
   }
 
-  /** Tudo de volta: elementos escondidos, cortes e disciplinas desligadas. */
+  /** Tudo de volta: elementos escondidos, cortes, disciplinas desligadas, e o
+   *  modelo translúcido em volta de um conflito. */
   async function mostrarTudo() {
     setMenu(null);
+    setPavimentosOcultos(new Set());
+    await motor.current?.focarConflito(null);
     for (const m of modelos) {
       if (!m.visivel && m.etapa === "pronto") {
         atualizar(m.id, { visivel: true });
@@ -595,7 +599,13 @@ export default function Modelo3D() {
         )}
 
         {pavimentos && motor.current && (
-          <PainelPavimentos motor={motor.current} modelos={modelosConflito} aoMostrarTudo={mostrarTudo} />
+          <PainelPavimentos
+            motor={motor.current}
+            modelos={modelosConflito}
+            aoMostrarTudo={mostrarTudo}
+            escondidos={pavimentosOcultos}
+            setEscondidos={setPavimentosOcultos}
+          />
         )}
 
         {conflitos && todosProntos && motor.current && obraId && (

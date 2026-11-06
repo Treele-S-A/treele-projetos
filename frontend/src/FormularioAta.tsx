@@ -41,8 +41,12 @@ export default function FormularioAta({
   const semComentario = naoConformes.filter((i) => !comentarios[i.id]?.trim());
   const completo = respondidos === itens.length && semComentario.length === 0;
 
+  // Foco na caixa só ao abrir: repetido a cada resposta, tirava o teclado do item.
   useEffect(() => {
     caixa.current?.focus();
+  }, []);
+
+  useEffect(() => {
     const tecla = (e: KeyboardEvent) => {
       if (e.key === "Escape" && !salvando) fechar();
     };

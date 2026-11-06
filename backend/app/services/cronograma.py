@@ -24,6 +24,7 @@ from dataclasses import dataclass
 from datetime import date, timedelta
 
 from ..models import Cronograma, CronogramaAtividade
+from . import tempo
 
 TIPOS = ("TI", "II", "TT")
 _SEGUNDA = date(2000, 1, 3)  # uma segunda-feira qualquer: a régua dos dias úteis
@@ -138,7 +139,7 @@ def calcular(cronograma: Cronograma, hoje: date | None = None) -> dict[int, Calc
     ordem = _ordem_topologica(atividades)
     base = indice(cronograma.inicio)
     plano, dur_plano = _ida(ordem, base, None)
-    cedo, dur = _ida(ordem, base, indice(hoje or date.today()))
+    cedo, dur = _ida(ordem, base, indice(hoje or tempo.hoje()))
     fim_projeto = max(cedo[i] + dur[i] for i in cedo)
     # Volta: o fim mais tarde de cada uma sem atrasar o projeto.
     tarde_fim: dict[int, int] = {i: fim_projeto for i in cedo}

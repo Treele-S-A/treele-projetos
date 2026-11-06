@@ -36,6 +36,7 @@ export default function SolicitacoesAcesso() {
   const [erro, setErro] = useState<string | null>(null);
 
   async function carregar() {
+    setErro(null);
     try {
       const [l, o] = await Promise.all([
         api.get<Solicitacao[]>(`/acesso/solicitacoes${filtro ? `?situacao=${filtro}` : ""}`),
@@ -108,6 +109,8 @@ function CartaoSolicitacao({ s, opcoes, aoDecidir }: { s: Solicitacao; opcoes: O
         await api.post(`/acesso/solicitacoes/${s.id}/reprovar`, { motivo: motivo.trim() || null });
       }
       await aoDecidir();
+      // O número ao lado de "Solicitações de acesso", no menu, muda junto.
+      window.dispatchEvent(new Event("treele:acesso"));
     } catch (ex) {
       setErro(ex instanceof ErroApi ? ex : new ErroApi(0, "Não foi possível registrar a decisão."));
     } finally {

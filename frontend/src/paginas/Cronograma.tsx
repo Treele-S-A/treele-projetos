@@ -9,7 +9,7 @@
  *  agenda, só desenha e manda o que a pessoa mudou. */
 
 import { useEffect, useMemo, useRef, useState, type PointerEvent as PE, type ReactNode } from "react";
-import { Link, Navigate, useNavigate, useParams } from "react-router-dom";
+import { Link, Navigate, useParams } from "react-router-dom";
 import { api, ErroApi, formatarData } from "../api";
 import { Aviso, Carregando, Vazio } from "../componentes";
 import { CHAVE_OBRA } from "../sessao";
@@ -141,8 +141,9 @@ interface Tabela {
   largura: number;
 }
 const TABELAS: Record<ModoTabela, Tabela> = {
-  completa: { modo: "completa", colunas: "40px minmax(200px, 1fr) 104px 48px 90px 90px 90px 90px 116px 92px", largura: 970 },
-  compacta: { modo: "compacta", colunas: "40px minmax(170px, 1fr) 90px 90px 90px 90px 116px", largura: 700 },
+  // A primeira data é mais larga: tem o pino de "data fixada" ao lado, e em 90px o ano ficava cortado.
+  completa: { modo: "completa", colunas: "40px minmax(200px, 1fr) 104px 48px 102px 90px 90px 90px 116px 92px", largura: 982 },
+  compacta: { modo: "compacta", colunas: "40px minmax(160px, 1fr) 102px 90px 90px 90px 116px", largura: 700 },
   nomes: { modo: "nomes", colunas: "40px minmax(150px, 1fr)", largura: 250 },
 };
 const CHAVE_TABELA = "treele.gantt.tabela";
@@ -294,7 +295,6 @@ interface Arraste {
 }
 
 function Gantt({ dados, url, salvar }: { dados: Dados; url: string; salvar: (p: Promise<Dados>) => Promise<boolean> }) {
-  const navegar = useNavigate();
   const [zoom, setZoom] = useState<Zoom>("semana");
   const [recolhidas, setRecolhidas] = useState<Set<string>>(new Set());
   const [selecionada, setSelecionada] = useState<number | null>(null);
@@ -414,12 +414,7 @@ function Gantt({ dados, url, salvar }: { dados: Dados; url: string; salvar: (p: 
   }
   async function apagarCronograma() {
     if (!window.confirm("Apagar o cronograma inteiro desta obra? Não dá para desfazer.")) return;
-    try {
-      await api.delete(url);
-      navegar(0);
-    } catch {
-      /* o aviso aparece pelo salvar na próxima ação */
-    }
+    await salvar(api.delete(url).then(() => api.get<Dados>(url)));
   }
 
   function exportarCsv() {
@@ -432,13 +427,18 @@ function Gantt({ dados, url, salvar }: { dados: Dados; url: string; salvar: (p: 
       rotuloStatus(a.status), a.status === "nao_iniciado" && a.atraso <= 0 ? "" : a.atraso,
       vinculosEmTexto(a, numeroDe), a.folga, a.critica ? "sim" : "",
     ]);
-    const csv = [cab, ...linhasCsv].map((l) => l.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(";")).join("\r\n");
+    // Texto que começa com = + - @ o Excel executaria como fórmula ao abrir.
+    const celula = (c: string | number) => {
+      const t = String(c);
+      return `"${(typeof c === "string" && /^[=+\-@\t\r]/.test(t) ? `'${t}` : t).replace(/"/g, '""')}"`;
+    };
+    const csv = [cab, ...linhasCsv].map((l) => l.map(celula).join(";")).join("\r\n");
     const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8" });
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
     link.download = `${dados.obra.codigo}-cronograma-de-projetos.csv`;
     link.click();
-    URL.revokeObjectURL(link.href);
+    setTimeout(() => URL.revokeObjectURL(link.href), 60_000);
   }
 
   // Arrastar a barra: mover muda o "não iniciar antes de"; a ponta, a duração.
@@ -550,9 +550,9 @@ function Gantt({ dados, url, salvar }: { dados: Dados; url: string; salvar: (p: 
                 {tab.modo !== "nomes" && (
                   <>
                     <span title="Pelo plano; congela quando a atividade começa">Início plan.</span>
-                    <span>Término plan.</span>
-                    <span>Início real.</span>
-                    <span>Término real.</span>
+                    <span title="Término planejado">Térm. plan.</span>
+                    <span title="Início realizado">Início real.</span>
+                    <span title="Término realizado">Térm. real.</span>
                     <span>Status</span>
                   </>
                 )}
@@ -847,7 +847,7 @@ function LinhaAtividade({ tab, a, selecionada, critico, pos, numeroDe, idDe, px,
           <>
             <span className="gantt-data">
               <Celula valor={a.inicio_planejado} tipo="date" rotulo="Início planejado"
-                title={a.inicio_fixo ? `Fixado: não iniciar antes de ${completa(a.inicio_fixo)}` : "Calculado pelas predecessoras. Mudar fixa a data."}
+                title={a.inicio_fixo ? `Fixado: não iniciar antes de ${completa(a.inicio_fixo)}` : "Calculado pelas predecessoras. Mudar fixa a data, mas ela não começa antes do que as predecessoras permitem."}
                 salvar={(v) => v && alterar(a.id, { inicio_fixo: v })} />
               {a.inicio_fixo && (
                 <button className="gantt-pino" title="Data fixada por você. Clique para voltar a seguir as predecessoras."

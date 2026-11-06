@@ -211,6 +211,7 @@ export default function PainelConflitos({
   // quando são poucos.
   const [fotosBcf, setFotosBcf] = useState<boolean | null>(null);
   const rodando = useRef(false);
+  const ultimoClique = useRef(0);
   // Os conflitos achados nesta sessão, com as peças já localizadas na cena.
   const locais = useRef<Map<number, Conflito>>(new Map());
 
@@ -429,9 +430,19 @@ export default function PainelConflitos({
   }
 
   async function focar(c: ConflitoServidor) {
+    // A exportação do BCF move a câmera para fotografar cada conflito.
+    if (exportando) return;
     setAtivo(c.id);
     setAprovando(null);
-    await motor.focarConflito(await naCena(c));
+    const clique = ++ultimoClique.current;
+    try {
+      // Localizar as peças leva um tempo que varia: o clique antigo não pode
+      // chegar depois do novo e levar a câmera para o conflito errado.
+      const cena = await naCena(c);
+      if (clique === ultimoClique.current) await motor.focarConflito(cena);
+    } catch (e) {
+      setErro(mensagem(e, "Não foi possível mostrar este conflito na cena."));
+    }
   }
 
   async function mudar(c: ConflitoServidor, corpo: { status: "aprovado" | "ativo"; justificativa?: string }) {
@@ -445,19 +456,14 @@ export default function PainelConflitos({
     }
   }
 
-  async function guardar(c: ConjuntoConflito, servidorId: number | null): Promise<Opcao | null> {
+  async function guardar(c: ConjuntoConflito, servidorId: number | null): Promise<Opcao> {
     const { id: _id, nome, ...config } = c;
-    try {
-      const s = servidorId
-        ? await api.patch<ConjuntoServidor>(`/conjuntos-conflito/${servidorId}`, { nome, config })
-        : await api.post<ConjuntoServidor>(`/obras/${obraId}/conjuntos-conflito`, { nome, config });
-      setDaObra((atual) => [...(atual ?? []).filter((x) => x.id !== s.id), s]);
-      setEscolhido(`s${s.id}`);
-      return { chave: `s${s.id}`, conjunto: { ...s.config, id: `s${s.id}`, nome: s.nome }, servidor: s, pronto: null };
-    } catch (e) {
-      setErro(mensagem(e, "Não foi possível guardar o conjunto."));
-      return null;
-    }
+    const s = servidorId
+      ? await api.patch<ConjuntoServidor>(`/conjuntos-conflito/${servidorId}`, { nome, config })
+      : await api.post<ConjuntoServidor>(`/obras/${obraId}/conjuntos-conflito`, { nome, config });
+    setDaObra((atual) => [...(atual ?? []).filter((x) => x.id !== s.id), s]);
+    setEscolhido(`s${s.id}`);
+    return { chave: `s${s.id}`, conjunto: { ...s.config, id: `s${s.id}`, nome: s.nome }, servidor: s, pronto: null };
   }
 
   async function apagar(o: Opcao) {
@@ -900,7 +906,6 @@ export default function PainelConflitos({
           aoFechar={() => setEditando(null)}
           aoGuardar={async (c, detectarJa) => {
             const salvo = await guardar(c, editando.servidorId);
-            if (!salvo) return;
             setEditando(null);
             if (detectarJa) void rodar(salvo);
           }}
@@ -948,11 +953,25 @@ function EditorConjunto({
 }) {
   const [c, setC] = useState<ConjuntoConflito>(inicial);
   const [erro, setErro] = useState<string | null>(null);
+  const [guardando, setGuardando] = useState(false);
+  // No ref, e não só no estado: o duplo clique chega antes de a tela redesenhar.
+  const ocupado = useRef(false);
 
-  function concluir(detectarJa: boolean) {
+  async function concluir(detectarJa: boolean) {
+    if (ocupado.current) return;
     if (!c.nome.trim()) return setErro("Dê um nome ao conjunto.");
     if (!c.a.disciplinas.length || !c.b.disciplinas.length) return setErro("Escolha ao menos uma disciplina em cada grupo.");
-    aoGuardar({ ...c, nome: c.nome.trim() }, detectarJa);
+    ocupado.current = true;
+    setGuardando(true);
+    setErro(null);
+    try {
+      await aoGuardar({ ...c, nome: c.nome.trim() }, detectarJa);
+    } catch (e) {
+      setErro(mensagem(e, "Não foi possível guardar o conjunto."));
+    } finally {
+      ocupado.current = false;
+      setGuardando(false);
+    }
   }
 
   return (
@@ -1032,10 +1051,10 @@ function EditorConjunto({
         </label>
         {erro && <p className="erro-modelo">{erro}</p>}
         <div className="linha" style={{ gap: 8, marginTop: 12 }}>
-          <button className="botao" onClick={() => concluir(true)}>
+          <button className="botao" disabled={guardando} onClick={() => concluir(true)}>
             Guardar e detectar
           </button>
-          <button className="botao secundario pequeno" onClick={() => concluir(false)}>
+          <button className="botao secundario pequeno" disabled={guardando} onClick={() => concluir(false)}>
             Só guardar
           </button>
           <button className="botao secundario pequeno" onClick={aoFechar}>

@@ -18,7 +18,7 @@ from ..db import get_db
 from ..deps import ContextoObra, contexto_obra, usuario_atual
 from ..enums import PapelObra
 from ..models import Cronograma, CronogramaAtividade, CronogramaVinculo, Obra, ObraMembro, Usuario
-from ..services import auditoria
+from ..services import auditoria, tempo
 from ..services.cronograma import MODELO, STATUS, TIPOS, CicloNoCronograma, calcular, gera_ciclo
 
 router = APIRouter(tags=["cronograma de projetos"])
@@ -247,6 +247,11 @@ def renomear_fase(
     for a in c.atividades:
         if a.fase == dados.de:
             a.fase = dados.para.strip()
+    # Renomear para uma fase que já existe junta as duas: as linhas têm de ficar
+    # em sequência, senão a numeração pula entre as fases na tela.
+    fases = list(dict.fromkeys(a.fase for a in c.atividades))
+    for n, a in enumerate(sorted(c.atividades, key=lambda x: fases.index(x.fase)), start=1):
+        a.ordem = n
     _tocar(c, usuario)
     db.commit()
     return _saida(db, ctx, c)
@@ -282,10 +287,11 @@ def criar_atividade(
     _exigir(ctx)
     c = _cronograma(db, ctx)
     lista = list(c.atividades)
-    if dados.depois_de is not None:
-        anterior = _atividade(c, dados.depois_de)
+    anterior = _atividade(c, dados.depois_de) if dados.depois_de is not None else None
+    if anterior is not None and anterior.fase == dados.fase.strip():
         pos = lista.index(anterior) + 1
     else:
+        # Sem referência, ou com uma de outra fase: no fim da fase, para ela seguir contínua.
         da_fase = [i for i, a in enumerate(lista) if a.fase == dados.fase.strip()]
         pos = (da_fase[-1] + 1) if da_fase else len(lista)
     nova = CronogramaAtividade(
@@ -330,7 +336,7 @@ def _registrar_realizado(a: CronogramaAtividade, dados: "AlterarAtividade", camp
     termino_base): é com ele que o atraso fica registrado."""
     if not campos & {"status", "inicio_real", "termino_real"}:
         return
-    hoje = date.today()
+    hoje = tempo.hoje()
     previsto = antes.inicio if antes else hoje
     if "inicio_real" in campos:
         a.inicio_real = dados.inicio_real

@@ -118,7 +118,11 @@ export default function Atas() {
                 type="search"
                 value={busca}
                 onChange={(e) => setBusca(e.target.value)}
-                onBlur={() => setBuscaAplicada(busca.trim())}
+                onBlur={() => {
+                  if (busca.trim() === buscaAplicada) return;
+                  setBuscaAplicada(busca.trim());
+                  setPagina(1);
+                }}
                 placeholder="Ex.: UNO-HID-PE-001"
               />
             </form>

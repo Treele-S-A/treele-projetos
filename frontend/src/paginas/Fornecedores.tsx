@@ -11,7 +11,7 @@
  *  motivo da desqualificação passa a ser pedido. */
 
 import { useEffect, useMemo, useState, type CSSProperties, type FormEvent } from "react";
-import { api, ErroApi, formatarData } from "../api";
+import { api, ErroApi, formatarData, hojeLocal } from "../api";
 import { Aviso, Carregando, Vazio } from "../componentes";
 import { useSessao } from "../sessao";
 
@@ -95,11 +95,11 @@ const CRITERIOS: { chave: Criterio; nome: string; curto: string; dica: string }[
 const ROTULO_SITUACAO = { qualificado: "Qualificado", desqualificado: "Desqualificado", pendente: "Pendente" };
 
 function faixa(nota: number): { nome: string; cor: string } {
-  if (nota < 4) return { nome: "Insatisfatório", cor: "#b3261e" };
-  if (nota < 6) return { nome: "Regular", cor: "#c26a00" };
-  if (nota < 8) return { nome: "Bom", cor: "#6a8f1a" };
-  if (nota < 10) return { nome: "Muito bom", cor: "#3f7a24" };
-  return { nome: "Excelente", cor: "#2c6a2e" };
+  if (nota < 4) return { nome: "Insatisfatório", cor: "var(--nota-insatisfatorio)" };
+  if (nota < 6) return { nome: "Regular", cor: "var(--nota-regular)" };
+  if (nota < 8) return { nome: "Bom", cor: "var(--nota-bom)" };
+  if (nota < 10) return { nome: "Muito bom", cor: "var(--nota-muito-bom)" };
+  return { nome: "Excelente", cor: "var(--nota-excelente)" };
 }
 
 function nota1(n: number) {
@@ -508,7 +508,7 @@ function Avaliar({ f, opcoes, aoSalvar }: { f: Fornecedor; opcoes: Opcoes; aoSal
   const [obraId, setObraId] = useState("");
   const [outro, setOutro] = useState("");
   const [escopo, setEscopo] = useState(f.escopos.length === 1 ? f.escopos[0] : "");
-  const [data, setData] = useState(() => new Date().toISOString().slice(0, 10));
+  const [data, setData] = useState(hojeLocal);
   const [notas, setNotas] = useState<Partial<Record<Criterio, number>>>({});
   const [motivo, setMotivo] = useState("");
   const [comentario, setComentario] = useState("");

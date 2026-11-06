@@ -14,8 +14,9 @@ from ..deps import (
     usuario_admin,
     usuario_atual,
 )
-from ..enums import PERMISSOES, PapelObra, TipoArquivo
+from ..enums import PERMISSOES, PapelObra, StatusRevisao, TipoArquivo
 from ..models import (
+    Arquivo,
     Documento,
     Obra,
     ObraMembro,
@@ -278,7 +279,11 @@ def _apagar_imagem(chave: str) -> None:
 
 @router.get("/{obra_id}/membros", response_model=list[MembroOut])
 def listar_membros(ctx: ContextoObra = Depends(contexto_obra)):
+    # Traz o e-mail de cada um: é para quem cuida da equipe, não para o projetista
+    # externo nem para a obra.
     ctx.somente_equipe()
+    if not (ctx.pode("gerenciar") or ctx.pode("adicionar_membro")):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "A equipe da obra é do coordenador e do engenheiro responsável.")
     return list(
         ctx.db.scalars(
             select(ObraMembro).where(ObraMembro.obra_id == ctx.obra.id)
@@ -298,13 +303,13 @@ def adicionar_membro(
     if not gerencia:
         ctx.exigir(
             "adicionar_membro",
-            "Somente o coordenador ou o engenheiro responsável incluem pessoas na equipe.",
+            "Somente o administrador ou o engenheiro responsável incluem pessoas na equipe.",
         )
         if dados.papel == PapelObra.coordenador:
             raise HTTPException(
                 status.HTTP_403_FORBIDDEN,
                 "O engenheiro responsável inclui pessoas na equipe, mas não nomeia "
-                "coordenador — isso é com o coordenador da obra.",
+                "coordenador: isso é com o administrador.",
             )
     novo = ctx.db.get(Usuario, dados.usuario_id)
     if novo is None:
@@ -332,14 +337,27 @@ def adicionar_membro(
         if not gerencia:
             raise HTTPException(
                 status.HTTP_409_CONFLICT,
-                f"{novo.nome} já faz parte da equipe. Trocar o papel é com o coordenador.",
+                f"{novo.nome} já faz parte da equipe. Trocar o papel é com o administrador.",
             )
+        anterior = existente.papel
         existente.papel = dados.papel
+        # A restrição de disciplinas é do projetista externo: promovido, ele
+        # cuidaria da obra inteira enxergando só uma parte dela.
+        if dados.papel != PapelObra.projetista:
+            existente.disciplinas = None
+        auditoria.registrar(
+            ctx.db, acao="membro_papel_alterado", entidade="obra_membro", entidade_id=existente.id,
+            usuario=ctx.usuario, obra_id=ctx.obra.id,
+            detalhes={"usuario_id": dados.usuario_id, "de": anterior.value, "para": dados.papel.value},
+            request=request,
+        )
         ctx.db.commit()
         return existente
 
     membro = ObraMembro(
-        obra_id=ctx.obra.id, usuario_id=dados.usuario_id, papel=dados.papel
+        obra_id=ctx.obra.id, usuario_id=dados.usuario_id,
+        # Administrador é coordenador de todas as obras, seja qual for o papel pedido.
+        papel=PapelObra.coordenador if novo.admin else dados.papel,
     )
     ctx.db.add(membro)
     auditoria.registrar(
@@ -362,7 +380,7 @@ def remover_membro(
     if not gerencia:
         ctx.exigir(
             "remover_membro",
-            "Somente o coordenador ou o engenheiro responsável removem pessoas da equipe.",
+            "Somente o administrador ou o engenheiro responsável removem pessoas da equipe.",
         )
     membro = ctx.db.get(ObraMembro, membro_id)
     if membro is None or membro.obra_id != ctx.obra.id:
@@ -377,14 +395,13 @@ def remover_membro(
         if membro.papel == PapelObra.coordenador:
             raise HTTPException(
                 status.HTTP_403_FORBIDDEN,
-                "O engenheiro responsável não remove coordenador — isso é com o "
-                "coordenador da obra.",
+                "O engenheiro responsável não remove coordenador: isso é com o administrador.",
             )
         if membro.usuario_id == ctx.usuario.id:
             raise HTTPException(
                 status.HTTP_400_BAD_REQUEST,
                 "Você é o engenheiro responsável desta obra e precisa continuar na "
-                "equipe. Peça ao coordenador para trocar o responsável antes.",
+                "equipe. Peça ao administrador para trocar o responsável antes.",
             )
 
     restantes = ctx.db.scalars(
@@ -497,7 +514,10 @@ def validar_nomes(
 
         documento = None
         revisao = None
-        if r.valido and r.codigo_documento:
+        # Disciplina que a pessoa não vê: nem o título do documento volta, e ela
+        # fica sabendo antes de subir (o envio recusaria do mesmo jeito).
+        fora = r.valido and not ctx.ve_disciplina(r.disciplina_codigo or "")
+        if r.valido and r.codigo_documento and not fora:
             documento = ctx.db.scalar(
                 select(Documento).where(
                     Documento.obra_id == ctx.obra.id,
@@ -514,10 +534,25 @@ def validar_nomes(
 
         # Revisão nova num documento sem autorização: mostra antes de subir.
         erros = list(r.erros)
+        if fora:
+            erros.append(f"Você não tem acesso à disciplina {r.disciplina_codigo} nesta obra.")
         if r.valido and documento is not None and revisao is None:
-            bloqueio = servico_solicitacoes.bloqueio_de_revisao_nova(documento, r.revisao_numero)
+            bloqueio = servico_solicitacoes.bloqueio_de_revisao_nova(documento, r.revisao_numero, r.revisao_ordem)
             if bloqueio:
                 erros.append(bloqueio)
+        # Arquivo já liberado não é substituído (uploads.py): sem isto, a tela
+        # dizia "Pronto" e o envio falhava depois.
+        if (
+            revisao is not None
+            and revisao.status == StatusRevisao.liberado_para_obra
+            and ctx.db.scalar(
+                select(Arquivo.id).where(Arquivo.revisao_id == revisao.id, Arquivo.nome_original == nome)
+            )
+        ):
+            erros.append(
+                f"Este arquivo já faz parte da revisão R{revisao.numero}, que está liberada para obra. "
+                "Arquivo liberado não é substituído: publique uma revisão nova."
+            )
         valido = r.valido and not erros
 
         resultados.append(
@@ -525,6 +560,7 @@ def validar_nomes(
                 nome_arquivo=nome,
                 valido=valido,
                 erros=erros,
+                nome_no_padrao=r.valido,
                 codigo_documento=r.codigo_documento,
                 disciplina=r.disciplina_codigo,
                 fase=r.fase_codigo,

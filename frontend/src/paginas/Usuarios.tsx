@@ -98,7 +98,10 @@ export default function Usuarios() {
   }, []);
 
   useEffect(() => {
-    carregar().catch(() => setCarregando(false));
+    carregar().catch((ex) => {
+      setErro(ex instanceof ErroApi ? ex : new ErroApi(0, "Não foi possível carregar os usuários."));
+      setCarregando(false);
+    });
   }, [carregar]);
 
   async function criar(e: FormEvent) {

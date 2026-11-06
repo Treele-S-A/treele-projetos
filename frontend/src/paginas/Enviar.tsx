@@ -93,6 +93,17 @@ export default function Enviar() {
       .catch(() => setPadrao(null));
   }, [obraId]);
 
+  // Fechar a aba no meio do envio perde o que estava subindo: o navegador pergunta antes.
+  useEffect(() => {
+    if (!enviando) return;
+    const avisar = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", avisar);
+    return () => window.removeEventListener("beforeunload", avisar);
+  }, [enviando]);
+
   async function analisar(arquivos: File[]) {
     if (arquivos.length === 0) return;
     setErro(null);
@@ -225,7 +236,12 @@ export default function Enviar() {
   const invalidos = itens.filter((i) => i.estado === "invalido").length;
   const concluidos = itens.filter((i) => i.estado === "concluido").length;
 
-  if (!obra) return <Carregando />;
+  // A sessão já carregou as obras: obra fora da lista não vai mais chegar, e
+  // ficar em "Carregando" seria para sempre.
+  if (!obra) return <Aviso tom="erro">Esta obra não está entre as suas.</Aviso>;
+  if (!obra.permissoes.includes("enviar")) {
+    return <Aviso tom="erro">Seu papel nesta obra não permite enviar arquivos.</Aviso>;
+  }
 
   return (
     <>
@@ -440,7 +456,7 @@ export default function Enviar() {
                 <div className="espaco" />
                 {invalidos > 0 && (
                   <span className="silencioso" style={{ fontSize: 12 }}>
-                    {invalidos} fora do padrão {invalidos === 1 ? "não será enviado" : "não serão enviados"}
+                    {invalidos} com problema {invalidos === 1 ? "não será enviado" : "não serão enviados"}
                   </span>
                 )}
               </div>
@@ -522,7 +538,7 @@ function Linha({ item, titulo }: { item: Item; titulo: string | null }) {
             {
               {
                 pronto: "Pronto",
-                invalido: "Fora do padrão",
+                invalido: a.nome_no_padrao ? "Não pode subir" : "Fora do padrão",
                 enviando: `${Math.round(item.progresso * 100)}%`,
                 concluido: "Enviado",
                 erro: "Falhou",

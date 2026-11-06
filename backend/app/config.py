@@ -30,6 +30,11 @@ class Settings(BaseSettings):
     # "Manter conectado" no login (07/10/2026): a sessão vale isto nesta
     # máquina, em vez das 12 horas. Limitado de propósito.
     token_lembrar_dias: int = 30
+    # Entrada com e-mail e senha: tentativas erradas por e-mail antes de bloquear
+    # (TREELE, 04/11/2026). E pedidos de acesso por endereço, na rota pública.
+    login_tentativas_max: int = 10
+    login_bloqueio_minutos: int = 15
+    acesso_pedidos_por_hora: int = 10
 
     # SQLite por padrão para rodar sem Docker; o docker-compose injeta Postgres.
     database_url: str = f"sqlite:///{(DATA_DIR / 'treele.db').as_posix()}"

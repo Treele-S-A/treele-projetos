@@ -126,7 +126,7 @@ def contagens_por_documento(
     return contagens
 
 
-def bloqueio_de_revisao_nova(documento: Documento, numero: str) -> str | None:
+def bloqueio_de_revisao_nova(documento: Documento, numero: str, ordem: int | None = None) -> str | None:
     """Por que o documento não aceita a revisão `numero` agora, se não aceitar.
 
     Regra da TREELE (05/10/2026): revisão nova só depois que a anterior,
@@ -137,6 +137,13 @@ def bloqueio_de_revisao_nova(documento: Documento, numero: str) -> str | None:
     if not validas:
         return None
     anterior = max(validas, key=lambda r: (r.ordem, r.id))
+    # R01 depois da R02 ficaria presa: criada, mas impossível de liberar, porque
+    # já existe uma mais recente (TREELE, 04/11/2026).
+    if ordem is not None and ordem <= anterior.ordem:
+        return (
+            f"A última revisão de {documento.codigo} é a R{anterior.numero}: "
+            f"a R{numero} não pode vir depois dela. Use um número maior."
+        )
     # Reprovada na análise crítica: a reprovação já pede a correção, que vem
     # numa revisão nova sem outra autorização (TREELE, 09/10/2026).
     if anterior.status == StatusRevisao.reprovado:

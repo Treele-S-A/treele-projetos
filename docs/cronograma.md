@@ -18,8 +18,9 @@ Nada de data guardada na atividade: o servidor calcula a cada leitura
   aparece com um ponto ao lado do início; clicar no ponto devolve a atividade
   ao cálculo. Puxar a ponta direita muda a duração.
 - **Folga** e **caminho crítico** pela ida e volta (CPM): folga zero é o que
-  atrasa o fim do projeto; a barra fica vermelha. Laranja: atrasada (término
-  antes de hoje e menos de 100%). Verde: concluída.
+  atrasa o fim do projeto; a barra fica vermelha. Laranja: atrasada (previsão
+  além do planejado). Azul: em andamento. Verde: concluída. "Hoje" é sempre o de
+  Brasília (`services/tempo.py`), mesmo com o servidor em UTC.
 
 Toda alteração devolve o cronograma inteiro recalculado; a tela não faz conta.
 
@@ -43,10 +44,11 @@ Toda alteração devolve o cronograma inteiro recalculado; a tela não faz conta
 
 - Tela cheia, como o visualizador 3D: o menu recolhe ao abrir (o logo traz de
   volta) e o Gantt ocupa a altura toda. A tabela tem três tamanhos — completa,
-  compacta (dias, início e término; o padrão) e só nomes —, e o navegador
+  compacta (planejado, realizado e status; o padrão) e só nomes —, e o navegador
   lembra a escolha.
-- Tabela editável: nome, responsável, dias, início (muda o "não iniciar antes
-  de"), término (muda a duração), % e predecessoras no formato do MS Project:
+- Tabela editável: nome, responsável, dias, início planejado (muda o "não iniciar
+  antes de"), término planejado (muda a duração), início e término realizados,
+  status e predecessoras no formato do MS Project:
   `3; 5II+2; 7TT-1` (aceita também FS/SS/FF).
 - Fases recolhíveis, com barra de resumo; dois cliques no nome renomeiam.
 - Painel da atividade (clique na linha): fase, área, observação, vínculos um a

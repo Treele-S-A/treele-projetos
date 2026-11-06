@@ -7,7 +7,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { api, gravarToken, lerToken, type Catalogo, type Obra, type Usuario } from "./api";
+import { api, ErroApi, gravarToken, lerToken, type Catalogo, type Obra, type Usuario } from "./api";
 
 /** A obra que a barra lateral lembra entre uma tela e outra (App.tsx). É da
  *  pessoa, não do navegador: sai junto com a sessão. */
@@ -19,6 +19,9 @@ interface Sessao {
   disciplinas: Catalogo[];
   fases: Catalogo[];
   carregando: boolean;
+  /** O sistema não abriu por falha do servidor ou da rede; a sessão continua valendo. */
+  falhaAoAbrir: string | null;
+  tentarDeNovo(): void;
   entrar(email: string, senha: string, manterConectado?: boolean): Promise<void>;
   sair(): void;
   recarregarObras(): Promise<void>;
@@ -33,6 +36,7 @@ export function ProvedorSessao({ children }: { children: ReactNode }) {
   const [disciplinas, setDisciplinas] = useState<Catalogo[]>([]);
   const [fases, setFases] = useState<Catalogo[]>([]);
   const [carregando, setCarregando] = useState(true);
+  const [falhaAoAbrir, setFalhaAoAbrir] = useState<string | null>(null);
 
   const carregarTudo = useCallback(async () => {
     const [eu, listaObras, listaDisciplinas, listaFases] = await Promise.all([
@@ -47,21 +51,35 @@ export function ProvedorSessao({ children }: { children: ReactNode }) {
     setFases(listaFases);
   }, []);
 
+  /** Abre o sistema com a sessão guardada. Só 401 encerra a sessão (api.ts já
+   *  cuida disso): antes, qualquer falha passageira na subida (servidor
+   *  acordando, internet oscilando) jogava a pessoa de volta para a entrada. */
+  const abrir = useCallback(() => {
+    setCarregando(true);
+    setFalhaAoAbrir(null);
+    carregarTudo()
+      .catch((ex) => {
+        if (ex instanceof ErroApi && ex.status === 401) return;
+        setFalhaAoAbrir(ex instanceof ErroApi ? ex.message : "Não foi possível falar com o servidor.");
+      })
+      .finally(() => setCarregando(false));
+  }, [carregarTudo]);
+
   useEffect(() => {
     const fragmento = new URLSearchParams(window.location.hash.slice(1));
     const tokenMicrosoft = fragmento.get("entra_token");
     if (tokenMicrosoft) {
       gravarToken(tokenMicrosoft);
+      // Como na entrada com senha: quem entra não herda a obra de quem usou antes.
+      localStorage.removeItem(CHAVE_OBRA);
       window.history.replaceState(null, "", window.location.pathname + window.location.search);
     }
     if (!lerToken()) {
       setCarregando(false);
       return;
     }
-    carregarTudo()
-      .catch(() => gravarToken(null))
-      .finally(() => setCarregando(false));
-  }, [carregarTudo]);
+    abrir();
+  }, [abrir]);
 
   useEffect(() => {
     const aoExpirar = () => {
@@ -90,6 +108,7 @@ export function ProvedorSessao({ children }: { children: ReactNode }) {
   const sair = useCallback(() => {
     gravarToken(null);
     localStorage.removeItem(CHAVE_OBRA);
+    setFalhaAoAbrir(null);
     setUsuario(null);
     setObras([]);
   }, []);
@@ -109,12 +128,14 @@ export function ProvedorSessao({ children }: { children: ReactNode }) {
       disciplinas,
       fases,
       carregando,
+      falhaAoAbrir,
+      tentarDeNovo: abrir,
       entrar,
       sair,
       recarregarObras,
       recarregarUsuario,
     }),
-    [usuario, obras, disciplinas, fases, carregando, entrar, sair, recarregarObras, recarregarUsuario],
+    [usuario, obras, disciplinas, fases, carregando, falhaAoAbrir, abrir, entrar, sair, recarregarObras, recarregarUsuario],
   );
 
   return <Contexto.Provider value={valor}>{children}</Contexto.Provider>;

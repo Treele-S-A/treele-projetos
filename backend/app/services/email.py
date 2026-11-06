@@ -83,7 +83,9 @@ def _montar(m: Mensagem) -> EmailMessage:
     msg = EmailMessage()
     msg["From"] = settings.email_remetente
     msg["To"] = m.para
-    msg["Subject"] = m.assunto
+    # O assunto leva nome digitado por quem pede acesso: quebra de linha aqui
+    # derrubaria a montagem (a biblioteca recusa, para evitar injeção de cabeçalho).
+    msg["Subject"] = " ".join(m.assunto.split())
     dominio = parseaddr(settings.email_remetente)[1].rpartition("@")[2] or None
     msg["Message-ID"] = make_msgid(domain=dominio)
     msg.set_content(m.texto)

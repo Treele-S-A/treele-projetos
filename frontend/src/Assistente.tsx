@@ -5,7 +5,7 @@
 import { Fragment, useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { Link } from "react-router-dom";
-import { api, ErroApi, lerToken } from "./api";
+import { api, ErroApi, gravarToken, lerToken } from "./api";
 import { useSessao } from "./sessao";
 
 interface Turno {
@@ -28,6 +28,11 @@ async function perguntarComEtapas(
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${lerToken()}` },
     body: JSON.stringify(corpo),
   });
+  if (r.status === 401) {
+    gravarToken(null);
+    window.dispatchEvent(new Event("treele:sessao-expirada"));
+    throw new ErroApi(401, "Sessão expirada. Entre novamente.");
+  }
   if (!r.ok || !r.body) {
     let mensagem = "Não foi possível falar com o assistente.";
     try {
@@ -200,11 +205,12 @@ const SUGESTOES_OBRA = [
 
 /* ------------------------------------------------- markdown, o mínimo e seguro */
 
-/** Negrito e links internos. Link só para dentro do sistema ("/..."): um
- *  endereço de fora que o modelo escrevesse vira texto, nunca link. */
+/** Negrito, código e links internos. Link só para dentro do sistema ("/..."):
+ *  um endereço de fora que o modelo escrevesse vira texto, nunca link. A barra
+ *  invertida fica de fora porque "/\\site.com" o navegador lê como outro site. */
 function trecho(texto: string, chave: string): ReactNode[] {
   const saida: ReactNode[] = [];
-  const padrao = /\[([^\]]+)\]\(([^)\s]+)\)|\*\*([^*]+)\*\*/g;
+  const padrao = /\[([^\]]+)\]\(([^)\s]+)\)|\*\*([^*]+)\*\*|`([^`]+)`/g;
   let ultimo = 0;
   let m: RegExpExecArray | null;
   let i = 0;
@@ -213,7 +219,7 @@ function trecho(texto: string, chave: string): ReactNode[] {
     if (m[1] !== undefined) {
       const destino = m[2];
       saida.push(
-        destino.startsWith("/") && !destino.startsWith("//") ? (
+        destino.startsWith("/") && !destino.startsWith("//") && !destino.includes("\\") ? (
           <Link key={`${chave}-${i++}`} to={destino}>
             {m[1]}
           </Link>
@@ -221,8 +227,10 @@ function trecho(texto: string, chave: string): ReactNode[] {
           m[1]
         ),
       );
-    } else {
+    } else if (m[3] !== undefined) {
       saida.push(<strong key={`${chave}-${i++}`}>{m[3]}</strong>);
+    } else {
+      saida.push(<code key={`${chave}-${i++}`}>{m[4]}</code>);
     }
     ultimo = m.index + m[0].length;
   }
@@ -230,20 +238,64 @@ function trecho(texto: string, chave: string): ReactNode[] {
   return saida;
 }
 
+const LINHA_DE_TABELA = /^\s*\|.*\|\s*$/;
+const SEPARADOR_DE_TABELA = /^\s*\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)*\|?\s*$/;
+
+function celulas(linha: string): string[] {
+  return linha.trim().replace(/^\||\|$/g, "").split("|").map((c) => c.trim());
+}
+
 function Markdown({ texto }: { texto: string }) {
   const blocos: ReactNode[] = [];
   let lista: ReactNode[] = [];
+  // Passos numerados continuam numerados; o início vale quando o modelo separa
+  // os itens com linha em branco (sem ele, todos sairiam "1.").
+  let inicioNumerado: number | null = null;
   const fecharLista = () => {
     if (lista.length) {
-      blocos.push(<ul key={`l${blocos.length}`}>{lista}</ul>);
+      blocos.push(
+        inicioNumerado === null ? (
+          <ul key={`l${blocos.length}`}>{lista}</ul>
+        ) : (
+          <ol key={`l${blocos.length}`} start={inicioNumerado}>{lista}</ol>
+        ),
+      );
       lista = [];
     }
   };
-  texto.split("\n").forEach((linha, n) => {
-    const item = linha.match(/^\s*(?:[-*•]|\d+[.)])\s+(.*)$/);
+  const linhas = texto.split("\n");
+  for (let n = 0; n < linhas.length; n++) {
+    const linha = linhas[n];
+    // Tabela: o modelo usa bastante (metros por pavimento, por exemplo), e sem
+    // isto ela aparecia crua, cheia de barras (TREELE, 04/11/2026).
+    if (LINHA_DE_TABELA.test(linha) && SEPARADOR_DE_TABELA.test(linhas[n + 1] ?? "")) {
+      fecharLista();
+      const titulos = celulas(linha);
+      const corpo: string[][] = [];
+      let k = n + 2;
+      while (k < linhas.length && LINHA_DE_TABELA.test(linhas[k])) corpo.push(celulas(linhas[k++]));
+      blocos.push(
+        <div key={`t${n}`} className="assistente-tabela">
+          <table>
+            <thead>
+              <tr>{titulos.map((c, i) => <th key={i}>{trecho(c, `th${n}-${i}`)}</th>)}</tr>
+            </thead>
+            <tbody>
+              {corpo.map((l, j) => (
+                <tr key={j}>{l.map((c, i) => <td key={i}>{trecho(c, `td${n}-${j}-${i}`)}</td>)}</tr>
+              ))}
+            </tbody>
+          </table>
+        </div>,
+      );
+      n = k - 1;
+      continue;
+    }
+    const item = linha.match(/^\s*(?:[-*•]|(\d+)[.)])\s+(.*)$/);
     if (item) {
-      lista.push(<li key={n}>{trecho(item[1], `i${n}`)}</li>);
-      return;
+      if (!lista.length) inicioNumerado = item[1] ? Number(item[1]) : null;
+      lista.push(<li key={n}>{trecho(item[2], `i${n}`)}</li>);
+      continue;
     }
     fecharLista();
     if (linha.trim()) {
@@ -254,7 +306,7 @@ function Markdown({ texto }: { texto: string }) {
         </p>,
       );
     }
-  });
+  }
   fecharLista();
   return <Fragment>{blocos}</Fragment>;
 }
@@ -347,11 +399,11 @@ export default function Assistente({ obraId }: { obraId: number | null }) {
   }
 
   const botao = !aberto && (
-    <button className="assistente-botao" onClick={() => setAberto(true)}>
+    <button className="assistente-botao" onClick={() => setAberto(true)} aria-label="Perguntar ao acervo">
       <span className="assistente-icone" aria-hidden="true">
         ✦
       </span>
-      Perguntar ao acervo
+      <span className="assistente-botao-texto">Perguntar ao acervo</span>
     </button>
   );
 
@@ -368,7 +420,7 @@ export default function Assistente({ obraId }: { obraId: number | null }) {
               <strong>Assistente do acervo</strong>
               <span>Pergunte sobre documentos, revisões e liberações</span>
             </div>
-            <div className="linha" style={{ gap: 6 }}>
+            <div className="linha" style={{ gap: 6, flexWrap: "nowrap", flexShrink: 0 }}>
               {turnos.length > 0 && (
                 <button
                   className="botao secundario pequeno"

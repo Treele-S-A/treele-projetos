@@ -1219,7 +1219,8 @@ body {
   margin-bottom: 0;
 }
 
-.assistente-msg.assistente ul {
+.assistente-msg.assistente ul,
+.assistente-msg.assistente > ol {
   margin: 4px 0 8px;
   padding-left: 18px;
 }

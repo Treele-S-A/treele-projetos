@@ -209,14 +209,28 @@ def _conjunto(db: Session, usuario: Usuario, conjunto_id: int) -> tuple[Conjunto
     return conjunto, _contexto(db, usuario, conjunto.obra_id)
 
 
-def _contagem(db: Session, conjunto_id: int) -> dict[str, int]:
+def ve_conflito(ctx: ContextoObra, c: Conflito) -> bool:
+    """Projetista externo só vê o conflito em que uma das disciplinas é dele; o
+    outro lado aparece, porque é com ele que a peça bate."""
+    if ctx.disciplinas is None:
+        return True
+    return any(d is not None and ctx.ve_disciplina(d.disciplina.codigo) for d in (c.documento_a, c.documento_b))
+
+
+def _contagem(db: Session, conjunto_id: int, ctx: ContextoObra | None = None) -> dict[str, int]:
+    if ctx is not None and ctx.disciplinas is not None:
+        contagem: dict[str, int] = defaultdict(int)
+        for c in _conflitos(db, conjunto_id):
+            if ve_conflito(ctx, c):
+                contagem[c.status] += 1
+        return dict(contagem)
     linhas = db.execute(
         select(Conflito.status, func.count()).where(Conflito.conjunto_id == conjunto_id).group_by(Conflito.status)
     ).all()
     return {st: n for st, n in linhas}
 
 
-def _saida_conjunto(db: Session, c: ConjuntoConflito) -> ConjuntoOut:
+def _saida_conjunto(db: Session, c: ConjuntoConflito, ctx: ContextoObra | None = None) -> ConjuntoOut:
     rodada = db.scalars(
         select(RodadaConflito)
         .where(RodadaConflito.conjunto_id == c.id)
@@ -224,7 +238,7 @@ def _saida_conjunto(db: Session, c: ConjuntoConflito) -> ConjuntoOut:
         .limit(1)
     ).first()
     return ConjuntoOut(
-        id=c.id, nome=c.nome, pronto=c.pronto, config=c.config, contagem=_contagem(db, c.id),
+        id=c.id, nome=c.nome, pronto=c.pronto, config=c.config, contagem=_contagem(db, c.id, ctx),
         ultima_rodada=UltimaRodada(
             feita_em=rodada.feita_em,
             feita_por=rodada.feita_por.nome if rodada.feita_por else None,
@@ -284,13 +298,23 @@ def _conflitos(db: Session, conjunto_id: int) -> list[Conflito]:
 # ------------------------------------------------------------- conjuntos
 
 
+def _exigir_nome_livre(db: Session, obra_id: int, nome: str, menos_id: int | None = None) -> None:
+    """Na lista do painel os conjuntos aparecem só pelo nome."""
+    alvo = nome.strip().casefold()
+    outros = db.execute(
+        select(ConjuntoConflito.id, ConjuntoConflito.nome).where(ConjuntoConflito.obra_id == obra_id)
+    )
+    if any(i != menos_id and n.strip().casefold() == alvo for i, n in outros):
+        raise HTTPException(status.HTTP_409_CONFLICT, f'Já existe um conjunto chamado "{nome.strip()}" nesta obra.')
+
+
 @router.get("/obras/{obra_id}/conjuntos-conflito", response_model=list[ConjuntoOut])
 def listar_conjuntos(obra_id: int, usuario: Usuario = Depends(usuario_atual), db: Session = Depends(get_db)):
-    _contexto(db, usuario, obra_id)
+    ctx = _contexto(db, usuario, obra_id)
     conjuntos = db.scalars(
         select(ConjuntoConflito).where(ConjuntoConflito.obra_id == obra_id).order_by(ConjuntoConflito.nome)
     )
-    return [_saida_conjunto(db, c) for c in conjuntos]
+    return [_saida_conjunto(db, c, ctx) for c in conjuntos]
 
 
 @router.post(
@@ -312,9 +336,10 @@ def criar_conjunto(
             )
         )
         if existente:
-            return _saida_conjunto(db, existente)
+            return _saida_conjunto(db, existente, ctx)
     else:
         ctx.exigir("gerenciar", "Só o coordenador monta conjuntos de conflito da obra.")
+        _exigir_nome_livre(db, obra_id, dados.nome)
     conjunto = ConjuntoConflito(
         obra_id=obra_id, nome=dados.nome.strip(), pronto=dados.pronto,
         config=dados.config.model_dump(), criado_por_id=usuario.id,
@@ -340,6 +365,7 @@ def mudar_conjunto(
 ):
     conjunto, ctx = _conjunto(db, usuario, conjunto_id)
     ctx.exigir("gerenciar", "Só o coordenador muda conjuntos de conflito da obra.")
+    _exigir_nome_livre(db, conjunto.obra_id, dados.nome, conjunto.id)
     conjunto.nome = dados.nome.strip()
     conjunto.config = dados.config.model_dump()
     # Mudado à mão, deixa de ser o pronto do sistema.
@@ -385,6 +411,8 @@ def _arquivo_da_cena(db: Session, ctx: ContextoObra, arquivo_id: int) -> Arquivo
     a = db.get(Arquivo, arquivo_id)
     if a is None or a.tipo != TipoArquivo.ifc or a.revisao.documento.obra_id != ctx.obra.id:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, f"Modelo {arquivo_id} não é desta obra.")
+    if not ctx.ve_disciplina(a.revisao.documento.disciplina.codigo):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Arquivo não encontrado.")
     _conferir_leitura(a, ctx)
     return a
 
@@ -481,9 +509,9 @@ def registrar_rodada(
     )
     db.commit()
     return RodadaSaida(
-        conjunto=_saida_conjunto(db, conjunto),
+        conjunto=_saida_conjunto(db, conjunto, ctx),
         ids=ids,
-        conflitos=[_saida_conflito(c) for c in _conflitos(db, conjunto.id)],
+        conflitos=[_saida_conflito(c) for c in _conflitos(db, conjunto.id) if ve_conflito(ctx, c)],
     )
 
 
@@ -494,8 +522,8 @@ def listar_conflitos(
     usuario: Usuario = Depends(usuario_atual),
     db: Session = Depends(get_db),
 ):
-    conjunto, _ = _conjunto(db, usuario, conjunto_id)
-    lista = _conflitos(db, conjunto.id)
+    conjunto, ctx = _conjunto(db, usuario, conjunto_id)
+    lista = [c for c in _conflitos(db, conjunto.id) if ve_conflito(ctx, c)]
     if situacao:
         lista = [c for c in lista if c.status == situacao]
     return [_saida_conflito(c) for c in lista]
@@ -513,6 +541,8 @@ def mudar_conflito(
     if conflito is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Conflito não encontrado.")
     ctx = _contexto(db, usuario, conflito.obra_id)
+    if not ve_conflito(ctx, conflito):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Conflito não encontrado.")
     detalhes: dict = {}
     if dados.status:
         ctx.exigir("autorizar_revisao", "Só o coordenador aprova ou reabre conflitos.")
@@ -557,6 +587,8 @@ def resumo(obra_id: int, usuario: Usuario = Depends(usuario_atual), db: Session 
     pares: dict[tuple[str, str], ResumoPar] = {}
     por_doc: dict[int, DocumentoComConflitos] = {}
     for c in conflitos_unicos(db, obra_id):
+        if not ve_conflito(ctx, c):
+            continue
         da = c.documento_a.disciplina.codigo if c.documento_a else "?"
         dbb = c.documento_b.disciplina.codigo if c.documento_b else "?"
         par = pares.setdefault((da, dbb), ResumoPar(disciplina_a=da, disciplina_b=dbb))

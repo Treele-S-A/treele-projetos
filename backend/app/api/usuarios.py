@@ -6,7 +6,8 @@ from ..db import get_db
 from ..deps import usuario_admin, usuario_atual
 import secrets
 
-from ..models import ObraMembro, Usuario
+from ..enums import PapelObra
+from ..models import Obra, ObraMembro, Usuario
 from ..schemas import AcessoAlterar, ObraDoUsuario, SenhaRedefinir, UsuarioComAcesso, UsuarioCriar, UsuarioOut
 from ..security import gerar_hash_senha
 from ..services import acesso, auditoria
@@ -34,14 +35,21 @@ def listar(
     usuario: Usuario = Depends(usuario_atual),
     db: Session = Depends(get_db),
 ):
-    """Lista visível a qualquer autenticado — é preciso para montar equipe de obra.
-
-    Menos o comercial: ele não monta equipe, e a lista traz o e-mail de todos.
-    """
+    """Para quem monta equipe de obra: administrador, coordenador e engenheiro
+    responsável. A lista traz o e-mail de todos, e desde 30/10/2026 há gente de
+    fora da Treèle no sistema: projetista, obra e comercial não a veem."""
     if usuario.comercial:
         raise HTTPException(
             status.HTTP_403_FORBIDDEN, "O perfil comercial só consulta e baixa arquivos."
         )
+    if not usuario.admin:
+        monta_equipe = db.scalar(
+            select(ObraMembro.id).where(
+                ObraMembro.usuario_id == usuario.id, ObraMembro.papel == PapelObra.coordenador
+            ).limit(1)
+        ) or db.scalar(select(Obra.id).where(Obra.responsavel_id == usuario.id).limit(1))
+        if not monta_equipe:
+            raise HTTPException(status.HTTP_403_FORBIDDEN, "Só quem monta equipe de obra vê a lista de usuários.")
     consulta = select(Usuario).order_by(Usuario.nome)
     if not incluir_inativos:
         consulta = consulta.where(Usuario.ativo.is_(True))

@@ -47,6 +47,16 @@ SELOS = {
 }
 
 
+def primeiro_nome(nome: str) -> str:
+    partes = nome.split()
+    return partes[0] if partes else ""
+
+
+def saudacao(nome: str) -> str:
+    primeiro = primeiro_nome(nome)
+    return f"Olá, {primeiro}." if primeiro else "Olá."
+
+
 def _paragrafos(texto: str) -> str:
     """O texto do aviso em blocos. Bloco que começa com "Rótulo:" vira rótulo
     pequeno e citação — é como "O que deve mudar:" e "Motivo:" se destacam."""

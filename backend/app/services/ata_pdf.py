@@ -19,6 +19,8 @@ from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.units import mm
 from reportlab.platypus import Flowable, KeepTogether, Paragraph, SimpleDocTemplate, Table, TableStyle
 
+from .tempo import data_br
+
 PETROLEO = colors.HexColor("#00465c")
 TRACO = colors.HexColor("#c9d1d4")
 CINZA = colors.HexColor("#f2f4f5")
@@ -44,7 +46,7 @@ def _p(texto: str, estilo=_base) -> Paragraph:
 
 
 def _data(valor) -> str:
-    return valor.strftime("%d/%m/%Y") if valor else "-"
+    return data_br(valor) if valor else "-"
 
 
 class Caixa(Flowable):

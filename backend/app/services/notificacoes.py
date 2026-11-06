@@ -278,7 +278,7 @@ def enviar_emails(db: Session, notificacoes: list[Notificacao]) -> None:
     mensagens = []
     for n in notificacoes:
         usuario = db.get(Usuario, n.usuario_id)
-        saudacao = f"Olá, {usuario.nome.split()[0]}."
+        saudacao = email_modelo.saudacao(usuario.nome)
         # No HTML, o título é a prancha — o selo já diz o que aconteceu.
         documento = db.get(Documento, n.documento_id) if n.documento_id else None
         if documento is not None and documento.titulo:

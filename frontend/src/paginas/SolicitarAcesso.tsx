@@ -28,7 +28,11 @@ export default function SolicitarAcesso() {
   const [enviado, setEnviado] = useState(false);
 
   useEffect(() => {
-    api.get<Opcoes>("/acesso/opcoes").then(setOpcoes).catch(() => setOpcoes({ obras: [], disciplinas: [] }));
+    api.get<Opcoes>("/acesso/opcoes").then(setOpcoes).catch(() => {
+      // Sem as listas, o projetista nem conseguiria enviar: diz o porquê.
+      setOpcoes({ obras: [], disciplinas: [] });
+      setErro(new ErroApi(0, "Não foi possível carregar as obras e disciplinas. Recarregue a página."));
+    });
   }, []);
 
   const alterna = <T,>(lista: T[], v: T) => (lista.includes(v) ? lista.filter((x) => x !== v) : [...lista, v]);

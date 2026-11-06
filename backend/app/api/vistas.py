@@ -16,7 +16,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..db import get_db
-from ..deps import montar_contexto, usuario_atual
+from ..deps import ContextoObra, montar_contexto, usuario_atual
 from ..enums import TipoArquivo
 from ..models import Arquivo, Usuario, VistaModelo
 from ..schemas import EnvioModelo, ModeloDaVista, UsuarioOut, VistaCriada, VistaCriar, VistaOut
@@ -32,20 +32,38 @@ def chave_imagem(obra_codigo: str) -> str:
     return f"obras/{_ascii_seguro(obra_codigo)}/_vistas/{secrets.token_hex(8)}.png"
 
 
-def saida(db: Session, vista: VistaModelo) -> VistaOut:
+def _modelo_legivel(db: Session, ctx: ContextoObra, arquivo_id: int) -> Arquivo | None:
+    """O modelo da vista, se a pessoa pode abri-lo: disciplina dela e revisão que ela vê."""
+    from .arquivos import _conferir_leitura
+
+    a = db.get(Arquivo, arquivo_id)
+    if a is None or not ctx.ve_disciplina(a.revisao.documento.disciplina.codigo):
+        return None
+    try:
+        _conferir_leitura(a, ctx)
+    except HTTPException:
+        return None
+    return a
+
+
+def saida(db: Session, vista: VistaModelo, ctx: ContextoObra) -> VistaOut:
     modelos = []
+    arquivos = []
     for arquivo_id in vista.arquivos:
-        a = db.get(Arquivo, arquivo_id)
+        a = _modelo_legivel(db, ctx, arquivo_id)
         if a is None:
             continue
+        arquivos.append(a.id)
         doc = a.revisao.documento
         modelos.append(ModeloDaVista(
             arquivo_id=a.id, documento=doc.codigo, documento_id=doc.id,
             revisao=a.revisao.numero, disciplina=doc.disciplina.codigo,
         ))
     return VistaOut(
-        id=vista.id, obra_id=vista.obra_id, titulo=vista.titulo, arquivos=vista.arquivos,
-        camera=vista.camera, cortes=vista.cortes, selecao=vista.selecao, ocultos=vista.ocultos,
+        id=vista.id, obra_id=vista.obra_id, titulo=vista.titulo, arquivos=arquivos,
+        camera=vista.camera, cortes=vista.cortes,
+        selecao={k: v for k, v in (vista.selecao or {}).items() if k.isdigit() and int(k) in arquivos},
+        ocultos=[i for i in (vista.ocultos or []) if i in arquivos],
         modelos=modelos,
         imagem_url=(
             armazenamento.url_imagem(vista.imagem_key, "image/png") if vista.imagem_tamanho else None
@@ -60,12 +78,21 @@ def saida(db: Session, vista: VistaModelo) -> VistaOut:
     )
 
 
-def _vista(db: Session, usuario: Usuario, vista_id: int) -> VistaModelo:
+def _pode_ver(db: Session, ctx: ContextoObra, vista: VistaModelo) -> bool:
+    """A imagem mostra os modelos: precisa poder abrir ao menos um deles (a obra
+    não vê vista de revisão em análise; o projetista, a de outra disciplina)."""
+    return not vista.arquivos or any(_modelo_legivel(db, ctx, i) for i in vista.arquivos)
+
+
+def _vista(db: Session, usuario: Usuario, vista_id: int) -> tuple[VistaModelo, ContextoObra]:
     vista = db.get(VistaModelo, vista_id)
     if vista is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Vista não encontrada.")
-    montar_contexto(db, usuario, vista.obra_id)  # quem não é da obra não vê
-    return vista
+    ctx = montar_contexto(db, usuario, vista.obra_id)  # quem não é da obra não vê
+    ctx.somente_equipe()
+    if not _pode_ver(db, ctx, vista):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Vista não encontrada.")
+    return vista, ctx
 
 
 @router.post("/obras/{obra_id}/vistas", response_model=VistaCriada, status_code=status.HTTP_201_CREATED)
@@ -116,7 +143,7 @@ def criar(
     db.commit()
     db.refresh(vista)
     return VistaCriada(
-        vista=saida(db, vista),
+        vista=saida(db, vista, ctx),
         envio_imagem=EnvioModelo(url=destino.url, metodo=destino.metodo, headers=destino.headers),
         envio_marcacoes=(
             EnvioModelo(url=marcacoes.url, metodo=marcacoes.metodo, headers=marcacoes.headers)
@@ -133,7 +160,7 @@ def confirmar_imagem(
     db: Session = Depends(get_db),
 ):
     """Confere que a imagem chegou ao armazenamento."""
-    vista = _vista(db, usuario, vista_id)
+    vista, ctx = _vista(db, usuario, vista_id)
     if vista.criada_por_id != usuario.id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Vista não encontrada.")
     existe, tamanho = armazenamento.info(vista.imagem_key)
@@ -149,21 +176,23 @@ def confirmar_imagem(
         if existe_m and 0 < tamanho_m <= IMAGEM_MAX_MB * 1024 * 1024:
             vista.marcacoes_tamanho = tamanho_m
     db.commit()
-    return saida(db, vista)
+    return saida(db, vista, ctx)
 
 
 @router.get("/vistas/{vista_id}", response_model=VistaOut)
 def detalhe(vista_id: int, usuario: Usuario = Depends(usuario_atual), db: Session = Depends(get_db)):
-    return saida(db, _vista(db, usuario, vista_id))
+    vista, ctx = _vista(db, usuario, vista_id)
+    return saida(db, vista, ctx)
 
 
 @router.get("/obras/{obra_id}/vistas", response_model=list[VistaOut])
 def listar(obra_id: int, usuario: Usuario = Depends(usuario_atual), db: Session = Depends(get_db)):
-    montar_contexto(db, usuario, obra_id)
+    ctx = montar_contexto(db, usuario, obra_id)
+    ctx.somente_equipe()
     vistas = db.scalars(
         select(VistaModelo)
         .where(VistaModelo.obra_id == obra_id, VistaModelo.imagem_tamanho > 0)
         .order_by(VistaModelo.criada_em.desc())
         .limit(100)
     )
-    return [saida(db, v) for v in vistas]
+    return [saida(db, v, ctx) for v in vistas if _pode_ver(db, ctx, v)]

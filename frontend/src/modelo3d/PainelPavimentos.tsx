@@ -9,7 +9,7 @@
  *  "TIPO-001" na estrutura é o "5° PAV" das outras. As elevações batem (6,91,
  *  6,79 e 6,79 m). */
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type Dispatch, type SetStateAction } from "react";
 import { nomeCategoria } from "./conflitos";
 import type { Motor, Pavimento, Pecas } from "./motor";
 
@@ -83,13 +83,18 @@ export default function PainelPavimentos({
   motor,
   modelos,
   aoMostrarTudo,
+  escondidos,
+  setEscondidos,
 }: {
   motor: Motor;
   modelos: ModeloPavimentos[];
   aoMostrarTudo: () => Promise<void>;
+  /** Na tela do modelo: o painel fecha e abre sem perder o que está escondido,
+   *  e o "Mostrar tudo" da barra zera as caixinhas. */
+  escondidos: Set<string>;
+  setEscondidos: Dispatch<SetStateAction<Set<string>>>;
 }) {
   const [porModelo, setPorModelo] = useState<Record<string, Pavimento[]> | null>(null);
-  const [escondidos, setEscondidos] = useState<Set<string>>(new Set());
   const [aberto, setAberto] = useState<string | null>(null);
 
   useEffect(() => {
@@ -166,17 +171,23 @@ export default function PainelPavimentos({
 
   async function alternar(g: Grupo) {
     const visivel = escondidos.has(g.chave);
+    // A caixinha responde na hora; dois andares marcados em seguida valem os dois.
+    setEscondidos((atual) => {
+      const novo = new Set(atual);
+      if (visivel) novo.delete(g.chave);
+      else novo.add(g.chave);
+      return novo;
+    });
     await motor.mostrarPecas(pecasDo(g), visivel);
-    const novo = new Set(escondidos);
-    if (visivel) novo.delete(g.chave);
-    else novo.add(g.chave);
-    setEscondidos(novo);
   }
 
-  async function isolar(pecas: Pecas) {
+  async function isolar(pecas: Pecas, g: Grupo) {
     await motor.isolarPecas(pecas);
+    // Isolado um andar, os outros estão escondidos: as caixinhas dizem isso, e
+    // marcar outro andar soma ao que está na tela. Antes da câmera, que só
+    // termina quando a animação acaba.
+    setEscondidos(new Set(grupos.filter((x) => x.chave !== g.chave).map((x) => x.chave)));
     await motor.enquadrarPecas(pecas);
-    setEscondidos(new Set());
   }
 
   // Para ver 2 de 50 andares: esconde tudo e marca só os que quer. Esconde
@@ -244,7 +255,7 @@ export default function PainelPavimentos({
                   )}
                   <span className="silencioso"> · {discs} · {total(todas)} peças</span>
                 </button>
-                <button className="link-pequeno" onClick={() => isolar(todas)} title="Mostra só este pavimento">
+                <button className="link-pequeno" onClick={() => isolar(todas, g)} title="Mostra só este pavimento">
                   Isolar
                 </button>
               </div>
@@ -254,7 +265,7 @@ export default function PainelPavimentos({
                     <li key={`${modelo.modelId}:${pavimento.localId}`}>
                       <button
                         className="link-pequeno mono"
-                        onClick={() => isolar(pecasDo(g, undefined, modelo.modelId))}
+                        onClick={() => isolar(pecasDo(g, undefined, modelo.modelId), g)}
                         title="Isola este pavimento só deste modelo"
                       >
                         {modelo.disciplina} · {modelo.documento}
@@ -270,7 +281,7 @@ export default function PainelPavimentos({
                             <button
                               key={cat}
                               className="etiqueta-categoria"
-                              onClick={() => isolar(pecasDo(g, cat, modelo.modelId))}
+                              onClick={() => isolar(pecasDo(g, cat, modelo.modelId), g)}
                               title={`Isola ${nomeCategoria(cat).toLowerCase()} deste pavimento`}
                             >
                               {nomeCategoria(cat)} <span>{ids.length}</span>

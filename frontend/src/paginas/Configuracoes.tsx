@@ -17,9 +17,9 @@ import { useSessao } from "../sessao";
 const PAPEIS: PapelObra[] = ["coordenador", "projetista", "obra"];
 
 const O_QUE_O_PAPEL_FAZ: Record<PapelObra, string> = {
-  coordenador: "Envia, libera para obra, cancela e gerencia a equipe.",
-  projetista: "Envia arquivos e vê tudo, mas não libera para obra.",
-  obra: "Baixa o que está liberado e consulta o histórico.",
+  coordenador: "Envia, libera para obra, reprova, cancela e autoriza revisão.",
+  projetista: "Envia arquivos e vê o que está em revisão, mas não libera para obra.",
+  obra: "Baixa o que está liberado, pede revisão e consulta o histórico.",
 };
 
 const TIPOS_TOKEN: Array<[string, string]> = [
@@ -36,12 +36,16 @@ const EXTENSOES = ["dwg", "rvt", "pdf", "ifc"];
 export default function Configuracoes() {
   const { obraId } = useParams();
   const { obras, recarregarObras, usuario } = useSessao();
+  const [versaoEquipe, setVersaoEquipe] = useState(0);
   const obra = obras.find((o) => o.id === Number(obraId));
 
-  if (!obra) return <Carregando />;
+  if (!obra) return <Aviso tom="erro">Esta obra não está entre as suas.</Aviso>;
 
   // Configurações são só do administrador (30/10/2026); o engenheiro
   // responsável que não é administrador só mexe na equipe.
+  if (!usuario?.admin && !obra.permissoes.includes("adicionar_membro")) {
+    return <Aviso tom="erro">As configurações da obra são só do administrador.</Aviso>;
+  }
   if (!usuario?.admin) {
     return (
       <>
@@ -72,8 +76,16 @@ export default function Configuracoes() {
       <Endereco obra={obra} aoSalvar={recarregarObras} />
       <Logo obra={obra} aoSalvar={recarregarObras} />
       <Identidade obra={obra} aoSalvar={recarregarObras} />
-      <Responsavel obra={obra} aoSalvar={recarregarObras} />
-      <Equipe obraId={obra.id} gerencia />
+      <Responsavel obra={obra} aoSalvar={recarregarObras} versaoEquipe={versaoEquipe} />
+      <Equipe
+        obraId={obra.id}
+        gerencia
+        aoMudar={() => {
+          setVersaoEquipe((v) => v + 1);
+          // Quem sai da equipe deixa de ser o responsável, e a obra muda junto.
+          void recarregarObras();
+        }}
+      />
       <Nomenclatura obraId={obra.id} />
       <Companheiros
         obraId={obra.id}
@@ -277,6 +289,7 @@ function Identidade({ obra, aoSalvar }: { obra: Obra; aoSalvar: () => Promise<vo
     try {
       await api.patch(`/obras/${obra.id}`, { cor: valor });
       await aoSalvar();
+      setCor(valor || "#2f4c52");
       setOk(true);
     } catch (ex) {
       setErro(ex instanceof ErroApi ? ex : null);
@@ -342,9 +355,12 @@ function Identidade({ obra, aoSalvar }: { obra: Obra; aoSalvar: () => Promise<vo
 function Responsavel({
   obra,
   aoSalvar,
+  versaoEquipe,
 }: {
   obra: Obra;
   aoSalvar: () => Promise<void>;
+  /** Muda quando a equipe muda, aqui embaixo na mesma tela. */
+  versaoEquipe: number;
 }) {
   const [membros, setMembros] = useState<Membro[]>([]);
   const [escolhido, setEscolhido] = useState(String(obra.responsavel?.id ?? ""));
@@ -357,7 +373,11 @@ function Responsavel({
       .get<Membro[]>(`/obras/${obra.id}/membros`)
       .then(setMembros)
       .catch(() => setMembros([]));
-  }, [obra.id]);
+  }, [obra.id, versaoEquipe]);
+
+  useEffect(() => {
+    setEscolhido(String(obra.responsavel?.id ?? ""));
+  }, [obra.responsavel?.id]);
 
   async function salvar() {
     setErro(null);
@@ -437,11 +457,11 @@ function Responsavel({
 
 /* --------------------------------------------------------------------- equipe */
 
-/** `gerencia` = coordenador ou administrador. Sem isso é o engenheiro
+/** `gerencia` = administrador. Sem isso é o engenheiro
  *  responsável: inclui e remove pessoas, mas não nomeia nem remove
  *  coordenador, não troca papel e não tira a si mesmo — a API recusa tudo
  *  isso de qualquer forma. */
-function Equipe({ obraId, gerencia }: { obraId: number; gerencia: boolean }) {
+function Equipe({ obraId, gerencia, aoMudar }: { obraId: number; gerencia: boolean; aoMudar?: () => void }) {
   const { usuario } = useSessao();
   const papeis = gerencia ? PAPEIS : PAPEIS.filter((p) => p !== "coordenador");
   const [membros, setMembros] = useState<Membro[]>([]);
@@ -462,7 +482,10 @@ function Equipe({ obraId, gerencia }: { obraId: number; gerencia: boolean }) {
   }, [obraId]);
 
   useEffect(() => {
-    carregar().catch(() => setCarregando(false));
+    carregar().catch((ex) => {
+      setErro(ex instanceof ErroApi ? ex : new ErroApi(0, "Não foi possível carregar a equipe."));
+      setCarregando(false);
+    });
   }, [carregar]);
 
   const disponiveis = useMemo(
@@ -481,6 +504,7 @@ function Equipe({ obraId, gerencia }: { obraId: number; gerencia: boolean }) {
       });
       setNovoUsuario("");
       await carregar();
+      aoMudar?.();
     } catch (ex) {
       setErro(ex instanceof ErroApi ? ex : null);
     }
@@ -492,6 +516,7 @@ function Equipe({ obraId, gerencia }: { obraId: number; gerencia: boolean }) {
     try {
       await api.delete(`/obras/${obraId}/membros/${membro.id}`);
       await carregar();
+      aoMudar?.();
     } catch (ex) {
       setErro(ex instanceof ErroApi ? ex : null);
     }
@@ -544,7 +569,7 @@ function Equipe({ obraId, gerencia }: { obraId: number; gerencia: boolean }) {
         {!gerencia && (
           <p className="silencioso" style={{ fontSize: 12, marginBottom: 0 }}>
             Como engenheiro responsável, você inclui e remove pessoas já cadastradas.
-            Nomear ou remover coordenador e trocar papel é com o coordenador da obra.
+            Nomear ou remover coordenador e trocar papel é com o administrador.
           </p>
         )}
       </div>
@@ -608,13 +633,16 @@ function Nomenclatura({ obraId }: { obraId: number }) {
   const [salvando, setSalvando] = useState(false);
 
   useEffect(() => {
-    api.get<Padrao>(`/obras/${obraId}/padrao`).then((p) => {
-      setPadrao(p);
-      setTemplate(p.template);
-      setTokens(p.tokens);
-      setExtensoes(p.extensoes);
-      setExemplo(p.exemplo ?? "");
-    });
+    api
+      .get<Padrao>(`/obras/${obraId}/padrao`)
+      .then((p) => {
+        setPadrao(p);
+        setTemplate(p.template);
+        setTokens(p.tokens);
+        setExtensoes(p.extensoes);
+        setExemplo(p.exemplo ?? "");
+      })
+      .catch((ex) => setErro(ex instanceof ErroApi ? ex : new ErroApi(0, "Não foi possível carregar o padrão.")));
   }, [obraId]);
 
   const nomesNoTemplate = useMemo(
@@ -651,7 +679,7 @@ function Nomenclatura({ obraId }: { obraId: number }) {
     }
   }
 
-  if (!padrao) return null;
+  if (!padrao) return erro ? <Aviso tom="erro" titulo={erro.message} itens={erro.erros} /> : null;
 
   return (
     <div className="folha">
@@ -809,18 +837,25 @@ function Companheiros({
   const [dwgExigePdf, setDwgExigePdf] = useState((regra.dwg ?? []).includes("pdf"));
   const [rvtExigeIfc, setRvtExigeIfc] = useState((regra.rvt ?? []).includes("ifc"));
   const [ok, setOk] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
 
   async function salvar() {
     setSalvando(true);
     setOk(false);
+    setErro(null);
     const nova: Record<string, string[]> = {};
     if (dwgExigePdf) nova.dwg = ["pdf"];
     if (rvtExigeIfc) nova.rvt = ["ifc"];
-    await api.patch(`/obras/${obraId}`, { regra_companheiro: nova });
-    await aoSalvar();
-    setOk(true);
-    setSalvando(false);
+    try {
+      await api.patch(`/obras/${obraId}`, { regra_companheiro: nova });
+      await aoSalvar();
+      setOk(true);
+    } catch (ex) {
+      setErro(ex instanceof ErroApi ? ex.message : "Não foi possível salvar a regra.");
+    } finally {
+      setSalvando(false);
+    }
   }
 
   return (
@@ -829,6 +864,7 @@ function Companheiros({
         <strong>Arquivo companheiro</strong>
       </div>
       <div className="folha-corpo">
+        {erro && <Aviso tom="erro">{erro}</Aviso>}
         {ok && <Aviso tom="ok">Regra salva.</Aviso>}
         <p style={{ marginTop: 0 }} className="silencioso">
           Verificado na hora de liberar para obra. Garante que sempre exista um formato legível

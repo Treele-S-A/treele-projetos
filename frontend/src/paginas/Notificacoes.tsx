@@ -29,6 +29,8 @@ export default function Notificacoes() {
     if (!n.lida) {
       // Abrir não espera a marcação: se ela falhar, o aviso só segue como não lido.
       api.post(`/notificacoes/${n.id}/lida`).then(contagemMudou, () => {});
+      // Aviso sem documento não sai da tela: a marca de não lida tem de sumir aqui.
+      setLista((l) => l?.map((x) => (x.id === n.id ? { ...x, lida: true } : x)) ?? l);
     }
     if (n.tipo === "solicitacao_acesso") navegar("/solicitacoes-acesso");
     else if (n.documento_id) navegar(`/documentos/${n.documento_id}`);

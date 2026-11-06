@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useRef, useState } from "react";
+import { Fragment, lazy, Suspense, useEffect, useRef, useState, type ReactNode } from "react";
 import {
   Navigate,
   NavLink,
@@ -11,7 +11,7 @@ import {
 } from "react-router-dom";
 import { api } from "./api";
 import Assistente from "./Assistente";
-import { Carregando } from "./componentes";
+import { Aviso, Carregando } from "./componentes";
 import { CHAVE_OBRA, useSessao } from "./sessao";
 import Acervo from "./paginas/Acervo";
 import Configuracoes from "./paginas/Configuracoes";
@@ -101,6 +101,20 @@ function Contador({ total, rotulo }: { total: number; rotulo: (n: number) => str
       {total > 99 ? "99+" : total}
     </span>
   );
+}
+
+/** Trocar de obra pelo menu remonta a tela. Sem isto, a seleção do acervo (e o
+ *  "Liberar para obra" em lote), os filtros e os arquivos escolhidos para enviar
+ *  continuavam valendo na obra seguinte (TREELE, 04/11/2026). */
+function PorObra({ children }: { children: ReactNode }) {
+  const { obraId } = useParams();
+  return <Fragment key={obraId}>{children}</Fragment>;
+}
+
+/** Tela de administrador aberta pelo endereço direto: volta para as obras. */
+function SoAdmin({ children }: { children: ReactNode }) {
+  const { usuario } = useSessao();
+  return usuario?.admin ? <>{children}</> : <Navigate to="/obras" replace />;
 }
 
 /** A tela própria de pasta deixou de existir (06/10/2026): a fase abre na
@@ -430,10 +444,23 @@ function Moldura() {
 }
 
 export default function App() {
-  const { usuario, carregando } = useSessao();
+  const { usuario, carregando, falhaAoAbrir, tentarDeNovo, sair } = useSessao();
   const local = useLocation();
 
   if (carregando) return <Carregando texto="Abrindo o acervo" />;
+  if (falhaAoAbrir) {
+    return (
+      <div className="tela-falha-abrir">
+        <Aviso tom="erro" titulo="O sistema não abriu agora">
+          {falhaAoAbrir} Sua sessão continua guardada.
+        </Aviso>
+        <div className="linha" style={{ gap: 8, marginTop: 12 }}>
+          <button className="botao" onClick={tentarDeNovo}>Tentar de novo</button>
+          <button className="botao secundario" onClick={sair}>Sair</button>
+        </div>
+      </div>
+    );
+  }
   // Sem login, só a entrada e o pedido de acesso (30/10/2026).
   if (!usuario) return local.pathname === "/solicitar-acesso" ? <SolicitarAcesso /> : <Entrar />;
 
@@ -446,14 +473,14 @@ export default function App() {
       <Route element={<Moldura />}>
         <Route path="/" element={<Navigate to={inicial} replace />} />
         <Route path="/obras" element={<Obras />} />
-        <Route path="/obras/:obraId/acervo" element={<Acervo />} />
-        <Route path="/obras/:obraId/enviar" element={<Enviar />} />
+        <Route path="/obras/:obraId/acervo" element={<PorObra><Acervo /></PorObra>} />
+        <Route path="/obras/:obraId/enviar" element={<PorObra><Enviar /></PorObra>} />
         <Route
           path="/obras/:obraId/pastas/:disciplina/:fase"
           element={<PastaAntiga />}
         />
-        <Route path="/obras/:obraId/configuracoes" element={<Configuracoes />} />
-        <Route path="/obras/:obraId/registro" element={<Registro />} />
+        <Route path="/obras/:obraId/configuracoes" element={<PorObra><Configuracoes /></PorObra>} />
+        <Route path="/obras/:obraId/registro" element={<PorObra><Registro /></PorObra>} />
         <Route path="/documentos/:documentoId" element={<Documento />} />
         <Route
           path="/modelos"
@@ -463,16 +490,16 @@ export default function App() {
             </Suspense>
           }
         />
-        <Route path="/usuarios" element={<Usuarios />} />
+        <Route path="/usuarios" element={<SoAdmin><Usuarios /></SoAdmin>} />
         <Route path="/conta" element={<Conta />} />
         <Route path="/notificacoes" element={<Notificacoes />} />
-        <Route path="/solicitacoes" element={<SolicitacoesGerais />} />
+        <Route path="/solicitacoes" element={<SoAdmin><SolicitacoesGerais /></SoAdmin>} />
         <Route path="/atas" element={<Atas />} />
         <Route path="/cronograma" element={<EscolherCronograma />} />
-        <Route path="/obras/:obraId/cronograma" element={<Cronograma />} />
+        <Route path="/obras/:obraId/cronograma" element={<PorObra><Cronograma /></PorObra>} />
         <Route path="/atas/:ataId" element={<Ata />} />
-        <Route path="/fornecedores" element={<Fornecedores />} />
-        <Route path="/solicitacoes-acesso" element={<SolicitacoesAcesso />} />
+        <Route path="/fornecedores" element={<SoAdmin><Fornecedores /></SoAdmin>} />
+        <Route path="/solicitacoes-acesso" element={<SoAdmin><SolicitacoesAcesso /></SoAdmin>} />
         <Route path="/solicitar-acesso" element={<Navigate to="/obras" replace />} />
         <Route path="*" element={<Navigate to={inicial} replace />} />
       </Route>

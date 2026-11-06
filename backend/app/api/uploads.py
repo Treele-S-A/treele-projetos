@@ -29,6 +29,7 @@ from ..services import auditoria
 from ..services import solicitacoes as servico_solicitacoes
 from ..services.nomenclatura import analisar
 from ..services.storage import armazenamento, montar_chave
+from .arquivos import chave_indice, chave_modelo, chave_resumo
 from ..services.titulos import (
     limpar_descricao,
     limpar_titulo,
@@ -152,7 +153,7 @@ def iniciar(
     # coordenador (TREELE, 05/10/2026). Conferido antes de tudo que segue: é o
     # motivo mais fundamental para recusar.
     if revisao_existente is None and documento is not None:
-        bloqueio = servico_solicitacoes.bloqueio_de_revisao_nova(documento, r.revisao_numero)
+        bloqueio = servico_solicitacoes.bloqueio_de_revisao_nova(documento, r.revisao_numero, r.revisao_ordem)
         if bloqueio:
             raise HTTPException(
                 status.HTTP_409_CONFLICT,
@@ -259,6 +260,12 @@ def iniciar(
     if existente is not None:
         if existente.storage_key != chave:
             armazenamento.remover(existente.storage_key)
+        if existente.tipo == TipoArquivo.ifc:
+            # O modelo 3D, o resumo e o índice moram ao lado do IFC, com o mesmo
+            # nome: sem isto, o visualizador e o chat seguiam com os dados do IFC
+            # antigo. A próxima abertura converte de novo (TREELE, 04/11/2026).
+            for derivada in (chave_modelo(existente), chave_resumo(existente), chave_indice(existente)):
+                armazenamento.remover(derivada)
         arquivo = existente
         arquivo.status = StatusArquivo.pendente
         arquivo.tamanho = 0

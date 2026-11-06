@@ -24,7 +24,7 @@ from ..config import settings
 from ..db import SessionLocal, get_db
 from ..deps import usuario_admin, usuario_atual
 from ..models import AvaliacaoChat, Obra, ObraMembro, Usuario
-from ..services import aviso_avaliacao, chat_modelo
+from ..services import aviso_avaliacao, chat_modelo, tempo
 from ..services.chat_ferramentas import Ferramentas, catalogo
 
 router = APIRouter(prefix="/chat", tags=["chat"])
@@ -33,11 +33,21 @@ log = logging.getLogger("treele.chat")
 # Conversa longa custa mais (cota ou crédito) e confunde o modelo.
 MAX_TURNOS = 12
 MAX_CARACTERES = 2000
+# O que fica na avaliação de uma resposta (👍/👎).
+MAX_TEXTO_GUARDADO = 20000
 
 
 class TurnoEntrada(BaseModel):
     papel: str = Field(pattern="^(usuario|assistente)$")
-    texto: str = Field(min_length=1, max_length=8000)
+    texto: str = Field(min_length=1)
+
+    # Corta em vez de recusar: uma resposta longa do próprio assistente (o limite
+    # dele subiu para 16000 tokens) fazia a pergunta seguinte voltar 422 e travava
+    # a conversa (TREELE, 04/11/2026). O modelo só recebe MAX_CARACTERES de cada.
+    @field_validator("texto")
+    @classmethod
+    def _cortar(cls, texto: str) -> str:
+        return texto[:MAX_TEXTO_GUARDADO]
 
 
 class PerguntaEntrada(BaseModel):
@@ -82,7 +92,7 @@ def _papeis(db: Session, usuario: Usuario) -> str:
 
 
 def _instrucoes(db: Session, usuario: Usuario, obra: Obra | None) -> str:
-    hoje = datetime.now(timezone.utc).astimezone().strftime("%d/%m/%Y")
+    hoje = tempo.hoje().strftime("%d/%m/%Y")
     return f"""Você é o assistente do sistema de projetos da Treèle Construtora. Responde
 dúvidas sobre o acervo de projetos: documentos (pranchas), revisões, status,
 liberações e solicitações de revisão.
@@ -140,8 +150,16 @@ Contexto:
 - {catalogo(db)}
 
 Onde cada coisa fica na tela (cada pessoa só vê o que o papel dela permite):
-- Menu da obra: Acervo (lista dos documentos, com filtros), Enviar arquivos,
-  Configurações da obra e Registro de atividades (estes dois, coordenador).
+- Módulo Projetos: Acervo (lista dos documentos, com filtros), Enviar arquivos,
+  Todas as obras, Registro de atividades (coordenador), Solicitações de revisão
+  (administrador) e Notificações.
+- Módulo Configurações (administrador): Configurações da obra, Usuários e
+  Solicitações de acesso. O engenheiro responsável vê só a Equipe da obra.
+- Módulo Qualidade: Atas de análise crítica (administrador; o projetista vê as
+  das revisões em que está envolvido), Cronograma de projetos em Gantt (coordenador
+  da obra) e Fornecedores de projetos (administrador).
+- Ata de análise crítica: o checklist abre sozinho ao liberar uma revisão para
+  obra, e a ata fica na página do documento e em Atas de análise crítica.
 - Enviar revisão nova: menu Enviar arquivos. O nome do arquivo segue o padrão
   de nomenclatura, e o sistema confere ao enviar.
 - Liberar para obra ou reprovar uma revisão em análise: na página do
@@ -180,10 +198,12 @@ def _responder(db: Session, usuario: Usuario, dados: PerguntaEntrada, etapa=None
     ferramentas = Ferramentas(db, usuario, leitor=chat_modelo.ler_pdf, etapa=etapa)
     # Só entra no contexto a obra que a pessoa pode ver — o id vem da tela.
     obra = next((o for o in ferramentas._obras_visiveis() if o.id == dados.obra_id), None)
-    historico = [
-        chat_modelo.Turno(m.papel, m.texto[:MAX_CARACTERES])
-        for m in dados.mensagens[-MAX_TURNOS:]
-    ]
+    recentes = dados.mensagens[-MAX_TURNOS:]
+    # Cortar no meio deixaria a conversa começando numa resposta do assistente,
+    # e a API do Claude recusa: era a 7ª pergunta da conversa que falhava.
+    while recentes[0].papel != "usuario":
+        recentes = recentes[1:]
+    historico = [chat_modelo.Turno(m.papel, m.texto[:MAX_CARACTERES]) for m in recentes]
     try:
         resposta = chat_modelo.conversar(
             _instrucoes(db, usuario, obra), historico, ferramentas

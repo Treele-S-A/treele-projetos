@@ -34,6 +34,8 @@ function normalizar(status: number, corpo: unknown): ErroApi {
   if (Array.isArray(detalhe)) {
     // Erro de validação do FastAPI.
     const erros = detalhe.map((d: { msg?: string }) => d?.msg ?? "Campo inválido.");
+    // Um erro só vira a própria mensagem: há telas que só mostram a mensagem.
+    if (erros.length === 1) return new ErroApi(status, erros[0]);
     return new ErroApi(status, "Alguns campos estão inválidos.", erros);
   }
 
@@ -306,6 +308,8 @@ export interface NomeAnalisado {
   nome_arquivo: string;
   valido: boolean;
   erros: string[];
+  /** false só quando o erro é o próprio nome. */
+  nome_no_padrao: boolean;
   codigo_documento: string | null;
   disciplina: string | null;
   fase: string | null;
@@ -341,6 +345,7 @@ export interface AtaResumo {
   codigo: string;
   resultado: "conforme" | "nao_conforme";
   criada_em: string;
+  criada_por_id?: number | null;
 }
 
 export interface ItemChecklist {
@@ -459,6 +464,13 @@ export function formatarTamanho(bytes: number): string {
     i++;
   }
   return `${valor.toFixed(valor >= 10 || i === 0 ? 0 : 1)} ${unidades[i]}`;
+}
+
+/** A data de hoje no relógio da pessoa (AAAA-MM-DD). O toISOString dá a de
+ *  Greenwich: das 21h em diante, no Brasil, já seria amanhã. */
+export function hojeLocal(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
 export function formatarData(iso: string | null, comHora = true): string {

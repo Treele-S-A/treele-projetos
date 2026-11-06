@@ -30,6 +30,11 @@ html[data-tema="escuro"] {
   --bisel: 0 0 0 1px rgba(163,204,210,.07), 0 12px 28px rgba(3,11,16,.24);
   --bisel-alto: 0 0 0 1px rgba(163,204,210,.12), 0 18px 36px rgba(3,11,16,.32);
   --sombra-folha: var(--bisel);
+  --nota-insatisfatorio: #ff9f92;
+  --nota-regular: #f0a84a;
+  --nota-bom: #b7d45a;
+  --nota-muito-bom: #8fd67a;
+  --nota-excelente: #6fdc8c;
 }
 html[data-tema="escuro"] body { background:radial-gradient(900px 550px at 95% -10%,rgba(50,99,113,.19),transparent 70%),var(--nevoa); color:var(--tinta); }
 html[data-tema="escuro"] .projetos-topbar { background:rgba(21,37,46,.93); border-color:#334952; box-shadow:0 4px 22px rgba(0,0,0,.18); }
@@ -94,6 +99,25 @@ html[data-tema="escuro"] .aviso-erro { border-color:#7a4c49; border-left-color:v
 html[data-tema="escuro"] .aviso-atencao { border-color:#77613a; border-left-color:var(--revisao-marca); }
 html[data-tema="escuro"] .aviso-ok { border-color:#416c4c; border-left-color:var(--liberado-marca); }
 html[data-tema="escuro"] .aviso-info { border-color:#416979; border-left-color:var(--marca-azul); }
+
+/* Texto sobre as cores de estado, que no tema escuro são claras: branco some. */
+html[data-tema="escuro"] .opcao-ata.marcada,
+html[data-tema="escuro"] .marca-no.marca-fase,
+html[data-tema="escuro"] .nota.escolhida { color:#10232b; }
+html[data-tema="escuro"] .nota.cheia:not(.escolhida) { background:color-mix(in srgb,var(--cor-nota) 22%,#172831); }
+html[data-tema="escuro"] .grupo-ata-topo h3 { color:var(--tinta); }
+html[data-tema="escuro"] .marca-solicitada.autorizada,
+html[data-tema="escuro"] .estado.estado-autorizada { color:var(--link); background:var(--azul-claro); }
+html[data-tema="escuro"] .marca-solicitada.autorizada::before { background:var(--link); color:#10232b; }
+html[data-tema="escuro"] .assistente-etapas-vivas li.atual::before { color:var(--link); }
+/* O palco do logo continua claro, para o logo aparecer como é. */
+html[data-tema="escuro"] .palco-logo .silencioso { color:#4d5c58; }
+
+/* Chat: a caixa de texto tem fundo branco fixo no tema claro, e aqui o texto é claro. */
+html[data-tema="escuro"] .assistente-entrada textarea,
+html[data-tema="escuro"] .assistente-comentario textarea { background:#172831; border-color:var(--traco-medio); color:var(--tinta); }
+html[data-tema="escuro"] .assistente-entrada textarea::placeholder,
+html[data-tema="escuro"] .assistente-comentario textarea::placeholder { color:#98afb5; }
 
 /* Visualizador: painéis e controles legíveis sem alterar o canvas 3D. */
 html[data-tema="escuro"] .visualizador { background:#14242d; border-color:var(--traco-medio); }

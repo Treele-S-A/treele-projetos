@@ -18,7 +18,7 @@ Obra A e projetista na Obra B. Além disso existe o perfil global de
 | Editar título e descrição | ✓ | ✓ | |
 | **Análise crítica: liberar para obra ou reprovar** | ✓ | | |
 | Cancelar revisão em revisão | ✓ | | |
-| Gerenciar equipe da obra | ✓ | | |
+| Ver a equipe da obra (incluir e remover é do administrador e do engenheiro responsável) | ✓ | | |
 | Alterar nomenclatura da obra | ✓ | | |
 | Ver registro de atividades | ✓ | | | |
 
@@ -257,10 +257,10 @@ fora não enxergaria a obra e receberia notificação sobre o que não pode abri
 (02/10/2026), seja qual for o papel dele nela — aparece para ele o item
 *Equipe da obra* no menu. Inclui pessoas já cadastradas e remove quem está na
 equipe, com três limites: não nomeia nem remove coordenador (quem libera para
-obra continua sendo decisão de quem gerencia), não troca o papel de quem já
+obra continua sendo decisão do administrador), não troca o papel de quem já
 está e não tira a si mesmo. Deixou de ser o responsável, perde a permissão.
 
-Se o próprio responsável sair da equipe (removido pelo coordenador), a obra
+Se o próprio responsável sair da equipe (removido pelo administrador), a obra
 fica sem responsável — ele precisa ser da equipe.
 
 Ser responsável, por si só, não faz receber notificação: quem recebe é
@@ -279,6 +279,31 @@ guarda também o status da revisão no momento do download — então fica
 documentado se alguém baixou algo já obsoleto.
 
 A aplicação nunca edita nem apaga eventos.
+
+## Limites reforçados no checkup (04 a 06/11/2026)
+
+O projetista externo vê só as disciplinas dele, e isso agora vale em todo lugar,
+não só no acervo: conflitos e contagens de conflito, vistas 3D (os modelos de
+outra disciplina saem da vista), número de revisões, conferência de nome no
+envio (não revela o título de documento de outra disciplina), renomear
+documento, e as respostas do chat sobre conflitos e pedidos de revisão.
+
+- **Lista de usuários (`GET /usuarios`):** só administrador, coordenador de
+  alguma obra ou engenheiro responsável; a equipe com e-mails, só quem cuida da
+  obra. Antes, qualquer pessoa logada via os e-mails de todos.
+- **Vistas 3D:** o perfil comercial não abre.
+- **Trocar o papel de alguém:** tira a restrição de disciplinas quando deixa de
+  ser projetista, e fica no registro (`membro_papel_alterado`).
+- **Conta externa não troca o próprio e-mail.** O login da Microsoft acha a
+  conta pelo e-mail: uma conta de fora que virasse `@treele.com.br` receberia
+  quem chegasse depois com aquele endereço, com a senha conhecida pelo externo.
+- **Tentativas de login:** 10 erradas em 15 minutos bloqueiam aquele e-mail até
+  o prazo passar (`LOGIN_TENTATIVAS_MAX`, `LOGIN_BLOQUEIO_MINUTOS`). O login pela
+  Microsoft não entra na conta.
+- **Pedidos de acesso:** 10 por hora de cada endereço IP (`ACESSO_PEDIDOS_POR_HORA`).
+- **Documentação da API (`/api/docs`):** fechada em produção.
+- **Erros de validação:** saem em português e não devolvem o valor digitado, que
+  podia ser a senha (`app/erros_validacao.py`).
 
 ## Primeiro acesso
 

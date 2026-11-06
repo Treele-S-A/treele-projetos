@@ -5,6 +5,7 @@ import {
   api,
   ErroApi,
   formatarData,
+  hojeLocal,
   lerToken,
   type Documento,
   type GrupoAta,
@@ -150,8 +151,11 @@ export default function Acervo() {
     return () => clearTimeout(t);
   }, [busca]);
 
+  // Busca que voltou fora de ordem não sobrescreve a mais recente.
+  const ultimaConsulta = useRef(0);
   const consultar = useCallback(async () => {
     if (!obraId || visao !== "lista") return;
+    const esta = ++ultimaConsulta.current;
     setCarregando(true);
     setErro(null);
     const p = new URLSearchParams({ pagina: String(pagina), por_pagina: String(porPagina) });
@@ -162,11 +166,14 @@ export default function Acervo() {
     if (tipo) p.set("tipo", tipo);
 
     try {
-      setDados(await api.get<Pagina<Documento>>(`/obras/${obraId}/documentos?${p}`));
+      const r = await api.get<Pagina<Documento>>(`/obras/${obraId}/documentos?${p}`);
+      if (esta === ultimaConsulta.current) setDados(r);
     } catch (ex) {
-      setErro(ex instanceof ErroApi ? ex.message : "Não foi possível carregar o acervo.");
+      if (esta === ultimaConsulta.current) {
+        setErro(ex instanceof ErroApi ? ex.message : "Não foi possível carregar o acervo.");
+      }
     } finally {
-      setCarregando(false);
+      if (esta === ultimaConsulta.current) setCarregando(false);
     }
   }, [obraId, visao, pagina, porPagina, buscaAplicada, disciplina, fase, status, tipo]);
 
@@ -240,7 +247,7 @@ export default function Acervo() {
     if (!listaDownload) return;
     const escolhidos = listaDownload.arquivos.filter((a) => tiposMarcados.has(a.tipo));
     if (!escolhidos.length) return;
-    const nomeZip = `${obra?.codigo ?? "obra"}-projetos-${new Date().toISOString().slice(0, 10)}.zip`;
+    const nomeZip = `${obra?.codigo ?? "obra"}-projetos-${hojeLocal()}.zip`;
 
     // Chrome e Edge gravam o ZIP direto no disco, à medida que chega; nos
     // outros navegadores ele é montado na memória. O seletor de arquivo tem
@@ -304,7 +311,8 @@ export default function Acervo() {
           link.href = url;
           link.download = nomeZip;
           link.click();
-          URL.revokeObjectURL(url);
+          // Revogar na hora pode cancelar o download em alguns navegadores.
+          setTimeout(() => URL.revokeObjectURL(url), 60_000);
         }
       }
       setResultadoDownload({
@@ -392,20 +400,21 @@ export default function Acervo() {
     if (fase) p.set("fase_id", fase);
     if (status) p.set("status_revisao", status);
 
-    const r = await fetch(`${api.base}/obras/${obraId}/documentos/exportar?${p}`, {
-      headers: { Authorization: `Bearer ${lerToken()}` },
-    });
-    if (!r.ok) {
+    setErro(null);
+    try {
+      const r = await fetch(`${api.base}/obras/${obraId}/documentos/exportar?${p}`, {
+        headers: { Authorization: `Bearer ${lerToken()}` },
+      });
+      if (!r.ok) throw new Error(String(r.status));
+      const url = URL.createObjectURL(await r.blob());
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `lista-mestra-${obra?.codigo ?? "obra"}.csv`;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    } catch {
       setErro("Não foi possível gerar a lista mestra.");
-      return;
     }
-    const blob = await r.blob();
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `lista-mestra-${obra?.codigo ?? "obra"}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
   }
 
   const totalPaginas = dados ? Math.max(1, Math.ceil(dados.total / dados.por_pagina)) : 1;
@@ -624,7 +633,9 @@ export default function Acervo() {
           <Vazio titulo="Nenhum documento encontrado">
             {buscaAplicada || disciplina || fase || status || tipo
               ? "Ajuste os filtros para ver outros documentos."
-              : "Envie o primeiro arquivo para começar o acervo desta obra."}
+              : obra?.permissoes.includes("enviar")
+                ? "Envie o primeiro arquivo para começar o acervo desta obra."
+                : "Ainda não há projeto liberado para você nesta obra."}
           </Vazio>
         ) : (
           <>

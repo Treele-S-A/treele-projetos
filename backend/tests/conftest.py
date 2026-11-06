@@ -23,6 +23,8 @@ os.environ["BASE_URL"] = "http://testserver"
 # A ata de análise crítica antes de liberar tem os próprios testes
 # (test_atas.py, que a ligam); nos outros, liberar continua sendo um passo só.
 os.environ["ATA_ANALISE_OBRIGATORIA"] = "false"
+# Os testes pedem acesso muitas vezes do mesmo endereço; o limite tem teste próprio.
+os.environ["ACESSO_PEDIDOS_POR_HORA"] = "100000"
 
 from fastapi.testclient import TestClient  # noqa: E402
 

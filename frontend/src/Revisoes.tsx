@@ -163,10 +163,12 @@ function LinhaRevisao({
   const [avisoAta, setAvisoAta] = useState<string | null>(null);
 
   const emRevisao = revisao.status === "em_revisao";
-  // A ata é do módulo Qualidade: administrador, ou o projetista envolvido.
+  // A ata é do módulo Qualidade: administrador, o projetista envolvido ou quem
+  // fez a análise (a mesma regra da API).
   const eu = useSessao().usuario;
   const podeVerAta =
     !!eu?.admin ||
+    revisao.ata?.criada_por_id === eu?.id ||
     revisao.criada_por?.id === eu?.id ||
     revisao.arquivos.some((a) => a.enviado_por?.id === eu?.id);
   const cancelavel =

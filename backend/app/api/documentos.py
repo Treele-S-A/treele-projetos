@@ -7,7 +7,6 @@ documento tem pendência; se está "liberado para obra", é o que vale em campo.
 
 import csv
 import io
-from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import StreamingResponse
@@ -41,6 +40,7 @@ from ..schemas import (
 )
 from ..services import auditoria
 from ..services import solicitacoes as servico_solicitacoes
+from ..services.tempo import agora, data_hora_br
 from ..services.titulos import limpar_titulo, problema_no_titulo
 
 router = APIRouter(tags=["documentos"])
@@ -66,6 +66,11 @@ def _subconsulta_atual(visiveis: list[StatusRevisao]):
         .group_by(Revisao.documento_id)
         .subquery()
     )
+
+
+def _celula_segura(texto: str) -> str:
+    """Texto que começa com = + - @ o Excel executa como fórmula ao abrir o CSV."""
+    return f"'{texto}" if texto[:1] in ("=", "+", "-", "@", "\t", "\r") else texto
 
 
 def _consulta_base(ctx: ContextoObra):
@@ -129,8 +134,9 @@ def _montar_saida(db: Session, linhas, ctx: ContextoObra) -> list[DocumentoOut]:
     )
     contagens = dict(
         db.execute(
+            # Só as que a pessoa vê: a obra não sabe que existe R01 em análise.
             select(Revisao.documento_id, func.count(Revisao.id))
-            .where(Revisao.documento_id.in_(ids))
+            .where(Revisao.documento_id.in_(ids), Revisao.status.in_(status_visiveis(ctx)))
             .group_by(Revisao.documento_id)
         ).all()
     )
@@ -211,18 +217,18 @@ def exportar(
         ]
     )
     for documento, revisao in linhas:
-        arquivos = ", ".join(sorted({a.tipo.value.upper() for a in revisao.arquivos}))
+        arquivos = ", ".join(sorted({
+            a.tipo.value.upper() for a in revisao.arquivos if a.status == StatusArquivo.disponivel
+        }))
         escritor.writerow(
             [
                 documento.codigo,
-                documento.titulo or "",
+                _celula_segura(documento.titulo or ""),
                 documento.disciplina.codigo,
                 documento.fase.codigo,
                 f"R{revisao.numero}",
                 revisao.status.rotulo,
-                revisao.publicada_em.strftime("%d/%m/%Y %H:%M")
-                if revisao.publicada_em
-                else "",
+                data_hora_br(revisao.publicada_em) if revisao.publicada_em else "",
                 len(documento.revisoes),
                 arquivos,
             ]
@@ -235,7 +241,7 @@ def exportar(
     )
     ctx.db.commit()
 
-    nome = f"lista-mestra-{ctx.obra.codigo}-{datetime.now():%Y%m%d}.csv"
+    nome = f"lista-mestra-{ctx.obra.codigo}-{agora():%Y%m%d}.csv"
     # BOM para o Excel brasileiro abrir com acentuação correta.
     conteudo = "﻿" + buffer.getvalue()
     return StreamingResponse(
@@ -423,7 +429,7 @@ def pasta(
             continue
 
         item = DocumentoDetalhe.model_validate(documento)
-        item.total_revisoes = len(documento.revisoes)
+        item.total_revisoes = len(revisoes)
         item.revisoes = [RevisaoOut.model_validate(r) for r in revisoes]
         atual = next(
             (r for r in revisoes if r.status != StatusRevisao.cancelado), None
@@ -466,7 +472,7 @@ def detalhe(
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Documento não encontrado.")
 
     saida = DocumentoDetalhe.model_validate(documento)
-    saida.total_revisoes = len(documento.revisoes)
+    saida.total_revisoes = len(revisoes)
     saida.revisoes = [RevisaoOut.model_validate(r) for r in revisoes]
 
     atual = next(
@@ -496,6 +502,8 @@ def atualizar(
     if documento is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Documento não encontrado.")
     ctx = montar_contexto(db, usuario, documento.obra_id)
+    if not ctx.ve_disciplina(documento.disciplina.codigo):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Documento não encontrado.")
     ctx.exigir("enviar")
 
     if dados.titulo is not None:
