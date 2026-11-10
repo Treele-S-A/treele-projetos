@@ -143,7 +143,8 @@ def microsoft_callback(request: Request, code: str = "", state: str = "", error:
                 db.add(usuario)
                 db.flush()
                 auditoria.registrar(db, acao="usuario_criado_microsoft", entidade="usuario", entidade_id=usuario.id, usuario=usuario, request=request)
-            auditoria.registrar(db, acao="login", entidade="usuario", entidade_id=usuario.id, usuario=usuario, request=request)
+            auditoria.registrar(db, acao="login", entidade="usuario", entidade_id=usuario.id, usuario=usuario, request=request,
+                                detalhes={"metodo": "microsoft", "dispositivo": auditoria.dispositivo(request)})
             db.commit()
             resposta = RedirectResponse(f"{frontend}/#entra_token={criar_token(usuario.id, usuario.senha_hash)}", status_code=303)
     resposta.delete_cookie("treele_entra_state", path=f"{settings.api_prefix}/auth/microsoft")
@@ -191,6 +192,7 @@ def login(dados: LoginEntrada, request: Request, db: Session = Depends(get_db)):
     auditoria.registrar(
         db, acao="login", entidade="usuario", entidade_id=usuario.id,
         usuario=usuario, request=request,
+        detalhes={"metodo": "senha", "dispositivo": auditoria.dispositivo(request)},
     )
     db.commit()
 

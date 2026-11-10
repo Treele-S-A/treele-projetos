@@ -19,6 +19,26 @@ def _ip(request: Request | None) -> str | None:
     return request.client.host if request.client else None
 
 
+def dispositivo(request: Request | None) -> str | None:
+    """"Chrome no Windows", "Safari no iPhone": o bastante para reconhecer o aparelho."""
+    if request is None:
+        return None
+    ua = request.headers.get("user-agent", "")
+    if not ua:
+        return None
+    sistema = next((nome for chave, nome in (
+        ("iPhone", "iPhone"), ("iPad", "iPad"), ("Android", "Android"), ("Windows", "Windows"),
+        ("Mac OS X", "Mac"), ("CrOS", "Chromebook"), ("Linux", "Linux"),
+    ) if chave in ua), None)
+    navegador = next((nome for chave, nome in (
+        ("Edg/", "Edge"), ("OPR/", "Opera"), ("SamsungBrowser", "Samsung Internet"), ("Firefox/", "Firefox"),
+        ("FxiOS", "Firefox"), ("CriOS", "Chrome"), ("Chrome/", "Chrome"), ("Safari/", "Safari"),
+    ) if chave in ua), None)
+    if not navegador and not sistema:
+        return None
+    return f"{navegador or 'Navegador'} no {sistema}" if sistema else navegador
+
+
 def registrar(
     db: Session,
     *,

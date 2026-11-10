@@ -14,6 +14,7 @@ import Assistente from "./Assistente";
 import { Aviso, Carregando } from "./componentes";
 import { CHAVE_OBRA, useSessao } from "./sessao";
 import Acervo from "./paginas/Acervo";
+import Acessos from "./paginas/Acessos";
 import Configuracoes from "./paginas/Configuracoes";
 import Conta from "./paginas/Conta";
 import Documento from "./paginas/Documento";
@@ -115,6 +116,13 @@ function PorObra({ children }: { children: ReactNode }) {
 function SoAdmin({ children }: { children: ReactNode }) {
   const { usuario } = useSessao();
   return usuario?.admin ? <>{children}</> : <Navigate to="/obras" replace />;
+}
+
+/** Tela dos coordenadores (o administrador incluso) aberta pelo endereço direto. */
+function SoCoordenador({ children }: { children: ReactNode }) {
+  const { usuario, obras } = useSessao();
+  const pode = !!usuario?.admin || obras.some((o) => o.papel === "coordenador");
+  return pode ? <>{children}</> : <Navigate to="/obras" replace />;
 }
 
 /** A tela própria de pasta deixou de existir (06/10/2026): a fase abre na
@@ -349,7 +357,7 @@ function Moldura() {
             </NavLink>
           )}
 
-          {(admin || equipeDoResponsavel) && (
+          {(admin || equipeDoResponsavel || coordenador) && (
             <>
               <div className="modulo-menu">Configurações</div>
               {obra && admin && (
@@ -376,6 +384,11 @@ function Moldura() {
                     />
                   </NavLink>
                 </>
+              )}
+              {coordenador && (
+                <NavLink to="/acessos" className={({ isActive }) => (isActive ? "ativo" : "")}>
+                  Controle de acessos
+                </NavLink>
               )}
               {/* Engenheiro responsável que não é administrador: só a equipe. */}
               {equipeDoResponsavel && (
@@ -491,6 +504,7 @@ export default function App() {
           }
         />
         <Route path="/usuarios" element={<SoAdmin><Usuarios /></SoAdmin>} />
+        <Route path="/acessos" element={<SoCoordenador><Acessos /></SoCoordenador>} />
         <Route path="/conta" element={<Conta />} />
         <Route path="/notificacoes" element={<Notificacoes />} />
         <Route path="/solicitacoes" element={<SoAdmin><SolicitacoesGerais /></SoAdmin>} />

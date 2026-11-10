@@ -14,6 +14,7 @@ from fastapi.staticfiles import StaticFiles
 
 from .api import (
     acesso,
+    acessos,
     arquivos,
     atas,
     auth,
@@ -98,6 +99,7 @@ app.add_middleware(
 
 for modulo in (
     auth,
+    acessos,
     usuarios,
     catalogos,
     obras,

@@ -305,6 +305,21 @@ documento, e as respostas do chat sobre conflitos e pedidos de revisão.
 - **Erros de validação:** saem em português e não devolvem o valor digitado, que
   podia ser a senha (`app/erros_validacao.py`).
 
+## Controle de acessos (10/11/2026)
+
+Tela *Controle de acessos*, em Configurações, para os coordenadores. Mostra cada
+vez que alguém entrou no sistema, com horário, forma de entrada e dispositivo
+("Chrome no Windows", "Safari no iPhone"), e o último acesso de cada pessoa.
+
+- **O que conta como acesso:** o login com senha ou pela Microsoft, e a volta de
+  quem já estava conectado (a sessão de 30 dias não passa pelo login). A volta é
+  avisada pela tela ao abrir o sistema e ao reaparecer a aba, e conta uma vez a
+  cada 30 minutos (`POST /auth/acesso`).
+- **Quem vê quem:** o administrador vê todo mundo; o coordenador, as pessoas das
+  obras que ele coordena. Os outros papéis não abrem a tela (403).
+- Os registros são eventos da trilha de auditoria (`login` e `acesso`, sem obra)
+  e não são apagados.
+
 ## Primeiro acesso
 
 O primeiro administrador é criado na primeira inicialização do sistema. A senha

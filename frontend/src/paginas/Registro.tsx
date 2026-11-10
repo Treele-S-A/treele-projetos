@@ -5,6 +5,7 @@ import { Aviso, Carregando, Vazio } from "../componentes";
 
 const ROTULO_ACAO: Record<string, string> = {
   login: "Entrou no sistema",
+  acesso: "Voltou com a sessão aberta",
   download: "Baixou arquivo",
   visualizacao: "Visualizou arquivo",
   lido_pelo_assistente: "Arquivo lido pelo assistente",

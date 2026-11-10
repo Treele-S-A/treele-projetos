@@ -30,6 +30,33 @@ interface Sessao {
 
 const Contexto = createContext<Sessao | null>(null);
 
+/** Controle de acessos (10/11/2026): quem abre o sistema com a sessão de 30 dias
+ *  ainda aberta não passa pelo login, então a tela avisa o servidor. Ao abrir e
+ *  ao voltar para a aba, no máximo uma vez a cada 30 minutos; o servidor
+ *  também não repete dentro desse intervalo. */
+const CHAVE_ACESSO = "treele.ultimo-aviso-acesso";
+const INTERVALO_ACESSO = 30 * 60 * 1000;
+
+function avisarAcesso() {
+  if (!lerToken()) return;
+  const agora = Date.now();
+  try {
+    if (agora - Number(sessionStorage.getItem(CHAVE_ACESSO) || 0) < INTERVALO_ACESSO) return;
+    sessionStorage.setItem(CHAVE_ACESSO, String(agora));
+  } catch {
+    // Sem armazenamento: avisa assim mesmo, o servidor filtra.
+  }
+  api.post("/auth/acesso").catch(() => undefined);
+}
+
+function marcarAcesso() {
+  try {
+    sessionStorage.setItem(CHAVE_ACESSO, String(Date.now()));
+  } catch {
+    // idem
+  }
+}
+
 export function ProvedorSessao({ children }: { children: ReactNode }) {
   const [usuario, setUsuario] = useState<Usuario | null>(null);
   const [obras, setObras] = useState<Obra[]>([]);
@@ -58,6 +85,7 @@ export function ProvedorSessao({ children }: { children: ReactNode }) {
     setCarregando(true);
     setFalhaAoAbrir(null);
     carregarTudo()
+      .then(avisarAcesso)
       .catch((ex) => {
         if (ex instanceof ErroApi && ex.status === 401) return;
         setFalhaAoAbrir(ex instanceof ErroApi ? ex.message : "Não foi possível falar com o servidor.");
@@ -82,6 +110,14 @@ export function ProvedorSessao({ children }: { children: ReactNode }) {
   }, [abrir]);
 
   useEffect(() => {
+    const aoVoltar = () => {
+      if (document.visibilityState === "visible") avisarAcesso();
+    };
+    document.addEventListener("visibilitychange", aoVoltar);
+    return () => document.removeEventListener("visibilitychange", aoVoltar);
+  }, []);
+
+  useEffect(() => {
     const aoExpirar = () => {
       setUsuario(null);
       setObras([]);
@@ -98,6 +134,8 @@ export function ProvedorSessao({ children }: { children: ReactNode }) {
         manter_conectado: manterConectado,
       });
       gravarToken(r.token);
+      // O login já ficou registrado no servidor.
+      marcarAcesso();
       // Quem entra não herda a obra de quem usou o navegador antes.
       localStorage.removeItem(CHAVE_OBRA);
       await carregarTudo();
