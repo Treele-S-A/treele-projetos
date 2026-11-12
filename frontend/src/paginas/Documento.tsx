@@ -6,6 +6,7 @@ import {
   formatarData,
   type Arquivo,
   type DocumentoDetalhe,
+  enderecoAcervo,
 } from "../api";
 import { Aviso, CampoCarimbo, Carregando, Selo } from "../componentes";
 import { HistoricoRevisoes, baixarArquivo } from "../Revisoes";
@@ -101,7 +102,7 @@ export default function Documento() {
         <div>
           <span className="rotulo">
             {obra ? (
-              <Link to={`/obras/${obra.id}/acervo`} style={{ textDecoration: "underline" }}>
+              <Link to={enderecoAcervo(obra.id)} style={{ textDecoration: "underline" }}>
                 {obra.codigo} · {obra.nome}
               </Link>
             ) : (

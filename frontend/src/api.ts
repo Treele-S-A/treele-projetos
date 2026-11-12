@@ -473,6 +473,18 @@ export function hojeLocal(): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
+/** O Acervo da obra com os últimos filtros usados nele (TREELE, 12/11/2026):
+ *  quem volta do 3D ou do documento reencontra a lista como deixou. */
+export function enderecoAcervo(obraId: number | string): string {
+  let filtros = "";
+  try {
+    filtros = sessionStorage.getItem(`treele.acervo.filtros.${obraId}`) ?? "";
+  } catch {
+    // Sem armazenamento: o Acervo sem filtro.
+  }
+  return `/obras/${obraId}/acervo${filtros ? `?${filtros}` : ""}`;
+}
+
 export function formatarData(iso: string | null, comHora = true): string {
   if (!iso) return "—";
   const d = new Date(iso);

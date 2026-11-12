@@ -9,7 +9,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { api, ErroApi, formatarData, type StatusRevisao, type Usuario } from "../api";
+import { api, enderecoAcervo, ErroApi, formatarData, type StatusRevisao, type Usuario } from "../api";
 import { Estado } from "../componentes";
 import Marcacao, { type Gerador } from "../modelo3d/Marcacao";
 import PainelConflitos, { type ModeloConflito, type PedidoVistaConflito } from "../modelo3d/PainelConflitos";
@@ -409,7 +409,7 @@ export default function Modelo3D() {
         <div className="cabecalho-visualizador">
           <span className="rotulo">Visualizador 3D</span>
           {obraId && (
-            <Link className="silencioso" to={`/obras/${obraId}/acervo`} style={{ fontSize: 12.5 }}>
+            <Link className="silencioso" to={enderecoAcervo(obraId)} style={{ fontSize: 12.5 }}>
               ← Voltar ao acervo
             </Link>
           )}

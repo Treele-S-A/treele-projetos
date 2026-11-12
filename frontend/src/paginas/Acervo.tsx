@@ -174,6 +174,13 @@ export default function Acervo() {
     if (pagina > 1) p.set("pagina", String(pagina));
     if (porPagina !== TAMANHOS_PAGINA[0]) p.set("por", String(porPagina));
     if (p.toString() !== parametros.toString()) setParametros(p, { replace: true });
+    try {
+      // Para o "Voltar ao acervo" do 3D e do documento (enderecoAcervo, em api.ts).
+      p.delete("pasta");
+      sessionStorage.setItem(`treele.acervo.filtros.${obraId}`, p.toString());
+    } catch {
+      // Sem armazenamento, voltam ao Acervo sem filtro.
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [buscaAplicada, disciplina, fase, status, tipo, pagina, porPagina]);
 
