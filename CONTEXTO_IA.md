@@ -7,6 +7,8 @@ Documentos: **`README.md`** (rodar local, fases), `docs/roteiro.md` (fases segui
 
 ## Onde paramos
 
+- **12/11/2026, filtros do Acervo no endereço:** busca, disciplina, fase, status, formato, página e tamanho da página vão para a URL (`?q=&disciplina=&fase=&status=&tipo=&pagina=&por=`, com `replace`, sem passo a mais no histórico). Voltar de um documento pelo navegador traz a lista filtrada e na mesma posição de rolagem (guardada em `sessionStorage` por obra). O link copiado abre com os mesmos filtros.
+
 - **10/11/2026, controle de acessos:** tela *Controle de acessos* (Configurações, coordenadores) com cada entrada no sistema: login com senha, login Microsoft e a volta de quem estava com a sessão de 30 dias aberta (a tela avisa em `POST /auth/acesso`, uma vez a cada 30 min). Administrador vê todos; coordenador, a equipe das obras que coordena. Eventos `login`/`acesso` da auditoria, com o dispositivo nos detalhes. `api/acessos.py`, `paginas/Acessos.tsx`, `tests/test_acessos.py`. Sem migração.
 
 - **06/11/2026, filtro de status do Acervo por perfil:** a lista de status mostra só o que o perfil enxerga (`status_visiveis`). A equipe de obra fica com Todos, Liberado para obra e Obsoleto; Em revisão, Reprovada e Cancelado só para quem tem `ver_em_revisao`. O filtro olha a revisão atual do documento: Obsoleto não lista as revisões antigas de um projeto liberado, que ficam no histórico dele.
@@ -118,3 +120,4 @@ Uma linha por trabalho, a mais recente no fim: `AAAA-MM-DD · pessoa · IA usada
 - 2026-11-06 · Vinícius · Claude · checkup geral: permissões do projetista externo, datas em UTC, destaque dos conflitos no 3D, erros em português, limite de login, tema escuro e celular · (este commit)
 - 2026-11-06 · Vinícius · Claude · Acervo: filtro de status mostra só as opções que o perfil enxerga · (este commit)
 - 2026-11-10 · Vinícius · Claude · controle de acessos: cada entrada no sistema, com horário e dispositivo, para os coordenadores · (este commit)
+- 2026-11-12 · Vinícius · Claude · Acervo: filtros no endereço; voltar do documento mantém a lista filtrada · (este commit)

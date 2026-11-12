@@ -100,14 +100,20 @@ export default function Acervo() {
     : todasDisciplinas;
   const obra = obras.find((o) => o.id === Number(obraId));
 
-  const [busca, setBusca] = useState("");
-  const [buscaAplicada, setBuscaAplicada] = useState("");
-  const [disciplina, setDisciplina] = useState("");
-  const [fase, setFase] = useState("");
-  const [status, setStatus] = useState<StatusRevisao | "">("");
-  const [tipo, setTipo] = useState<TipoArquivo | "">("");
-  const [pagina, setPagina] = useState(1);
-  const [porPagina, setPorPagina] = useState(TAMANHOS_PAGINA[0]);
+  // Os filtros moram no endereço (TREELE, 12/11/2026): abrir um documento e
+  // voltar pelo navegador traz a lista como estava, e o link copiado também.
+  const [parametros, setParametros] = useSearchParams();
+  const [busca, setBusca] = useState(() => parametros.get("q") ?? "");
+  const [buscaAplicada, setBuscaAplicada] = useState(() => parametros.get("q") ?? "");
+  const [disciplina, setDisciplina] = useState(() => parametros.get("disciplina") ?? "");
+  const [fase, setFase] = useState(() => parametros.get("fase") ?? "");
+  const [status, setStatus] = useState<StatusRevisao | "">(() => (parametros.get("status") as StatusRevisao) ?? "");
+  const [tipo, setTipo] = useState<TipoArquivo | "">(() => (parametros.get("tipo") as TipoArquivo) ?? "");
+  const [pagina, setPagina] = useState(() => Math.max(1, Number(parametros.get("pagina")) || 1));
+  const [porPagina, setPorPagina] = useState(() => {
+    const n = Number(parametros.get("por"));
+    return TAMANHOS_PAGINA.includes(n) ? n : TAMANHOS_PAGINA[0];
+  });
   // Liberação em lote (TREELE, 15/10/2026): a seleção sobrevive à troca de
   // página e de filtro — dá para marcar de várias páginas e liberar de uma vez.
   const podeLiberar = obra?.permissoes.includes("publicar") ?? false;
@@ -134,7 +140,6 @@ export default function Acervo() {
   // checklist por obra e disciplina, em sequência; depois, a liberação.
   const [filaAtas, setFilaAtas] = useState<{ grupos: GrupoAta[]; atual: number } | null>(null);
   // Vindo de um link de pasta (?pasta=ARQ/PE): abre nas pastas, com ela aberta.
-  const [parametros] = useSearchParams();
   const pastaPedida = parametros.get("pasta") ?? undefined;
   const [visao, setVisao] = useState<Visao>(() =>
     pastaPedida ? "arvore" : (localStorage.getItem(CHAVE_VISAO) as Visao) || "lista",
@@ -146,12 +151,54 @@ export default function Acervo() {
 
   // Debounce da busca: evita uma consulta por tecla digitada.
   useEffect(() => {
+    // Busca que veio do endereço já está aplicada: não volta para a página 1.
+    if (busca === buscaAplicada) return;
     const t = setTimeout(() => {
       setBuscaAplicada(busca);
       setPagina(1);
     }, 300);
     return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [busca]);
+
+  // Filtros no endereço, sem criar um passo a mais no histórico do navegador.
+  useEffect(() => {
+    const p = new URLSearchParams();
+    const pasta = parametros.get("pasta");
+    if (pasta) p.set("pasta", pasta);
+    if (buscaAplicada.trim()) p.set("q", buscaAplicada.trim());
+    if (disciplina) p.set("disciplina", disciplina);
+    if (fase) p.set("fase", fase);
+    if (status) p.set("status", status);
+    if (tipo) p.set("tipo", tipo);
+    if (pagina > 1) p.set("pagina", String(pagina));
+    if (porPagina !== TAMANHOS_PAGINA[0]) p.set("por", String(porPagina));
+    if (p.toString() !== parametros.toString()) setParametros(p, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [buscaAplicada, disciplina, fase, status, tipo, pagina, porPagina]);
+
+  // Voltando de um documento, a lista volta ao ponto em que estava.
+  const chaveRolagem = `treele.acervo.rolagem.${obraId}`;
+  const rolagemRestaurada = useRef(false);
+  useEffect(() => {
+    // Guardado enquanto rola: na saída da tela, o endereço já é o do documento.
+    let espera = 0;
+    const guardar = () => {
+      window.clearTimeout(espera);
+      espera = window.setTimeout(() => {
+        try {
+          sessionStorage.setItem(chaveRolagem, JSON.stringify({ busca: window.location.search, y: window.scrollY }));
+        } catch {
+          // Sem armazenamento, a lista só volta ao topo.
+        }
+      }, 150);
+    };
+    window.addEventListener("scroll", guardar, { passive: true });
+    return () => {
+      window.clearTimeout(espera);
+      window.removeEventListener("scroll", guardar);
+    };
+  }, [chaveRolagem]);
 
   // Busca que voltou fora de ordem não sobrescreve a mais recente.
   const ultimaConsulta = useRef(0);
@@ -391,6 +438,19 @@ export default function Acervo() {
       setLiberando(false);
     }
   }
+
+  useEffect(() => {
+    if (!dados || rolagemRestaurada.current) return;
+    rolagemRestaurada.current = true;
+    try {
+      const salvo = JSON.parse(sessionStorage.getItem(chaveRolagem) ?? "null") as { busca: string; y: number } | null;
+      if (salvo && salvo.busca === window.location.search && salvo.y > 0) {
+        requestAnimationFrame(() => window.scrollTo(0, salvo.y));
+      }
+    } catch {
+      // idem
+    }
+  }, [dados, chaveRolagem]);
 
   useEffect(() => {
     consultar();
