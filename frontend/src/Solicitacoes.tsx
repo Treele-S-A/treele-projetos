@@ -44,8 +44,25 @@ export function MarcaSolicitada({
   );
 }
 
-/** Abre o anexo numa aba nova — a aba abre no clique, como no PDF de projeto. */
+const ROTULO_CONFLITO = { novo: "Novo", ativo: "Ativo", aprovado: "Aprovado", resolvido: "Resolvido" } as const;
+
+const ehBcf = (a: Anexo) => a.nome_original.toLowerCase().endsWith(".bcfzip");
+
+/** Abre o anexo numa aba nova — a aba abre no clique, como no PDF de projeto.
+ *  O BCF dos conflitos baixa (abre no Revit, Solibri, BIMcollab…). */
 function abrirAnexo(anexo: Anexo, aoErro: (m: string) => void) {
+  if (ehBcf(anexo)) {
+    api
+      .get<{ url: string }>(`/anexos/${anexo.id}/visualizar`)
+      .then((r) => {
+        const a = document.createElement("a");
+        a.href = r.url;
+        a.download = anexo.nome_original;
+        a.click();
+      })
+      .catch((ex) => aoErro(ex instanceof ErroApi ? ex.message : "Não foi possível baixar o BCF."));
+    return;
+  }
   const aba = window.open("", "_blank");
   if (!aba) {
     aoErro("O navegador bloqueou a nova aba. Permita pop-ups deste site e tente de novo.");
@@ -394,13 +411,37 @@ function ItemSolicitacao({
               key={a.id}
               className="botao secundario pequeno"
               onClick={() => abrirAnexo(a, aoErro)}
-              title="Abrir numa aba nova"
+              title={ehBcf(a) ? "Baixar o BCF, com uma foto de cada conflito, para abrir no Revit, Solibri ou BIMcollab" : "Abrir numa aba nova"}
             >
-              {a.content_type === "application/pdf" ? "PDF" : a.nome_original.startsWith("Vista 3D") ? "Imagem" : "Foto"}{" "}
+              {ehBcf(a)
+                ? "BCF dos conflitos"
+                : a.content_type === "application/pdf"
+                  ? "PDF"
+                  : a.nome_original.startsWith("Vista 3D")
+                    ? "Imagem"
+                    : "Foto"}{" "}
               · {a.nome_original}
             </button>
           ))}
         </div>
+      )}
+      {s.conflitos && s.conflitos.length > 0 && (
+        <details className="conflitos-do-pedido">
+          <summary>
+            {s.conflitos.length} conflito{s.conflitos.length > 1 ? "s" : ""} do 3D neste pedido
+            {" · "}
+            {s.conflitos.filter((c) => c.situacao === "resolvido").length} resolvido
+            {s.conflitos.filter((c) => c.situacao === "resolvido").length === 1 ? "" : "s"}
+          </summary>
+          <ul>
+            {s.conflitos.map((c) => (
+              <li key={c.id}>
+                <span className={`situacao-conflito ${c.situacao}`}>{ROTULO_CONFLITO[c.situacao]}</span>{" "}
+                <span className="mono">#{c.id}</span> {c.texto}
+              </li>
+            ))}
+          </ul>
+        </details>
       )}
       {(s.vista_id || s.mencionados?.length > 0) && (
         <div className="linha" style={{ gap: 8, marginTop: 6, fontSize: 12.5 }}>

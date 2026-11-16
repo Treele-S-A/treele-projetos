@@ -21,7 +21,7 @@ from ..models import AtaAnalise, AtaAnaliseRevisao, Arquivo, Obra, Revisao, Usua
 from ..schemas import Pagina
 from ..services import ata_pdf
 from ..services import atas as servico
-from ..services import auditoria
+from ..services import auditoria, conflitos_correcao
 from .revisoes import _carregar
 
 router = APIRouter(prefix="/atas", tags=["atas de análise crítica"])
@@ -45,6 +45,9 @@ class GrupoPendente(BaseModel):
     disciplina_nome: str
     revisoes: list[RevisaoDaAta]
     formulario: dict
+    # Conflitos do 3D que motivaram estas revisões, com a situação de agora:
+    # a tela avisa os que ainda aparecem (services/conflitos_correcao).
+    conflitos: list[dict] = []
 
 
 class Resposta(BaseModel):
@@ -86,6 +89,8 @@ class SituacaoRevisao(BaseModel):
     reprovada_por: str | None = None
     motivo: str | None = None
     recebida_em: datetime | None = None
+    # Conflitos do 3D apontados na reprovação, com a situação de hoje.
+    conflitos: list[dict] = []
 
 
 class AtaOut(AtaLinha):
@@ -99,6 +104,8 @@ class AtaOut(AtaLinha):
     observacoes: str | None
     analisado_por: str
     situacao: list[SituacaoRevisao]
+    # "Conflitos tratados nesta revisão": o retrato do dia da ata.
+    conflitos: list[dict] = []
 
 
 def _linha(ata: AtaAnalise) -> dict:
@@ -137,6 +144,7 @@ def _situacao(db: Session, revisao) -> SituacaoRevisao:
         reprovada_por=revisao.reprovada_por.nome if reprovada and revisao.reprovada_por else None,
         motivo=revisao.observacao if reprovada else None,
         recebida_em=seguinte.criada_em if seguinte else None,
+        conflitos=[conflitos_correcao.linha(c) for c in revisao.conflitos_reprovacao] if reprovada else [],
     )
 
 
@@ -152,6 +160,7 @@ def _completa(db: Session, ata: AtaAnalise) -> AtaOut:
         observacoes=ata.observacoes,
         analisado_por=settings.ata_analisado_por,
         situacao=[_situacao(db, r) for r in ata.revisoes],
+        conflitos=ata.conflitos or [],
     )
 
 
@@ -207,6 +216,7 @@ def pendentes(
         grupos[chave].revisoes.append(
             RevisaoDaAta(id=revisao.id, documento=doc.codigo, titulo=doc.titulo, revisao=revisao.numero)
         )
+        grupos[chave].conflitos += conflitos_correcao.origens(db, [revisao])
     return list(grupos.values())
 
 

@@ -188,6 +188,10 @@ A detecção roda no navegador; cada rodada é registrada no servidor
 - **Quem faz o quê**: a equipe detecta e cria vistas; o coordenador
   (`autorizar_revisao`) aprova e reabre; o comercial não vê.
 - A vista criada de um conflito fica ligada a ele ("Abrir a vista").
+- **Vários conflitos num pedido** (16/11/2026): caixas na lista e "Pedir
+  correção (N)". O pedido (ou reprovação) guarda os conflitos, leva o BCF
+  com as fotos como anexo e os conflitos vão para a ata da revisão que
+  traz a correção. Ver `docs/ata-analise-critica.md`.
 - **Filtrar a lista** (27/10/2026): abaixo das abas, um botão por disciplina
   esconde da lista os conflitos com ela ("os de elétrica ficam salvos, mas
   não quero vê-los agora"), e uma busca filtra por peça, categoria ou

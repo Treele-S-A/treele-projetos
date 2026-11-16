@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { api, ErroApi, lerToken, type Ata as AtaDados } from "../api";
 import { Aviso, Carregando } from "../componentes";
+import QuadroConflitosAta, { ConflitosApontados } from "../ConflitosDaAta";
 
 function dataCurta(iso: string | null) {
   return iso ? new Date(iso).toLocaleDateString("pt-BR") : "-";
@@ -212,6 +213,19 @@ export default function Ata() {
                       </td>
                     </tr>
 
+                    {!!ata.conflitos?.length && (
+                      <>
+                        <tr>
+                          <th className="eng-fl-faixa espacada">Conflitos tratados nesta revisão</th>
+                        </tr>
+                        <tr>
+                          <td className="eng-fl-solicitacoes">
+                            <QuadroConflitosAta origens={ata.conflitos} varias={varias} />
+                          </td>
+                        </tr>
+                      </>
+                    )}
+
                     <tr>
                       <th className="eng-fl-faixa espacada">Solicitação de alterações</th>
                     </tr>
@@ -235,7 +249,10 @@ export default function Ata() {
                                 </td>
                                 <td>{dataCurta(s.reprovada_em)}</td>
                                 <td>{s.reprovada_por ?? "-"}</td>
-                                <td className="eng-fl-alteracao">{s.motivo}</td>
+                                <td className="eng-fl-alteracao">
+                                  {s.motivo}
+                                  {!!s.conflitos?.length && <ConflitosApontados conflitos={s.conflitos} />}
+                                </td>
                                 <td>{dataCurta(s.recebida_em)}</td>
                               </tr>
                             ))}

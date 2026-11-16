@@ -253,6 +253,8 @@ export interface Solicitacao {
   vista_id: number | null;
   /** Projetistas que o coordenador marcou para a correção. */
   mencionados: Usuario[];
+  /** Conflitos do 3D que motivaram o pedido (vão para a ata). */
+  conflitos?: { id: number; situacao: "novo" | "ativo" | "aprovado" | "resolvido"; texto: string }[];
 }
 
 /** Pedido na lista de todas as obras (administrador): leva junto onde está. */
@@ -369,6 +371,38 @@ export interface RevisaoDaAta {
   revisao: string;
 }
 
+/** Um conflito do 3D como a ata mostra (16/11/2026). */
+export interface ConflitoNaAta {
+  id: number;
+  situacao: "novo" | "ativo" | "aprovado" | "resolvido";
+  tipo: string;
+  disciplinas: string;
+  peca_a: string;
+  documento_a: string | null;
+  peca_b: string;
+  documento_b: string | null;
+  medida_cm: number;
+  cota_m: number | null;
+  justificativa: string | null;
+  resolvido_em: string | null;
+  /** A última detecção já viu a revisão analisada (só nos que corrigem). */
+  conferido?: boolean;
+  revisao_vista?: string | null;
+}
+
+/** De onde veio a correção (pedido de revisão ou reprovação) e os conflitos. */
+export interface OrigemConflitosAta {
+  tipo: "solicitacao" | "reprovacao";
+  id: number;
+  documento: string;
+  revisao: string;
+  origem: string;
+  data: string | null;
+  por: string | null;
+  descricao: string | null;
+  conflitos: ConflitoNaAta[];
+}
+
 /** Revisões de uma obra e disciplina que pedem ata, com o formulário. */
 export interface GrupoAta {
   obra_id: number;
@@ -377,6 +411,8 @@ export interface GrupoAta {
   disciplina_nome: string;
   revisoes: RevisaoDaAta[];
   formulario: FormularioAta;
+  /** Conflitos do 3D que estas revisões corrigem, com a situação de agora. */
+  conflitos?: OrigemConflitosAta[];
 }
 
 export interface AtaLinha {
@@ -403,6 +439,8 @@ export interface SituacaoRevisaoAta {
   reprovada_por: string | null;
   motivo: string | null;
   recebida_em: string | null;
+  /** Conflitos do 3D apontados na reprovação. */
+  conflitos?: ConflitoNaAta[];
 }
 
 export interface Ata extends AtaLinha {
@@ -416,6 +454,8 @@ export interface Ata extends AtaLinha {
   titulo: string;
   itens: (ItemChecklist & { grupo: string; resposta: "S" | "N" | "NA"; comentario: string | null })[];
   observacoes: string | null;
+  /** "Conflitos tratados nesta revisão": o retrato do dia da ata. */
+  conflitos?: OrigemConflitosAta[];
 }
 
 export interface Membro {

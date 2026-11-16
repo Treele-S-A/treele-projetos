@@ -24,6 +24,7 @@ from sqlalchemy.orm import Session
 from ..enums import StatusArquivo, StatusRevisao, StatusSolicitacao
 from ..models import Documento, Revisao, SolicitacaoRevisao
 from ..schemas import AnexoOut, SolicitacaoOut, UsuarioOut
+from . import conflitos_correcao
 
 DESCRICAO_MIN = 10
 DESCRICAO_MAX = 4000
@@ -43,6 +44,8 @@ TIPOS_ANEXO = {
     "jpeg": "image/jpeg",
     "png": "image/png",
     "webp": "image/webp",
+    # BCF dos conflitos do pedido, com as fotos (16/11/2026): baixa, não abre.
+    "bcfzip": "application/octet-stream",
 }
 
 
@@ -98,6 +101,7 @@ def saida(solicitacao: SolicitacaoRevisao) -> SolicitacaoOut:
         ],
         vista_id=solicitacao.vista_id,
         mencionados=[UsuarioOut.model_validate(u) for u in solicitacao.mencionados],
+        conflitos=[conflitos_correcao.resumo(c) for c in solicitacao.conflitos],
     )
 
 

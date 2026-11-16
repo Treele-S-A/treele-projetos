@@ -342,6 +342,8 @@ class SolicitacaoOut(BaseModel):
     anexos: list[AnexoOut] = []
     vista_id: int | None = None
     mencionados: list[UsuarioOut] = []
+    # Conflitos do 3D que motivaram o pedido: {"id", "situacao", "texto"}.
+    conflitos: list[dict] = []
 
 
 class NotificacaoOut(BaseModel):
@@ -387,6 +389,8 @@ class SolicitacaoCriar(BaseModel):
     vista_id: int | None = None
     # Projetistas marcados para a correção (só o coordenador marca).
     mencionados: list[int] = Field(default=[], max_length=30)
+    # Conflitos do 3D que o pedido trata (só os que envolvem este documento).
+    conflito_ids: list[int] = Field(default=[], max_length=200)
 
 
 class SolicitacaoRecusar(BaseModel):
@@ -567,6 +571,8 @@ class ReprovarEntrada(BaseModel):
     observacao: str = Field(min_length=1, max_length=4000)
     # Vista do modelo 3D com a marcação do problema (opcional).
     vista_id: int | None = None
+    # Conflitos do 3D apontados na reprovação (só os que envolvem o documento).
+    conflito_ids: list[int] = Field(default=[], max_length=200)
 
 
 # --------------------------------------------------------------------------

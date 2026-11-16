@@ -304,6 +304,10 @@ class Revisao(Base):
     reprovada_por: Mapped["Usuario | None"] = relationship(
         foreign_keys=[reprovada_por_id]
     )
+    # Conflitos do 3D apontados na reprovação (16/11/2026).
+    conflitos_reprovacao: Mapped[list["Conflito"]] = relationship(
+        secondary="conflitos_reprovacao", order_by="Conflito.id"
+    )
     # Atas de análise crítica que cobrem esta revisão; vale a última.
     atas: Mapped[list["AtaAnalise"]] = relationship(
         secondary="atas_analise_revisoes", viewonly=True, order_by="AtaAnalise.id"
@@ -409,6 +413,11 @@ class SolicitacaoRevisao(Base):
     # o da última revisão.
     mencionados: Mapped[list["Usuario"]] = relationship(
         secondary="mencoes_solicitacao", order_by="Usuario.nome"
+    )
+    # Conflitos do 3D que motivaram o pedido (TREELE, 16/11/2026): vão para a
+    # ata da revisão que traz a correção.
+    conflitos: Mapped[list["Conflito"]] = relationship(
+        secondary="conflitos_solicitacao", order_by="Conflito.id"
     )
 
 
@@ -683,6 +692,32 @@ class Conflito(Base):
     atualizado_por: Mapped["Usuario | None"] = relationship()
 
 
+class ConflitoSolicitacao(Base):
+    """Conflito que motivou um pedido de revisão: um pedido trata vários."""
+
+    __tablename__ = "conflitos_solicitacao"
+
+    solicitacao_id: Mapped[int] = mapped_column(
+        ForeignKey("solicitacoes_revisao.id", ondelete="CASCADE"), primary_key=True
+    )
+    conflito_id: Mapped[int] = mapped_column(
+        ForeignKey("conflitos.id", ondelete="CASCADE"), primary_key=True, index=True
+    )
+
+
+class ConflitoReprovacao(Base):
+    """Conflito apontado na reprovação de uma revisão em análise."""
+
+    __tablename__ = "conflitos_reprovacao"
+
+    revisao_id: Mapped[int] = mapped_column(
+        ForeignKey("revisoes.id", ondelete="CASCADE"), primary_key=True
+    )
+    conflito_id: Mapped[int] = mapped_column(
+        ForeignKey("conflitos.id", ondelete="CASCADE"), primary_key=True, index=True
+    )
+
+
 class AtaAnaliseRevisao(Base):
     """Revisões que uma ata cobre: as pranchas da mesma disciplina liberadas
     juntas cabem numa ata só."""
@@ -723,6 +758,9 @@ class AtaAnalise(Base):
     observacoes: Mapped[str | None] = mapped_column(Text, nullable=True)
     # Documento e número de cada revisão, como estavam ao assinar.
     revisoes_texto: Mapped[list] = mapped_column(JSON, default=list)
+    # Conflitos do 3D que motivaram estas revisões (pedido ou reprovação), com
+    # a situação de cada um no dia da ata (16/11/2026). Ver services/atas.
+    conflitos: Mapped[list] = mapped_column(JSON, default=list)
     criada_por_id: Mapped[int | None] = mapped_column(
         ForeignKey("usuarios.id", ondelete="SET NULL"), nullable=True
     )

@@ -9,7 +9,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { api, enderecoAcervo, ErroApi, formatarData, type StatusRevisao, type Usuario } from "../api";
+import { api, enderecoAcervo, ErroApi, formatarData, hojeLocal, type StatusRevisao, type Usuario } from "../api";
 import { Estado } from "../componentes";
 import Marcacao, { type Gerador } from "../modelo3d/Marcacao";
 import PainelConflitos, { type ModeloConflito, type PedidoVistaConflito } from "../modelo3d/PainelConflitos";
@@ -742,7 +742,7 @@ export default function Modelo3D() {
           aoFechar={(criou) => {
             setRascunho(null);
             if (criou) carregarVistas();
-            if (criou && rascunho.pedido?.conflitoId) setVersaoConflitos((v) => v + 1);
+            if (criou && (rascunho.pedido?.conflitoId || rascunho.pedido?.conflitos?.length)) setVersaoConflitos((v) => v + 1);
           }}
         />
       )}
@@ -825,6 +825,21 @@ interface Resultado {
   documento: ModeloSaida;
   caminho: Caminho;
   erro: string | null;
+  /** Quantos conflitos foram com o pedido, e o que houve com o BCF. */
+  conflitos?: number;
+  bcf?: "anexado" | string;
+}
+
+/** Sobe o BCF dos conflitos como anexo do pedido (o fluxo dos anexos:
+ *  URL assinada, envio direto, confirmação). */
+async function anexarBcf(solicitacaoId: number, blob: Blob, nome: string) {
+  const inicio = await api.post<{ anexo_id: number; url: string; metodo: string; headers: Record<string, string> }>(
+    `/solicitacoes/${solicitacaoId}/anexos`,
+    { nome_arquivo: nome, tamanho: blob.size },
+  );
+  const envio = await fetch(inicio.url, { method: inicio.metodo, headers: inicio.headers, body: blob });
+  if (!envio.ok) throw new Error("o arquivo não subiu");
+  await api.post(`/anexos/${inicio.anexo_id}/confirmar`);
 }
 
 /** Marcar a foto, dar um título e guardar a vista — e, se for o caso, pedir a
@@ -861,10 +876,20 @@ function PainelVista({
   // Começa marcado o documento do elemento selecionado; com uma disciplina
   // só na cena, ela.
   const [escolhidos, setEscolhidos] = useState<Set<number>>(() => {
-    const inicial = documentoSugerido ?? (documentos.length === 1 ? documentos[0].documento_id : null);
-    const d = documentos.find((x) => x.documento_id === inicial);
-    return d && caminhoDe(d, podePedir, podeReprovar).caminho ? new Set([d.documento_id]) : new Set();
+    const sugeridos = rascunho.pedido?.documentosSugeridos?.length
+      ? rascunho.pedido.documentosSugeridos
+      : [documentoSugerido ?? (documentos.length === 1 ? documentos[0].documento_id : null)];
+    return new Set(
+      documentos
+        .filter((d) => sugeridos.includes(d.documento_id) && caminhoDe(d, podePedir, podeReprovar).caminho)
+        .map((d) => d.documento_id),
+    );
   });
+  // Conflitos do pedido (16/11/2026): cada disciplina leva os dela.
+  const conflitosDoPedido = rascunho.pedido?.conflitos ?? [];
+  const conflitosDe = (documentoId: number) =>
+    conflitosDoPedido.filter((c) => c.documentos.includes(documentoId)).map((c) => c.id);
+  const [progresso, setProgresso] = useState<string | null>(null);
   const [descricao, setDescricao] = useState(rascunho.pedido?.descricao ?? "");
   const [projetistas, setProjetistas] = useState<Membro[]>([]);
   const [marcados, setMarcados] = useState<Set<number>>(new Set());
@@ -932,20 +957,38 @@ function PainelVista({
       // Um pedido por disciplina; a falha de uma não segura as outras.
       const resultados: Resultado[] = [];
       for (const { documento, caminho } of selecionados) {
+        const conflito_ids = conflitosDe(documento.documento_id);
         try {
           if (caminho === "solicitar") {
-            await api.post(`/documentos/${documento.documento_id}/solicitacoes`, {
+            const pedido = await api.post<{ id: number }>(`/documentos/${documento.documento_id}/solicitacoes`, {
               descricao: descricao.trim(),
               vista_id: criada.vista.id,
               mencionados: [...marcados],
+              conflito_ids,
             });
+            const resultado: Resultado = { documento, caminho, erro: null, conflitos: conflito_ids.length };
+            // Com conflitos, o BCF com as fotos vai anexado ao pedido.
+            if (conflito_ids.length && rascunho.pedido?.gerarBcf) {
+              try {
+                const blob = await rascunho.pedido.gerarBcf(conflito_ids, setProgresso);
+                setProgresso("Anexando o BCF ao pedido…");
+                await anexarBcf(pedido.id, blob, `${documento.documento}-conflitos-${hojeLocal()}.bcfzip`);
+                resultado.bcf = "anexado";
+              } catch (e) {
+                resultado.bcf = e instanceof ErroApi || e instanceof Error ? e.message : "não deu certo";
+              } finally {
+                setProgresso(null);
+              }
+            }
+            resultados.push(resultado);
           } else {
             await api.post(`/revisoes/${documento.revisao_id}/reprovar`, {
               observacao: descricao.trim(),
               vista_id: criada.vista.id,
+              conflito_ids,
             });
+            resultados.push({ documento, caminho, erro: null, conflitos: conflito_ids.length });
           }
-          resultados.push({ documento, caminho, erro: null });
         } catch (e) {
           resultados.push({
             documento,
@@ -986,6 +1029,12 @@ function PainelVista({
                       : podeMarcar
                         ? "— revisão autorizada; o projetista da última revisão e os marcados foram avisados."
                         : "— pedido enviado para o coordenador autorizar."}{" "}
+                  {!r.erro && !!r.conflitos && (
+                    <span className="silencioso">
+                      {r.conflitos} conflito{r.conflitos > 1 ? "s" : ""} ligado{r.conflitos > 1 ? "s" : ""} (vão para a ata)
+                      {r.bcf === "anexado" ? "; BCF com as fotos anexado." : r.bcf ? `; o BCF não foi anexado: ${r.bcf}.` : "."}{" "}
+                    </span>
+                  )}
                   <Link to={`/documentos/${r.documento.documento_id}`}>abrir</Link>
                 </li>
               ))}
@@ -1070,6 +1119,15 @@ function PainelVista({
                         </span>
                         {d.titulo && <span className="silencioso"> · {d.titulo}</span>}
                         <span className={`caminho-correcao ${caminho ?? "nenhum"}`}>{motivo}</span>
+                        {conflitosDoPedido.length > 0 && (
+                          <span className="silencioso" style={{ display: "block", fontSize: 12 }}>
+                            {conflitosDe(d.documento_id).length
+                              ? `${conflitosDe(d.documento_id).length} dos ${conflitosDoPedido.length} conflitos envolvem este projeto${
+                                  caminho === "solicitar" ? " · vai o BCF com as fotos" : ""
+                                }`
+                              : "nenhum dos conflitos marcados envolve este projeto"}
+                          </span>
+                        )}
                       </span>
                     </label>
                   </li>
@@ -1126,6 +1184,11 @@ function PainelVista({
         )}
 
         {erro && <p className="erro-modelo">{erro}</p>}
+        {progresso && (
+          <p className="silencioso" style={{ fontSize: 12.5, margin: "8px 0 0" }}>
+            {progresso} A câmera vai passar por cada conflito para a foto.
+          </p>
+        )}
         <div className="linha" style={{ gap: 8, marginTop: 12 }}>
           <button className="botao" disabled={enviando} onClick={concluir}>
             {enviando

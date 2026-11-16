@@ -36,7 +36,17 @@ export interface PedidoVistaConflito {
   documentoId: number | null;
   /** A vista criada fica ligada a este conflito. */
   conflitoId?: number;
+  /** Os conflitos que o pedido trata (16/11/2026), cada um com os dois
+   *  documentos: cada disciplina corrigida leva os conflitos em que aparece. */
+  conflitos?: { id: number; documentos: number[] }[];
+  /** As disciplinas que já vêm marcadas (o lado A de cada conflito). */
+  documentosSugeridos?: number[];
+  /** Monta o BCF destes conflitos, com uma foto de cada (move a câmera). */
+  gerarBcf?: (ids: number[], aoProgredir: (texto: string) => void) => Promise<Blob>;
 }
+
+/** Quantos conflitos cabem num pedido: com foto, o BCF passa de 25 MB. */
+const MAXIMO_NO_PEDIDO = 100;
 
 type Situacao = "novo" | "ativo" | "aprovado" | "resolvido";
 
@@ -210,6 +220,8 @@ export default function PainelConflitos({
   // Fotos são o lento da exportação (uns segundos por conflito): ligadas
   // quando são poucos.
   const [fotosBcf, setFotosBcf] = useState<boolean | null>(null);
+  // Conflitos marcados para um pedido de correção só (16/11/2026).
+  const [marcados, setMarcados] = useState<Set<number>>(new Set());
   const rodando = useRef(false);
   const ultimoClique = useRef(0);
   // Os conflitos achados nesta sessão, com as peças já localizadas na cena.
@@ -483,14 +495,11 @@ export default function PainelConflitos({
   /** Os conflitos do filtro em BCF, para o projetista abrir no programa dele
    *  (Revit, Solibri…): cada um com a câmera no conflito, as duas peças em
    *  destaque e a foto. */
-  async function exportarBcf(lista: ConflitoServidor[], comFotos: boolean) {
-    if (!lista.length || exportando) return;
-    setErro(null);
-    try {
-      const situacaoBcf: Record<Situacao, string> = {
-        novo: "Open", ativo: "Open", aprovado: "Closed", resolvido: "Resolved",
-      };
-      const topicos: TopicoBcf[] = lista.map((c) => {
+  function topicosBcf(lista: ConflitoServidor[]): TopicoBcf[] {
+    const situacaoBcf: Record<Situacao, string> = {
+      novo: "Open", ativo: "Open", aprovado: "Closed", resolvido: "Resolved",
+    };
+    return lista.map((c) => {
         const texto = textoDoConflito(c);
         return {
           titulo: texto.titulo,
@@ -507,8 +516,14 @@ export default function PainelConflitos({
           },
         };
       });
+  }
+
+  async function exportarBcf(lista: ConflitoServidor[], comFotos: boolean) {
+    if (!lista.length || exportando) return;
+    setErro(null);
+    try {
       const blob = await motor.bcfExportar(
-        topicos,
+        topicosBcf(lista),
         (feitos, total) => setExportando(`Montando o BCF: ${feitos} de ${total} conflitos…`),
         comFotos,
       );
@@ -542,8 +557,105 @@ export default function PainelConflitos({
     };
   }
 
+  /** O BCF do pedido, com uma foto de cada conflito, para ir anexado. Se
+   *  passar do limite do anexo, vai sem as fotos. */
+  async function gerarBcfDoPedido(ids: number[], aoProgredir: (texto: string) => void): Promise<Blob> {
+    const todos = new Map((lista ?? []).map((c) => [c.id, c]));
+    const escolhidos = ids.map((i) => todos.get(i)).filter((c): c is ConflitoServidor => !!c);
+    try {
+      const comFotos = await motor.bcfExportar(
+        topicosBcf(escolhidos),
+        (feitos, total) => aoProgredir(`Montando o BCF com as fotos: ${feitos} de ${total} conflitos…`),
+        true,
+      );
+      if (comFotos.size <= 24 * 1024 * 1024) return comFotos;
+      return await motor.bcfExportar(topicosBcf(escolhidos), () => aoProgredir("Montando o BCF sem fotos…"), false);
+    } finally {
+      await motor.focarConflito(null);
+    }
+  }
+
+  /** A região de todos os conflitos juntos, para a foto da vista. */
+  async function enquadrarTodos(escolhidos: ConflitoServidor[]) {
+    const cenas = await Promise.all(escolhidos.map((c) => naCena(c)));
+    const min = [0, 1, 2].map((k) => Math.min(...cenas.map((x) => x.caixa.min[k]))) as [number, number, number];
+    const max = [0, 1, 2].map((k) => Math.max(...cenas.map((x) => x.caixa.max[k]))) as [number, number, number];
+    const juntar = (lado: "a" | "b") => {
+      const primeiro = cenas[0][lado];
+      const mesmo = cenas.every((x) => x[lado].modelId === primeiro.modelId);
+      return mesmo
+        ? {
+            ...primeiro,
+            localIds: [...new Set(cenas.flatMap((x) => x[lado].localIds))],
+            guids: cenas.flatMap((x) => x[lado].guids),
+          }
+        : primeiro;
+    };
+    await motor.focarConflito({
+      ...cenas[0],
+      a: juntar("a"),
+      b: juntar("b"),
+      caixa: { min, max },
+      centro: [0, 1, 2].map((k) => (min[k] + max[k]) / 2) as [number, number, number],
+    });
+  }
+
+  /** Abre a vista com o pedido de correção destes conflitos: um pedido (ou
+   *  reprovação) por disciplina marcada, cada um com os conflitos em que ela
+   *  aparece e o BCF com as fotos. */
+  async function pedirCorrecao(escolhidos: ConflitoServidor[]) {
+    if (!escolhidos.length || exportando) return;
+    if (escolhidos.length > MAXIMO_NO_PEDIDO) {
+      setErro(`Um pedido trata até ${MAXIMO_NO_PEDIDO} conflitos. Desmarque alguns.`);
+      return;
+    }
+    setErro(null);
+    const conflitos = escolhidos.map((c) => ({
+      id: c.id,
+      documentos: [c.documento_a_id, c.documento_b_id].filter((d): d is number => d !== null),
+    }));
+    const sugeridos = [...new Set(escolhidos.map((c) => c.documento_a_id).filter((d): d is number => d !== null))];
+    const extras = { conflitos, documentosSugeridos: sugeridos, gerarBcf: gerarBcfDoPedido };
+    if (escolhidos.length === 1) {
+      const c = escolhidos[0];
+      aoNovaVista({ ...textoDoConflito(c), documentoId: c.documento_a_id, conflitoId: c.id, ...extras });
+      return;
+    }
+    try {
+      setAtivo(null);
+      await enquadrarTodos(escolhidos);
+    } catch {
+      // Sem enquadrar, a foto sai da câmera de agora.
+    }
+    const pares = [...new Set(escolhidos.map((c) => `${c.disciplina_a ?? "?"} × ${c.disciplina_b ?? "?"}`))];
+    let descricao = `Corrigir os ${escolhidos.length} conflitos abaixo (detalhes e fotos no BCF anexo):\n`;
+    for (const [i, c] of escolhidos.entries()) {
+      const linha = `${i + 1}. ${textoDoConflito(c).descricao.replace(/ Ajustar o traçado.*$/, "")}`;
+      if (descricao.length + linha.length > 3800) {
+        descricao += `\n… e mais ${escolhidos.length - i} (ver o BCF).`;
+        break;
+      }
+      descricao += `\n${linha}`;
+    }
+    aoNovaVista({
+      titulo: `${escolhidos.length} conflitos ${pares.join(", ")}`.slice(0, 200),
+      descricao,
+      documentoId: sugeridos[0] ?? null,
+      ...extras,
+    });
+  }
+
   function pedirVista(c: ConflitoServidor) {
-    aoNovaVista({ ...textoDoConflito(c), documentoId: c.documento_a_id, conflitoId: c.id });
+    void pedirCorrecao([c]);
+  }
+
+  function marcar(id: number, sim: boolean) {
+    setMarcados((atual) => {
+      const novo = new Set(atual);
+      if (sim) novo.add(id);
+      else novo.delete(id);
+      return novo;
+    });
   }
 
   function alternarDisciplina(d: string) {
@@ -598,6 +710,8 @@ export default function PainelConflitos({
     .filter((c) => passa(c, filtro))
     .sort((p, q) => ordem[p.status] - ordem[q.status] || (p.centro[1] ?? 0) - (q.centro[1] ?? 0));
   const contagem = (f: Filtro) => filtrada.filter((c) => passa(c, f)).length;
+  const aberto = (c: ConflitoServidor) => c.status === "novo" || c.status === "ativo";
+  const marcadosNaLista = visiveis.filter((c) => marcados.has(c.id) && aberto(c));
   const rodada = opcao?.servidor?.ultima_rodada;
 
   return (
@@ -802,9 +916,48 @@ export default function PainelConflitos({
                   : "Nada aqui."}
             </p>
           )}
+          {visiveis.some(aberto) && (
+            <div className="linha barra-marcados">
+              {marcadosNaLista.length > 0 ? (
+                <>
+                  <button
+                    className="botao pequeno"
+                    disabled={!!exportando || !!andamento}
+                    onClick={() => void pedirCorrecao(marcadosNaLista)}
+                    title="Um pedido de revisão (ou reprovação) só, com a vista, o BCF com as fotos e os conflitos na ata"
+                  >
+                    Pedir correção ({marcadosNaLista.length})
+                  </button>
+                  <button className="link-pequeno" onClick={() => setMarcados(new Set())}>
+                    Desmarcar
+                  </button>
+                </>
+              ) : (
+                <span className="silencioso" style={{ fontSize: 12 }}>
+                  Marque os conflitos para pedir a correção de todos de uma vez ·
+                </span>
+              )}
+              <button
+                className="link-pequeno"
+                onClick={() => setMarcados(new Set(visiveis.filter(aberto).slice(0, MAXIMO_NO_PEDIDO).map((c) => c.id)))}
+              >
+                Marcar os abertos da lista
+              </button>
+            </div>
+          )}
           <ol className="lista-conflitos">
             {visiveis.slice(0, 300).map((c, i) => (
               <li key={c.id} className={c.id === ativo ? "atual" : undefined}>
+                <div className="conflito-com-marca">
+                {aberto(c) && (
+                  <input
+                    type="checkbox"
+                    className="marca-conflito"
+                    checked={marcados.has(c.id)}
+                    onChange={(e) => marcar(c.id, e.target.checked)}
+                    aria-label={`Marcar o conflito ${i + 1}`}
+                  />
+                )}
                 <button className="conflito-item" onClick={() => focar(c)}>
                   <span className="conflito-numero">{i + 1}</span>
                   <span style={{ minWidth: 0 }}>
@@ -824,6 +977,7 @@ export default function PainelConflitos({
                     </span>
                   </span>
                 </button>
+                </div>
                 {c.id === ativo && (
                   <div className="acoes-conflito">
                     {c.justificativa && (
@@ -838,7 +992,7 @@ export default function PainelConflitos({
                     )}
                     <div className="linha" style={{ gap: 6, flexWrap: "wrap" }}>
                       <button className="botao pequeno" onClick={() => pedirVista(c)}>
-                        Nova vista
+                        Nova vista / pedir correção
                       </button>
                       {c.vista_id && (
                         <a className="botao secundario pequeno" href={`/modelos?vista=${c.vista_id}`}>

@@ -97,6 +97,41 @@ ficaram de fora, porque a ata é respondida uma vez por revisão.
 | CTL | Simulações de desempenho (DES) |
 | as demais (GAS, INC, CLI…) | só representação gráfica |
 
+## Conflitos do 3D na ata (16/11/2026)
+
+Quando a correção sai de conflitos do 3D, eles vão para a ata:
+
+- **Pedido de revisão ou reprovação com conflitos.** No painel de conflitos do
+  3D, marca-se um ou vários conflitos (caixa ao lado de cada aberto, ou
+  "Marcar os abertos da lista") e clica-se em **Pedir correção (N)**. Abre a
+  janela de sempre (vista, disciplinas, texto), com a câmera enquadrando todos
+  e a descrição já com a lista. Cada disciplina marcada vira um pedido (se
+  liberada) ou uma reprovação (se em análise) com os conflitos em que ela
+  aparece. Um pedido trata até 100 conflitos pela tela (200 pela API).
+- **BCF anexado.** No pedido de revisão, a tela monta o `.bcfzip` desses
+  conflitos, com uma foto de cada (a câmera passa por eles), e o sobe como
+  anexo do pedido, ao lado da imagem da vista. Na página do documento ele
+  aparece como "BCF dos conflitos" e baixa (não abre no navegador). Passando
+  de 24 MB, vai sem as fotos. A reprovação não tem anexos: leva só a vista.
+- **Na ata da revisão que traz a correção** entra o quadro **Conflitos
+  tratados nesta revisão**: de onde veio (pedido autorizado do documento ou
+  reprovação desde a última liberada, com data, quem e o texto) e cada
+  conflito com as peças, os documentos, a medida e a situação. A situação
+  fica congelada no dia da ata, como o resto dela.
+- **Conflito ainda aberto não impede a ata conforme** (decisão do Vinícius,
+  16/11/2026). O formulário avisa quantos continuam abertos e se a detecção
+  ainda não rodou com a revisão nova ("a detecção ainda não rodou com a
+  R02"), sugerindo rodá-la antes de assinar. O quadro registra a situação.
+- **Na ata da revisão reprovada**, a "Solicitação de alterações" lista, junto
+  do motivo, os conflitos apontados na reprovação.
+
+Código: `services/conflitos_correcao.py` (validação e quadro), tabelas
+`conflitos_solicitacao` e `conflitos_reprovacao` e coluna `atas_analise.conflitos`
+(migração `a2c4e6b8d0f1`); `conflito_ids` em `POST
+/documentos/{id}/solicitacoes` e `POST /revisoes/{id}/reprovar`; na tela,
+`modelo3d/PainelConflitos.tsx`, `paginas/Modelo3D.tsx` (PainelVista) e
+`ConflitosDaAta.tsx`. Testes: `tests/test_conflitos_na_ata.py`.
+
 ## Código
 
 - Itens: `backend/app/services/checklist_pro_fl_005.json`, gerado da planilha

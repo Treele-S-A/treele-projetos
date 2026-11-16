@@ -325,8 +325,10 @@ class ArmazenamentoS3:
 
     def url_anexo(self, chave: str, nome_arquivo: str, tipo: str) -> str:
         # Abrir no navegador, com o tipo decidido no cadastro do anexo (só
-        # imagem ou PDF passam), fixado na assinatura.
-        disposicao = f"inline; filename*=UTF-8''{quote(nome_arquivo)}"
+        # imagem ou PDF passam), fixado na assinatura. O BCF dos conflitos
+        # (16/11/2026) baixa.
+        modo = "attachment" if tipo == "application/octet-stream" else "inline"
+        disposicao = f"{modo}; filename*=UTF-8''{quote(nome_arquivo)}"
         return self.assinador.generate_presigned_url(
             "get_object",
             Params={

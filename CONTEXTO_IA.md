@@ -7,6 +7,8 @@ Documentos: **`README.md`** (rodar local, fases), `docs/roteiro.md` (fases segui
 
 ## Onde paramos
 
+- **16/11/2026, conflitos do 3D no pedido de revisão e na ata:** no painel de conflitos, marcar vários e "Pedir correção (N)" abre um pedido (ou reprovação) por disciplina, cada um com os conflitos dela. O pedido de revisão leva, além da vista, o BCF desses conflitos com uma foto de cada, como anexo (baixa na página do documento). A ata da revisão que traz a correção ganha o quadro "Conflitos tratados nesta revisão", congelado no dia; conflito ainda aberto não impede ata conforme, mas o formulário avisa e sugere rodar a detecção com a revisão nova. A reprovação com conflitos os lista na "Solicitação de alterações" da ata da revisão reprovada. `services/conflitos_correcao.py`, `ConflitosDaAta.tsx`, `tests/test_conflitos_na_ata.py`. Migração `a2c4e6b8d0f1` (duas tabelas de ligação e `atas_analise.conflitos`).
+
 - **12/11/2026, voltar ao acervo com filtros:** o Acervo guarda os últimos filtros de cada obra em `sessionStorage`; o "← Voltar ao acervo" do visualizador 3D e o link da obra na página do documento usam `enderecoAcervo()` (api.ts) e reabrem a lista filtrada.
 
 - **12/11/2026, filtros do Acervo no endereço:** busca, disciplina, fase, status, formato, página e tamanho da página vão para a URL (`?q=&disciplina=&fase=&status=&tipo=&pagina=&por=`, com `replace`, sem passo a mais no histórico). Voltar de um documento pelo navegador traz a lista filtrada e na mesma posição de rolagem (guardada em `sessionStorage` por obra). O link copiado abre com os mesmos filtros.
@@ -124,3 +126,4 @@ Uma linha por trabalho, a mais recente no fim: `AAAA-MM-DD · pessoa · IA usada
 - 2026-11-10 · Vinícius · Claude · controle de acessos: cada entrada no sistema, com horário e dispositivo, para os coordenadores · (este commit)
 - 2026-11-12 · Vinícius · Claude · Acervo: filtros no endereço; voltar do documento mantém a lista filtrada · (este commit)
 - 2026-11-12 · Vinícius · Claude · Voltar ao acervo do 3D e do documento mantém os filtros · (este commit)
+- 2026-11-16 · Vinícius · Claude · conflitos do 3D no pedido de revisão (vários por pedido, BCF com fotos anexado) e na ata · (este commit)

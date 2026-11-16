@@ -7,6 +7,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { api, ErroApi, type Ata, type GrupoAta } from "./api";
 import { Aviso } from "./componentes";
+import QuadroConflitosAta, { conflitosAbertos } from "./ConflitosDaAta";
 
 type Resposta = "S" | "N" | "NA";
 const OPCOES: [Resposta, string, string][] = [
@@ -147,6 +148,32 @@ export default function FormularioAta({
         </header>
 
         <div className="modal-ata-corpo">
+          {!!grupo.conflitos?.length && (
+            <section className="grupo-ata">
+              <div className="grupo-ata-topo">
+                <strong>Conflitos tratados nesta revisão</strong>
+              </div>
+              {(() => {
+                const { abertos, semConferir } = conflitosAbertos(grupo.conflitos);
+                if (!abertos.length)
+                  return (
+                    <p className="silencioso" style={{ fontSize: 12.5, margin: "4px 0 8px" }}>
+                      Todos os conflitos que motivaram a correção estão resolvidos ou aprovados. O quadro vai para a ata.
+                    </p>
+                  );
+                return (
+                  <Aviso tom="atencao">
+                    {abertos.length} dos conflitos que motivaram esta correção ainda aparece
+                    {abertos.length > 1 ? "m" : ""} como aberto{abertos.length > 1 ? "s" : ""}.
+                    {semConferir.length > 0 &&
+                      ` ${semConferir.length === abertos.length ? "Nenhum" : `${abertos.length - semConferir.length} deles`} foi conferido com o modelo novo: rode a detecção de conflitos no 3D com esta revisão antes de assinar.`}{" "}
+                    A ata pode sair conforme, mas o quadro registra a situação de cada um.
+                  </Aviso>
+                );
+              })()}
+              <QuadroConflitosAta origens={grupo.conflitos} varias={grupo.revisoes.length > 1} className="no-formulario" />
+            </section>
+          )}
           {grupo.formulario.blocos.length === 0 && (
             <p className="silencioso" style={{ fontSize: 12.5, marginTop: 0 }}>
               A planilha PRO-FL-005 não tem bloco próprio para {grupo.disciplina_nome.toLowerCase()}: valem os

@@ -8,6 +8,7 @@ empilhadas, sem tabela dentro de tabela: assim a lista de itens quebra de
 página normalmente.
 """
 
+from datetime import datetime
 from io import BytesIO
 from pathlib import Path
 from xml.sax.saxutils import escape
@@ -46,6 +47,8 @@ def _p(texto: str, estilo=_base) -> Paragraph:
 
 
 def _data(valor) -> str:
+    if isinstance(valor, str):
+        valor = datetime.fromisoformat(valor)
     return data_br(valor) if valor else "-"
 
 
@@ -91,6 +94,66 @@ def _caixa_texto(conteudo: list, padding_baixo: float = 6) -> Table:
         ("BOTTOMPADDING", (0, 0), (-1, -1), padding_baixo),
     ]))
     return t
+
+
+def _medida(c: dict) -> str:
+    cm = f"{c.get('medida_cm') or 0:.1f}".replace(".", ",")
+    return f"entra {cm} cm" if c.get("tipo") == "interferencia" else f"a {cm} cm"
+
+
+def _pecas(c: dict) -> str:
+    a = c["peca_a"] + (f" ({c['documento_a']})" if c.get("documento_a") else "")
+    b = c["peca_b"] + (f" ({c['documento_b']})" if c.get("documento_b") else "")
+    return f"{a}\n× {b}"
+
+
+def _situacao_conflito(c: dict, revisao: str | None = None) -> str:
+    s = c.get("situacao")
+    if s == "resolvido":
+        return "Resolvido" + (f" em {_data(c['resolvido_em'])}" if c.get("resolvido_em") else "")
+    if s == "aprovado":
+        return "Aprovado" + (f": {c['justificativa']}" if c.get("justificativa") else "")
+    texto = "Ainda ativo" if s == "ativo" else "Novo"
+    if c.get("conferido") is False and revisao:
+        texto += f" (a detecção ainda não rodou com a R{revisao})"
+    return texto
+
+
+def _quadro_conflitos(origens: list[dict], varias: bool) -> list:
+    """"Conflitos tratados nesta revisão": de onde veio cada correção (pedido
+    ou reprovação) e os conflitos dela, com a situação no dia da ata."""
+    cab = ["Nº", "DISCIPLINAS", "PEÇAS EM CONFLITO", "MEDIDA", "SITUAÇÃO NA DATA DA ATA"]
+    linhas = [[_p(c, _cab_tabela) for c in cab]]
+    estilo = [
+        ("GRID", (0, 0), (-1, -1), 0.6, TRACO),
+        ("BACKGROUND", (0, 0), (-1, 0), CINZA),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("LEFTPADDING", (0, 0), (-1, -1), 3),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 3),
+    ]
+    for o in origens:
+        cabeca = f"<b>{escape(o['origem'])}</b>" + (f" · {escape(o['documento'])} R{escape(o['revisao'])}" if varias else "")
+        cabeca += f" · {_data(o.get('data'))}" + (f" · {escape(o['por'])}" if o.get("por") else "")
+        if o.get("descricao"):
+            cabeca += "<br/><i>" + escape(o["descricao"]).replace("\n", "<br/>") + "</i>"
+        linhas.append([Paragraph(cabeca, _pequeno), "", "", "", ""])
+        n = len(linhas) - 1
+        estilo += [("SPAN", (0, n), (-1, n)), ("BACKGROUND", (0, n), (-1, n), CINZA)]
+        for c in o["conflitos"]:
+            aberto = c.get("situacao") in ("novo", "ativo")
+            linhas.append([
+                _p(f"#{c['id']}", _celula), _p(c.get("disciplinas") or "-", _celula), _p(_pecas(c), _pequeno),
+                _p(_medida(c), _celula),
+                Paragraph(
+                    (f'<font color="#9c2f22">{escape(_situacao_conflito(c, o.get("revisao")))}</font>' if aberto
+                     else escape(_situacao_conflito(c, o.get("revisao")))),
+                    _pequeno,
+                ),
+            ])
+    larguras = [0.08, 0.12, 0.42, 0.11, 0.27]
+    tabela = Table(linhas, colWidths=[LARGURA * f for f in larguras], repeatRows=1)
+    tabela.setStyle(TableStyle(estilo))
+    return [_faixa_tabela("Conflitos tratados nesta revisão", espacada=True), tabela]
 
 
 def gerar(dados: dict) -> bytes:
@@ -167,6 +230,11 @@ def gerar(dados: dict) -> bytes:
     tabela.setStyle(TableStyle(estilo_itens))
     historia.append(tabela)
 
+    # Conflitos do 3D que motivaram a correção (16/11/2026), com a situação
+    # no dia da ata.
+    if dados.get("conflitos"):
+        historia += _quadro_conflitos(dados["conflitos"], len(dados["revisoes"]) > 1)
+
     # Solicitação de alterações: só a reprovação da revisão. Fica junto com
     # "Analisado por", numa página só.
     varias = len(dados["situacao"]) > 1
@@ -176,9 +244,16 @@ def gerar(dados: dict) -> bytes:
         if not s.get("motivo"):
             continue
         rev = (f"{s['documento']}\n" if varias else "") + f"R{s['revisao']}"
+        motivo = escape(s["motivo"]).replace("\n", "<br/>")
+        # Conflitos do 3D apontados na reprovação (16/11/2026).
+        if s.get("conflitos"):
+            motivo += '<br/><font size="8"><b>Conflitos apontados:</b><br/>' + "<br/>".join(
+                escape(f"#{c['id']} {c.get('disciplinas', '')}: {_pecas(c)} ({_medida(c)})").replace("\n", " ")
+                for c in s["conflitos"]
+            ) + "</font>"
         linhas.append([
             _p(rev, _celula), _p(_data(s.get("reprovada_em")), _celula), _p(s.get("reprovada_por") or "-", _celula),
-            _p(s["motivo"]), _p(_data(s.get("recebida_em")), _celula),
+            Paragraph(motivo, _base), _p(_data(s.get("recebida_em")), _celula),
         ])
     while len(linhas) < 5:
         linhas.append(["", "", "", "", ""])

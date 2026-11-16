@@ -19,7 +19,7 @@ from ..schemas import (
     RevisaoAtualizar,
     RevisaoOut,
 )
-from ..services import auditoria
+from ..services import auditoria, conflitos_correcao
 from ..services import atas as servico_atas
 from ..services import revisoes as servico
 from ..services import notificacoes
@@ -298,6 +298,13 @@ def reprovar(
         if vista is None or vista.obra_id != ctx.obra.id or not vista.imagem_tamanho:
             raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Vista do modelo 3D não encontrada.")
         revisao.vista_reprovacao_id = vista.id
+    # Conflitos do 3D apontados (16/11/2026): vão para a ata desta revisão e
+    # para a da revisão que trouxer a correção.
+    try:
+        conflitos = conflitos_correcao.escolher(db, ctx, revisao.documento, dados.conflito_ids)
+    except conflitos_correcao.ConflitoInvalido as erro:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, str(erro)) from None
+    revisao.conflitos_reprovacao = conflitos
 
     servico.reprovar(db, revisao, usuario.id, observacao)
     auditoria.registrar(
@@ -308,6 +315,7 @@ def reprovar(
             "revisao": revisao.numero,
             "observacao": observacao,
             **({"vista": vista.titulo} if vista else {}),
+            **({"conflitos": [c.id for c in conflitos]} if conflitos else {}),
         },
         request=request,
     )

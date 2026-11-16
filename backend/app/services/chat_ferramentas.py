@@ -39,7 +39,7 @@ from ..models import (
     SolicitacaoRevisao,
     Usuario,
 )
-from . import auditoria, tempo
+from . import auditoria, conflitos_correcao, tempo
 from .storage import armazenamento
 
 LIMITE_DOCUMENTOS = 40
@@ -826,20 +826,8 @@ class Ferramentas:
         return {"total": len(itens), "solicitacoes": itens[:LIMITE_DOCUMENTOS]}
 
 
-# As categorias IFC como a tela mostra (frontend/src/modelo3d/resumo-ifc.ts).
-CATEGORIAS_IFC = {
-    "IFCBEAM": "Viga", "IFCCOLUMN": "Pilar", "IFCSLAB": "Laje / piso", "IFCWALL": "Parede",
-    "IFCWALLSTANDARDCASE": "Parede", "IFCDOOR": "Porta", "IFCWINDOW": "Janela",
-    "IFCMEMBER": "Perfil / montante", "IFCFOOTING": "Fundação", "IFCSTAIR": "Escada",
-    "IFCFLOWSEGMENT": "Tubo / duto", "IFCFLOWFITTING": "Conexão", "IFCFLOWTERMINAL": "Terminal",
-    "IFCFLOWCONTROLLER": "Registro / válvula", "IFCPIPESEGMENT": "Tubo", "IFCPIPEFITTING": "Conexão",
-    "IFCDUCTSEGMENT": "Duto", "IFCCABLECARRIERSEGMENT": "Eletrocalha / eletroduto",
-    "IFCBUILDINGELEMENTPROXY": "Outro elemento",
-}
-
-
 def _categoria(codigo: str) -> str:
-    return CATEGORIAS_IFC.get((codigo or "").upper(), (codigo or "").upper().replace("IFC", "").title())
+    return conflitos_correcao.categoria(codigo)
 
 
 def _conflito(c) -> dict[str, Any]:

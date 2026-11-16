@@ -34,7 +34,7 @@ from ..schemas import (
     SolicitacaoRecusar,
     SolicitacoesContagem,
 )
-from ..services import auditoria
+from ..services import auditoria, conflitos_correcao
 from ..services import notificacoes
 from ..services import solicitacoes as servico
 from ..services.storage import armazenamento, chave_anexo
@@ -222,6 +222,12 @@ def solicitar(
                 "Só dá para marcar projetistas desta obra.",
             )
         mencionados = [projetistas[i] for i in dict.fromkeys(dados.mencionados)]
+    # Conflitos do 3D que o pedido trata (16/11/2026): vão para a ata da
+    # revisão que traz a correção.
+    try:
+        conflitos = conflitos_correcao.escolher(db, ctx, documento, dados.conflito_ids)
+    except conflitos_correcao.ConflitoInvalido as erro:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, str(erro)) from None
 
     solicitacao = SolicitacaoRevisao(
         documento_id=documento.id,
@@ -231,6 +237,7 @@ def solicitar(
         vista_id=vista.id if vista else None,
     )
     solicitacao.mencionados = mencionados
+    solicitacao.conflitos = conflitos
     if autoriza:
         solicitacao.status = StatusSolicitacao.autorizada
         solicitacao.decidida_em = datetime.now(timezone.utc)
@@ -253,6 +260,7 @@ def solicitar(
             "documento": documento.codigo, "revisao": liberada.numero, "sem_pedido": autoriza,
             **({"vista": vista.titulo} if vista else {}),
             **({"mencionados": [u.nome for u in mencionados]} if mencionados else {}),
+            **({"conflitos": [c.id for c in conflitos]} if conflitos else {}),
         },
         request=request,
     )
@@ -343,7 +351,7 @@ def iniciar_anexo(
     if tipo is None:
         raise HTTPException(
             status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
-            "Anexe fotos (JPG, PNG ou WebP) ou PDF.",
+            "Anexe fotos (JPG, PNG ou WebP), PDF ou o BCF dos conflitos (.bcfzip).",
         )
     if dados.tamanho > servico.ANEXO_MAX_MB * 1024 * 1024:
         raise HTTPException(

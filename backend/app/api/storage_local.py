@@ -102,13 +102,17 @@ def baixar(chave: str, acao: str, exp: int, assinatura: str, nome: str | None = 
             inicio = fh.read(16)
         imagem = detectar_imagem(inicio)
         tipo = "application/pdf" if inicio.startswith(b"%PDF") else (imagem[0] if imagem else None)
+        modo = "inline"
+        # O BCF dos conflitos (um zip): baixa, não abre.
+        if tipo is None and inicio.startswith(b"PK\x03\x04"):
+            tipo, modo = "application/octet-stream", "attachment"
         if tipo is None:
             raise HTTPException(status.HTTP_415_UNSUPPORTED_MEDIA_TYPE, "Nem imagem nem PDF.")
         return FileResponse(
             caminho,
             media_type=tipo,
             headers={
-                "Content-Disposition": f"inline; filename*=UTF-8''{quote(nome or caminho.name)}",
+                "Content-Disposition": f"{modo}; filename*=UTF-8''{quote(nome or caminho.name)}",
                 "X-Content-Type-Options": "nosniff",
             },
         )

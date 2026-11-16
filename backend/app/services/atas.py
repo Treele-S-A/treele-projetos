@@ -12,7 +12,11 @@ Regras:
 - "N" pede comentário, e qualquer "N" faz a ata "não conforme": ela fica
   registrada e as revisões dela não podem ser liberadas (reprovar, ou refazer a
   análise);
-- uma revisão com ata conforme não ganha outra.
+- uma revisão com ata conforme não ganha outra;
+- quando a revisão corrige conflitos do 3D (pedido ou reprovação que saiu
+  deles), a ata guarda o quadro desses conflitos com a situação no dia
+  (services/conflitos_correcao). Conflito ainda ativo não impede a ata
+  conforme: a tela avisa e o quadro registra.
 """
 
 import json
@@ -24,6 +28,7 @@ from sqlalchemy.orm import Session
 
 from ..config import settings
 from ..models import AtaAnalise, Revisao, Usuario
+from . import conflitos_correcao
 
 RESPOSTAS = {"S", "N", "NA"}
 
@@ -132,6 +137,8 @@ def criar(
             {"id": r.id, "documento": r.documento.codigo, "titulo": r.documento.titulo, "revisao": r.numero}
             for r in revisoes
         ],
+        # Retrato dos conflitos que motivaram a correção, no dia da ata.
+        conflitos=conflitos_correcao.origens(db, revisoes),
         criada_por_id=usuario.id,
     )
     ata.revisoes = list(revisoes)
