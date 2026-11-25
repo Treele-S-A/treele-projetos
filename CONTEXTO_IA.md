@@ -7,6 +7,8 @@ Documentos: **`README.md`** (rodar local, fases), `docs/roteiro.md` (fases segui
 
 ## Onde paramos
 
+- **25/11/2026, atas de mudança de projeto:** página nova no módulo Qualidade (coordenadores e administrador), com as obras e, em cada uma, "Enviar atas" (só PDF, qualquer nome, escolhendo a disciplina). O sistema nomeia na ordem de chegada por obra e disciplina (`SER-HID-AMP01-R00`), aceita revisões (R01, R02…) e exclusão de revisão ou da ata inteira. Não é a ata de análise crítica. `api/atas_mudanca.py`, `paginas/AtasMudanca.tsx`, `docs/atas-mudanca.md`, `tests/test_atas_mudanca.py`. Migração `b3d5f7a9c1e2`.
+
 - **16/11/2026, conflitos do 3D no pedido de revisão e na ata:** no painel de conflitos, marcar vários e "Pedir correção (N)" abre um pedido (ou reprovação) por disciplina, cada um com os conflitos dela. O pedido de revisão leva, além da vista, o BCF desses conflitos com uma foto de cada, como anexo (baixa na página do documento). A ata da revisão que traz a correção ganha o quadro "Conflitos tratados nesta revisão", congelado no dia; conflito ainda aberto não impede ata conforme, mas o formulário avisa e sugere rodar a detecção com a revisão nova. A reprovação com conflitos os lista na "Solicitação de alterações" da ata da revisão reprovada. `services/conflitos_correcao.py`, `ConflitosDaAta.tsx`, `tests/test_conflitos_na_ata.py`. Migração `a2c4e6b8d0f1` (duas tabelas de ligação e `atas_analise.conflitos`).
 
 - **12/11/2026, voltar ao acervo com filtros:** o Acervo guarda os últimos filtros de cada obra em `sessionStorage`; o "← Voltar ao acervo" do visualizador 3D e o link da obra na página do documento usam `enderecoAcervo()` (api.ts) e reabrem a lista filtrada.
@@ -126,4 +128,5 @@ Uma linha por trabalho, a mais recente no fim: `AAAA-MM-DD · pessoa · IA usada
 - 2026-11-10 · Vinícius · Claude · controle de acessos: cada entrada no sistema, com horário e dispositivo, para os coordenadores · (este commit)
 - 2026-11-12 · Vinícius · Claude · Acervo: filtros no endereço; voltar do documento mantém a lista filtrada · (este commit)
 - 2026-11-12 · Vinícius · Claude · Voltar ao acervo do 3D e do documento mantém os filtros · (este commit)
-- 2026-11-16 · Vinícius · Claude · conflitos do 3D no pedido de revisão (vários por pedido, BCF com fotos anexado) e na ata · (este commit)
+- 2026-11-16 · Vinícius · Claude · conflitos do 3D no pedido de revisão (vários por pedido, BCF com fotos anexado) e na ata · c47f49f
+- 2026-11-25 · Vinícius · Claude · atas de mudança de projeto no módulo Qualidade · (este commit)

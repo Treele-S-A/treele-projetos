@@ -969,3 +969,63 @@ class CronogramaVinculo(Base):
     sucessora: Mapped["CronogramaAtividade"] = relationship(
         foreign_keys=[sucessora_id], back_populates="predecessoras"
     )
+
+
+class AtaMudanca(Base):
+    """Ata de mudança de projeto (TREELE, 25/11/2026): registra uma alteração
+    técnica adotada. Não é a ata de análise crítica: é um PDF que o
+    coordenador sobe, por obra e disciplina, e o sistema numera na ordem em
+    que chegam (SER-HID-AMP01). Cada ata tem as suas revisões (R00, R01…)."""
+
+    __tablename__ = "atas_mudanca"
+    __table_args__ = (UniqueConstraint("obra_id", "disciplina_id", "numero", name="uq_ata_mudanca_numero"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    obra_id: Mapped[int] = mapped_column(ForeignKey("obras.id", ondelete="CASCADE"), index=True)
+    disciplina_id: Mapped[int] = mapped_column(ForeignKey("disciplinas.id"))
+    numero: Mapped[int] = mapped_column(Integer)
+    assunto: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    criada_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=agora)
+    criada_por_id: Mapped[int | None] = mapped_column(
+        ForeignKey("usuarios.id", ondelete="SET NULL"), nullable=True
+    )
+
+    obra: Mapped["Obra"] = relationship()
+    disciplina: Mapped["Disciplina"] = relationship()
+    revisoes: Mapped[list["AtaMudancaRevisao"]] = relationship(
+        back_populates="ata", order_by="AtaMudancaRevisao.numero", cascade="all, delete-orphan"
+    )
+
+
+class AtaMudancaRevisao(Base):
+    """Um PDF de ata de mudança. Nasce pendente (o arquivo sobe direto para o
+    armazenamento) e só ganha número — da ata, se for nova, e da revisão — ao
+    confirmar a chegada: a numeração segue a ordem em que as atas chegam, e
+    um envio abandonado não deixa buraco."""
+
+    __tablename__ = "atas_mudanca_revisoes"
+    __table_args__ = (UniqueConstraint("ata_id", "numero", name="uq_ata_mudanca_revisao"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    # Vazio enquanto o envio de uma ata nova não confirmou.
+    ata_id: Mapped[int | None] = mapped_column(
+        ForeignKey("atas_mudanca.id", ondelete="CASCADE"), nullable=True, index=True
+    )
+    obra_id: Mapped[int] = mapped_column(ForeignKey("obras.id", ondelete="CASCADE"), index=True)
+    disciplina_id: Mapped[int] = mapped_column(ForeignKey("disciplinas.id"))
+    numero: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # Assunto pedido no envio de uma ata nova (vai para a ata ao confirmar).
+    assunto: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    nome_original: Mapped[str] = mapped_column(String(300))
+    storage_key: Mapped[str] = mapped_column(String(500), unique=True)
+    tamanho: Mapped[int] = mapped_column(BigInteger, default=0)
+    status: Mapped[StatusArquivo] = mapped_column(
+        _enum(StatusArquivo, 16), default=StatusArquivo.pendente
+    )
+    enviada_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=agora)
+    enviada_por_id: Mapped[int | None] = mapped_column(
+        ForeignKey("usuarios.id", ondelete="SET NULL"), nullable=True
+    )
+
+    ata: Mapped["AtaMudanca | None"] = relationship(back_populates="revisoes")
+    enviada_por: Mapped["Usuario | None"] = relationship()

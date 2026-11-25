@@ -193,6 +193,9 @@ Código: `api/acesso.py` e as tabelas `solicitacoes_acesso` e
   - administrador: as atas e os fornecedores;
   - projetista: só **Atas de análise crítica**, e só as das revisões em que
     está envolvido (as que enviou ou em que subiu arquivo);
+  - coordenadores (e administrador): **Cronograma de projetos** e **Atas de
+    mudança de projeto** (25/11/2026), só das obras que coordenam; o servidor
+    recusa os outros papéis (`gerenciar`);
   - os demais não veem o módulo.
 
 ## As escolhas por trás disso

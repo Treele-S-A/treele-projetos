@@ -25,6 +25,7 @@ import Obras from "./paginas/Obras";
 import Registro from "./paginas/Registro";
 import SolicitacoesGerais from "./paginas/SolicitacoesGerais";
 import Atas from "./paginas/Atas";
+import AtasMudanca from "./paginas/AtasMudanca";
 import Cronograma, { EscolherCronograma } from "./paginas/Cronograma";
 import Ata from "./paginas/Ata";
 import Fornecedores from "./paginas/Fornecedores";
@@ -411,6 +412,11 @@ function Moldura() {
                 </NavLink>
               )}
               {coordenador && (
+                <NavLink to="/atas-mudanca" className={({ isActive }) => (isActive ? "ativo" : "")}>
+                  Atas de mudança de projeto
+                </NavLink>
+              )}
+              {coordenador && (
                 <NavLink
                   to="/cronograma"
                   className={() => (local.pathname.endsWith("/cronograma") ? "ativo" : "")}
@@ -510,6 +516,7 @@ export default function App() {
         <Route path="/solicitacoes" element={<SoAdmin><SolicitacoesGerais /></SoAdmin>} />
         <Route path="/atas" element={<Atas />} />
         <Route path="/cronograma" element={<EscolherCronograma />} />
+        <Route path="/atas-mudanca" element={<SoCoordenador><AtasMudanca /></SoCoordenador>} />
         <Route path="/obras/:obraId/cronograma" element={<PorObra><Cronograma /></PorObra>} />
         <Route path="/atas/:ataId" element={<Ata />} />
         <Route path="/fornecedores" element={<SoAdmin><Fornecedores /></SoAdmin>} />
