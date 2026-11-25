@@ -129,4 +129,5 @@ Uma linha por trabalho, a mais recente no fim: `AAAA-MM-DD · pessoa · IA usada
 - 2026-11-12 · Vinícius · Claude · Acervo: filtros no endereço; voltar do documento mantém a lista filtrada · (este commit)
 - 2026-11-12 · Vinícius · Claude · Voltar ao acervo do 3D e do documento mantém os filtros · (este commit)
 - 2026-11-16 · Vinícius · Claude · conflitos do 3D no pedido de revisão (vários por pedido, BCF com fotos anexado) e na ata · c47f49f
-- 2026-11-25 · Vinícius · Claude · atas de mudança de projeto no módulo Qualidade · (este commit)
+- 2026-11-25 · Vinícius · Claude · atas de mudança de projeto no módulo Qualidade · b5b1e73
+- 2026-11-25 · Vinícius · Claude · chat: link dentro de negrito volta a ser clicável (avaliação 👎 de 12/11) · (este commit)

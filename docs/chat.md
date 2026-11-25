@@ -229,3 +229,18 @@ São seis avaliações, uma 👍 e cinco 👎, todas no Serra.
     configurações), por `listar_obras` e `resumo_da_obra`.
 - As duas avaliações sobre "metragem de PVC" (21/10) já tinham sido tratadas
   antes, com a dica de que o comprimento existe no modelo.
+
+## Avaliação revista em 25/11/2026
+
+Uma 👎 nova (12/11, Serra): "achou o projeto que eu pedi mas não deu o link
+pra clicar".
+
+- Causa: a resposta trazia o link dentro de negrito
+  (`**[SER-ARQ-PE-ATI — PLANTA ÁTICO](/documentos/244)**`). O desenhador do
+  chat (`trecho` em `Assistente.tsx`) reconhecia o negrito primeiro e mostrava
+  o conteúdo como texto, com colchetes e endereço à mostra.
+- Correção: o conteúdo do negrito passa de novo pelo mesmo desenhador, e o
+  link dentro dele vira link.
+- Na mesma conversa: o chat conferiu só 5 das 123 pranchas de ARQ (lê um PDF
+  por vez) e o endereço completo do Serra estava no carimbo da ATI. O endereço
+  já vem do cadastro da obra desde 30/10.

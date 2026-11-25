@@ -228,7 +228,11 @@ function trecho(texto: string, chave: string): ReactNode[] {
         ),
       );
     } else if (m[3] !== undefined) {
-      saida.push(<strong key={`${chave}-${i++}`}>{m[3]}</strong>);
+      // O negrito pode trazer link dentro ("**[SER-ARQ-PE-ATI](/documentos/244)**"):
+      // sem isto, o link saía como texto cru, sem clique (avaliação 👎 de
+      // 12/11/2026).
+      const k = i++;
+      saida.push(<strong key={`${chave}-${k}`}>{trecho(m[3], `${chave}-${k}`)}</strong>);
     } else {
       saida.push(<code key={`${chave}-${i++}`}>{m[4]}</code>);
     }
