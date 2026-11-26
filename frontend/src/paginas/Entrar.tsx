@@ -38,7 +38,8 @@ export default function Entrar() {
     try {
       const { configurado } = await api.get<{ configurado: boolean }>("/auth/microsoft/status");
       if (!configurado) throw new Error("Login Microsoft ainda não configurado neste sistema.");
-      window.location.assign(`${api.base}/auth/microsoft/start`);
+      // A caixa "Manter conectado" vale também para a Microsoft (26/11/2026).
+      window.location.assign(`${api.base}/auth/microsoft/start${manter ? "?manter=1" : ""}`);
     } catch (ex) {
       setErro(ex instanceof Error ? ex.message : "Não foi possível iniciar o login Microsoft.");
       setEnviando(false);

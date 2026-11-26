@@ -201,7 +201,7 @@ justamente como o BCF já funciona.
 | Avisos e liberação em lote | Coordenador escolhe se avisa (notificação e e-mail) ao enviar arquivo e ao liberar; projetista e obra avisam sempre. No acervo (lista), o coordenador marca revisões em revisão — de várias páginas — e libera todas de uma vez; as que não passam nas conferências voltam com o motivo | 15/10/2026 |
 | Análise crítica | Revisão em revisão é a análise crítica do PBQP-H: o coordenador libera (observação opcional) ou reprova (observação obrigatória, vai por e-mail a quem enviou). A reprovada fica no histórico; a correção vem numa revisão nova, sem outra autorização. O administrador cancela revisão em qualquer status | 09/10/2026 |
 | Painel de solicitações | Administrador vê no menu os pedidos de revisão de todas as obras, com filtro e contador dos que aguardam autorização; o item abre o documento no pedido | 06/10/2026 |
-| Manter conectado | Opção no login: sessão de 30 dias na máquina (sem marcar, 12 horas). Trocar ou redefinir a senha derruba todas as sessões abertas; quem trocou a própria segue logado | 07/10/2026 |
+| Manter conectado | Opção no login: sessão de 30 dias na máquina (sem marcar, 12 horas), também na entrada pela Microsoft (desde 26/11/2026). Trocar ou redefinir a senha derruba todas as sessões abertas; quem trocou a própria segue logado | 07/10/2026 |
 | Disciplina Incêndio | `INC`, a pedido da TREELE; substitui o `PCI` da proposta inicial, desativado | 05/10/2026 |
 | Perfil comercial | Todas as obras, só a disciplina COM liberada, só baixar — o acesso mais restrito do sistema | 02/10/2026 |
 | Fases | 7 códigos: EP, AP, PL, PA, PB, PE, AB | 17/09/2026 |

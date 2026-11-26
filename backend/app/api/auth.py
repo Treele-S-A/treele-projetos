@@ -62,11 +62,17 @@ def _entra_urls() -> tuple[str, str]:
 
 
 @router.get("/microsoft/start")
-def microsoft_start(request: Request):
+def microsoft_start(request: Request, manter: bool = False):
+    """Leva à Microsoft. `manter`: a caixa "Manter conectado por 30 dias" da
+    tela de entrada; vai no cookie assinado e vale na volta (26/11/2026 —
+    antes, quem entrava pela Microsoft ficava sempre com a sessão de 12 h)."""
     tenant, client, _ = _entra_config()
     callback, _ = _entra_urls()
     estado, nonce = secrets.token_urlsafe(32), secrets.token_urlsafe(32)
-    cookie = jwt.encode({"state": estado, "nonce": nonce, "exp": time.time() + 600}, settings.secret_key, algorithm="HS256")
+    cookie = jwt.encode(
+        {"state": estado, "nonce": nonce, "manter": bool(manter), "exp": time.time() + 600},
+        settings.secret_key, algorithm="HS256",
+    )
     parametros = urlencode({
         "client_id": client,
         "response_type": "code",
@@ -146,7 +152,8 @@ def microsoft_callback(request: Request, code: str = "", state: str = "", error:
             auditoria.registrar(db, acao="login", entidade="usuario", entidade_id=usuario.id, usuario=usuario, request=request,
                                 detalhes={"metodo": "microsoft", "dispositivo": auditoria.dispositivo(request)})
             db.commit()
-            resposta = RedirectResponse(f"{frontend}/#entra_token={criar_token(usuario.id, usuario.senha_hash)}", status_code=303)
+            token = criar_token(usuario.id, usuario.senha_hash, bool(sessao.get("manter")))
+            resposta = RedirectResponse(f"{frontend}/#entra_token={token}", status_code=303)
     resposta.delete_cookie("treele_entra_state", path=f"{settings.api_prefix}/auth/microsoft")
     resposta.headers["Cache-Control"] = "no-store"
     resposta.headers["Referrer-Policy"] = "no-referrer"
